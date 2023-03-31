@@ -559,7 +559,8 @@ class molecular(object):  # 分子类
         self.energy = energylist[-1] +self.nuclear_energy
 
     def molecular_orbital(self):
-        self.UHF_SCF()
+        self.SCF()
+
 
 '''
 tem_mol = molecular()
