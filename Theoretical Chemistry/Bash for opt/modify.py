@@ -1,6 +1,8 @@
 import sys
 optpara="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#opt fre scrf=(solvent={}) nosymm {} {}"
 enepara="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#scrf=(SMD,solvent={}) nosymm {} {} guess=read"
+tspara ="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#opt=(ts,noeigem,calcfc,maxstep=10) scrf=(SMD,solvent={}) nosymm {} {} guess=(mix,always)"
+frezpara ="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#opt=(modredundant,loose) scrf=(SMD,solvent={}) nosymm {} {} guess=(mix,always)"
 gas_optpara = "%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#opt fre  nosymm {} {}"
 gas_enepara="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n# nosymm {} {} guess=read"
 def main(filename,solvent,jobname,chk_site,mem,nproc,basis_set,theory):
@@ -23,6 +25,10 @@ def main(filename,solvent,jobname,chk_site,mem,nproc,basis_set,theory):
             saved_para = optpara.format(chk_site,file_head,mem,nproc,solvent,basis_set,theory)
         elif jobname == "ene":
             saved_para = enepara.format(chk_site,file_head,mem,nproc,solvent,basis_set,theory)
+        elif jobname == "ts":
+            saved_para = tspara.format(chk_site, file_head, mem, nproc, solvent, basis_set, theory)
+        elif jobname == "frez":
+            saved_para = frezpara.format(chk_site, file_head, mem, nproc, solvent, basis_set, theory)
 
     file2 = open(file_head+"_{}.gjf".format(jobname),"w")
     saved_para = saved_para.split("\n")
