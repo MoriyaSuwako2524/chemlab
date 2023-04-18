@@ -2,15 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="0421277f-b3cd-4809-a9ac-ca0555b51e5d" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/Experiment/Organic Chemistry.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Theoretical Chemistry/Numercial calculation/Gauss.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Theoretical Chemistry/Numercial calculation/Numerial calculation.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/chemlab.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/chemlab.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/judge.py" beforeDir="false" afterPath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/judge.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/modify.py" beforeDir="false" afterPath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/modify.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/sub.sh" beforeDir="false" afterPath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/sub.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

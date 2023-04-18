@@ -190,6 +190,23 @@ echo "all frez job have deleted and generated new ts jobs input"
 }
 
 
+generate_ts_input_without_frez(){
+echo "now begin to echo gaussian input ts files"
+for inf in *.gjf
+do
+python3 judge.py $inf
+jobtype=$?
+echo $jobtype
+if [ "$jobtype" == "0" ];
+then
+jobname="ts"
+python3 modify.py $inf $optsolvent $jobname $chkpath $mem $nproc $OptBasisSet $theory
+fi
+done
+echo "all .gjf files have generated ."
+}
+
+
 
 #run ts jobs
 run_ts_jobs(){
@@ -208,7 +225,6 @@ echo "$tsinf has finished"
 fi
 done
 rm -f *_ts.gjf
-rm -f *_frez.log 
 echo "all ts jobs have done."
 }
 
@@ -216,16 +232,14 @@ echo "all ts jobs have done."
 
 
 # All functions list generate_opt_input() ,  run_opt_jobs() , generate_ene_input() , run_ene_job(), transform_chk_to_fchk() bash extract_total.sh(this is a bash file)) 
-#,generate_frez_input() , run_frez_jobs() , run_ts_jobs() ,  generate_ts_input()
+#,generate_frez_input() , run_frez_jobs() , run_ts_jobs() ,  generate_ts_input() , generate_ts_input_without_frez()
 
-generate_frez_input
-run_frez_jobs
-generate_ts_input
+
+
+generate_ts_input_without_frez
 run_ts_jobs
 generate_ene_input
-run_ene_job
-transform_chk_to_fchk
-bash extract_total.sh
+run_ene_input
 
 echo "all jobs have done"
 
