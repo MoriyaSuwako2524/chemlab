@@ -80,7 +80,7 @@ echo "all opt job have deleted and generated new ene jobs input"
 
 
 #run ene job
-run_ene_job(){
+run_ene_jobs(){
 for eneinf in *.gjf
 do
 python3 judge.py $eneinf
@@ -231,7 +231,7 @@ echo "all ts jobs have done."
 
 
 
-# All functions list generate_opt_input() ,  run_opt_jobs() , generate_ene_input() , run_ene_job(), transform_chk_to_fchk() bash extract_total.sh(this is a bash file)) 
+# All functions list generate_opt_input() ,  run_opt_jobs() , generate_ene_input() , run_ene_jobs(), transform_chk_to_fchk() bash extract_total.sh(this is a bash file))
 #,generate_frez_input() , run_frez_jobs() , run_ts_jobs() ,  generate_ts_input() , generate_ts_input_without_frez()
 
 
@@ -239,7 +239,7 @@ echo "all ts jobs have done."
 generate_ts_input_without_frez
 run_ts_jobs
 generate_ene_input
-run_ene_input
+run_ene_jobs
 
 echo "all jobs have done"
 
