@@ -8,7 +8,7 @@ gas_enepara="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n# nosymm {} {} guess=re
 def main(filename,solvent,jobname,chk_site,mem,nproc,basis_set,theory):
     if "_opt.gjf-out" in filename:
         file_head = filename[:-12]
-    if "_ts.gjf-out" in filename:
+    elif "_ts.gjf-out" in filename:
         file_head = filename[:-11]
     else:
         file_head = filename[:-4]
