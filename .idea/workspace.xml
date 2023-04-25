@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="0421277f-b3cd-4809-a9ac-ca0555b51e5d" name="Changes" comment="fix bug">
-      <change afterPath="$PROJECT_DIR$/Theoretical Chemistry/Numercial calculation/simulation.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/modify.py" beforeDir="false" afterPath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/modify.py" afterDir="false" />
     </list>
@@ -160,7 +159,14 @@
       <option name="project" value="LOCAL" />
       <updated>1682332234439</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="fix bug">
+      <created>1682395873240</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1682395873240</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">

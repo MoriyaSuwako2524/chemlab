@@ -1,8 +1,8 @@
 import sys
 optpara="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#opt fre scrf=(solvent={}) nosymm {} {}"
 enepara="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#scrf=(SMD,solvent={}) nosymm {} {} guess=read"
-tspara ="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#opt=(ts,noeigen,calcfc,maxstep=10) fre scrf=(SMD,solvent={}) nosymm {} {} guess=(mix,always)"
-frezpara ="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#opt=(modredundant,loose) scrf=(SMD,solvent={}) nosymm {} {} guess=(mix,always)"
+tspara ="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#opt=(ts,noeigen,calcfc,maxstep=10) fre scrf=(solvent={}) nosymm {} {} guess=(mix,always)"
+frezpara ="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#opt=(modredundant,loose) scrf=(solvent={}) nosymm {} {} guess=(mix,always)"
 gas_optpara = "%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#opt fre  nosymm {} {}"
 gas_enepara="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n# nosymm {} {} guess=read"
 def main(filename,solvent,jobname,chk_site,mem,nproc,basis_set,theory):
