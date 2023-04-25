@@ -1,6 +1,0 @@
-r1_opt.log
- Thermal correction to Gibbs Free Energy=         0.014357 r2_opt.log
- Thermal correction to Gibbs Free Energy=        -0.022401 r3_opt.log
- Thermal correction to Gibbs Free Energy=         0.042443 r4_opt.log
- Thermal correction to Gibbs Free Energy=         0.074276 r5_opt.log
- Thermal correction to Gibbs Free Energy=        -0.013769 

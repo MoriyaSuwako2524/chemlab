@@ -1,5 +1,0 @@
-r1_ene.log
- SCF Done:  E(UM062X) =  -1051.04817992     A.U. after   13 cycles r2_ene.log
- SCF Done:  E(UM062X) =  -1418.63286979     A.U. after   13 cycles r3_ene.log
- SCF Done:  E(UM062X) =  -117.196762358     A.U. after   12 cycles r4_ene.log
- SCF Done:  E(UM062X) =  -307.028616908     A.U. after   14 cycles 
