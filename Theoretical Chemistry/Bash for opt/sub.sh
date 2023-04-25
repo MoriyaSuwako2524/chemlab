@@ -183,7 +183,7 @@ done
 for outinf in *.gjf-out
 do
 jobname="ts"
-python3 modify.py $outinf $enesolvent $jobname $chkpath $mem $nproc $EneBasisSet $theory
+python3 modify.py $outinf $enesolvent $jobname $chkpath $mem $nproc $OptBasisSet $theory
 done
 rm -f *-out
 echo "all frez job have deleted and generated new ts jobs input"
@@ -191,7 +191,7 @@ echo "all frez job have deleted and generated new ts jobs input"
 
 
 generate_ts_input_without_frez(){
-echo "now begin to echo gaussian input ts files"
+echo "now begin to generate gaussian input ts files"
 for inf in *.gjf
 do
 python3 judge.py $inf
