@@ -8,6 +8,10 @@ def main(filename):
         sys.exit(3)
     elif "frez" in filename:
         sys.exit(4)
+    elif "cs" in filename:
+        sys.exit(5)
+    elif "tdsp" in filename:
+        sys.exit(6)
     else:
         sys.exit(0)
 main(sys.argv[1])

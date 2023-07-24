@@ -5,6 +5,7 @@ tspara ="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#opt=(ts,noeigen,calcfc,max
 frezpara ="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#opt=(modredundant,loose) scrf=(solvent={}) nosymm {} {} guess=(mix,always)"
 gas_optpara = "%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#opt fre  nosymm {} {}"
 gas_enepara="%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n# nosymm {} {} guess=read"
+tdsppara = "%chk={}/{}.chk\n%mem={}GB\n%nprocshared={}\n#scrf=(SMD,solvent={})  TD(nstates=30) nosymm {} {}"
 def main(filename,solvent,jobname,chk_site,mem,nproc,basis_set,theory):
     if "_opt.gjf-out" in filename:
         file_head = filename[:-12]
@@ -33,6 +34,8 @@ def main(filename,solvent,jobname,chk_site,mem,nproc,basis_set,theory):
             saved_para = tspara.format(chk_site, file_head, mem, nproc, solvent, basis_set, theory)
         elif jobname == "frez":
             saved_para = frezpara.format(chk_site, file_head, mem, nproc, solvent, basis_set, theory)
+        elif jobname == "tdsp":
+            saved_para = tdsppara.format(chk_site, file_head, mem, nproc, solvent, basis_set, theory)
 
     file2 = open(file_head+"_{}.gjf".format(jobname),"w")
     saved_para = saved_para.split("\n")

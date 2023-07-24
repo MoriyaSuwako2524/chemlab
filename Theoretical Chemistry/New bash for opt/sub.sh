@@ -92,15 +92,15 @@ echo "all .gjf files have generated ."
 }
 
 
-#run opt jobs
-run_tem1_jobs(){
-echo " Now begin to run tem1 jobs"
+#run tem2 jobs
+run_tem2_jobs(){
+echo " Now begin to run tem2 jobs"
 
 for optinf in *.gjf
 do
 python3 judge.py $optinf
 jobtype=$?
-if [ "$jobtype" == "1" ];
+if [ "$jobtype" == "2" ];
 then
 echo "running $optinf"
 g16 $optinf
@@ -108,9 +108,44 @@ wait
 echo "$optinf has finished"
 fi
 done
-rm -f *_tem1.gjf
-echo "all tem1 jobs have done."
+rm -f *_tem2.gjf
+echo "all tem2 jobs have done."
 }
+
+#generate orca input
+generate_orca_input(){
+echo "now begin to generate orca files"
+for inf in *.gjf-out
+do
+jobname="orca"
+python3 modify.py $inf $jobname
+done
+echo "all orca inp files have generated ."
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 run_confi_search_jobs(){
 echo " Now begin to run configuration search jobs, these jobs will takes large amount of time!"
@@ -138,8 +173,11 @@ echo "all configuration search jobs have done."
 #run_confi_search_jobs(),generate_tdsp_input(), run_tdsp_jobs()
 
 
+generate_tem1_input
+run_tem1_jobs
+handle_tem1out
 generate_tem2_input
-
+run_tem2_jobs
 
 
 echo "all jobs have done"

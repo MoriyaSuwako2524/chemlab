@@ -5,8 +5,8 @@
 输出ECDout.csv
 '''
 import matplotlib.pyplot as plt
-solv = "CH3OH.txt"
-filename = "LT-1453-332.txt"#"LT-1453-332.txt","LT-1453-349.txt","LT-1458-587.txt","CH3OH.txt"
+solv = "YJ.txt"
+filename = "YJ.txt"#HY-1.txt，"LT-1453-332.txt","LT-1453-349.txt","LT-1458-587.txt","CH3OH.txt"
 inp = open(filename,"r").read().split("\n")
 solvfile = open(solv,"r").read().split("\n")
 X_list = []
@@ -45,13 +45,17 @@ for i in range(len(solvfile)):
         X_solv_list.append(float(data[0]))
         Y_solv_list.append(float(data[1])/3.2982)
 '''
-print(X_list)
+for i in range(len(X_list)):
+    if X_list[i] == X_solv_list[i]:
+        Y1_list[i] = Y1_list[i] - Y_solv_list[i]
+
+'''
 plt.plot(X_list, Y1_list, "b--",)
 plt.xlabel("wavelength(nm)")
-plt.ylabel("CD(mdeg)")
+plt.ylabel("△ε")
 plt.title(filename)
 plt.show()
-'''
+
 output = open("ECDout.csv","w")
 for i in range(len(X_list)):
     if X_list[i] == X_solv_list[i]:

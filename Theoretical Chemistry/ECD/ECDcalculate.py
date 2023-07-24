@@ -8,7 +8,7 @@ inp输入对应的文件名
 
 
 import matplotlib.pyplot as plt
-inp = open("1.txt","r").read().split("\n")
+inp = open("gau00001_tdsp_ecd.txt","r").read().split("\n")
 
 ecd_exp = []
 ecd_13 = []
