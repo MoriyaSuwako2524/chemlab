@@ -1,0 +1,4 @@
+
+%mem=16GB
+%nprocshared=16
+# opt=(modredundant,loose) scrf=(solvent=tetrahydrofuran) nosymm  def2svp m062x

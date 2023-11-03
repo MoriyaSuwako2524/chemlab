@@ -1,0 +1,4 @@
+
+%mem=16GB
+%nprocshared=16
+#PBE1PBE/6-311+G(2D,P)  scrf=(SMD,solvent=chloroform) NMR

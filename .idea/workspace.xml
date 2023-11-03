@@ -2,7 +2,14 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="0421277f-b3cd-4809-a9ac-ca0555b51e5d" name="Changes" comment="fix bug">
+      <change afterPath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-R.xyz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/transform_xyz_to_gjf.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Theoretical Chemistry/ECD/spectrum_curve.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ECDoriginate.py" beforeDir="false" afterPath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010/ECDoriginate.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ECDout.csv" beforeDir="false" afterPath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ECDout.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/sub.sh" beforeDir="false" afterPath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/sub.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -31,30 +38,33 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/calculate/github/chemlab/Theoretical Chemistry/Numercial calculation&quot;,
-    &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "last_opened_file_path": "D:/calculate/github/chemlab/Theoretical Chemistry/Bash for opt",
+    "run.code.analysis.last.selected.profile": "aDefault",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\Bash for opt" />
+      <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\ECD" />
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\Numercial calculation" />
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\New bash for opt" />
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\spectra" />
-      <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\ECD" />
-      <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\Bash for opt" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\Bash for opt" />
+      <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\ECD\ZY20231010" />
+      <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\article" />
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\Numercial calculation" />
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\ECD" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.spectra">
-    <configuration name="ECDcalculate" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Python.transform_xyz_to_gjf">
+    <configuration name="ECDoriginate (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="chemlab" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -62,11 +72,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/Theoretical Chemistry/ECD" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Theoretical Chemistry/ECD/ECDcalculate.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010/ECDoriginate.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -87,28 +97,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Theoretical Chemistry/ECD/ECDoriginate.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="extract" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="chemlab" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/extract.py" />
+      <option name="SCRIPT_NAME" value="D:\calculate\github\chemlab\Theoretical Chemistry\ECD\ZY20231010\ECDoriginate.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -159,13 +148,34 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="transform_xyz_to_gjf" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="chemlab" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/transform_xyz_to_gjf.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.transform_xyz_to_gjf" />
+        <item itemvalue="Python.ECDoriginate (1)" />
         <item itemvalue="Python.spectra" />
         <item itemvalue="Python.ECDoriginate" />
         <item itemvalue="Python.te" />
-        <item itemvalue="Python.ECDcalculate" />
-        <item itemvalue="Python.extract" />
       </list>
     </recent_temporary>
   </component>
@@ -206,17 +216,80 @@
       <option name="project" value="LOCAL" />
       <updated>1682414823283</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="fix bug">
+      <created>1694160767074</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1694160767074</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
       <map>
+        <entry key="0c34fe39-dd24-485f-95a9-0ca92c157dc4">
+          <value>
+            <State>
+              <option name="SHOW_ONLY_AFFECTED_CHANGES" value="true" />
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="HEAD" />
+                      </list>
+                    </value>
+                  </entry>
+                  <entry key="roots">
+                    <value>
+                      <list>
+                        <option value="$PROJECT_DIR$" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+        <entry key="4991c628-651d-490a-ba77-6034c96ea697">
+          <value>
+            <State>
+              <option name="SHOW_ONLY_AFFECTED_CHANGES" value="true" />
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="HEAD" />
+                      </list>
+                    </value>
+                  </entry>
+                  <entry key="structure">
+                    <value>
+                      <list>
+                        <option value="dir:D:/calculate/github/chemlab/Theoretical Chemistry/Bash for opt" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
         <entry key="MAIN">
           <value>
             <State />
           </value>
         </entry>
+      </map>
+    </option>
+    <option name="OPEN_GENERIC_TABS">
+      <map>
+        <entry key="0c34fe39-dd24-485f-95a9-0ca92c157dc4" value="TOOL_WINDOW" />
+        <entry key="4991c628-651d-490a-ba77-6034c96ea697" value="TOOL_WINDOW" />
       </map>
     </option>
   </component>

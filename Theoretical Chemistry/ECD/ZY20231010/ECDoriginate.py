@@ -5,8 +5,8 @@
 输出ECDout.csv
 '''
 import matplotlib.pyplot as plt
-solv = "YJ.txt"
-filename = "YJ.txt"#HY-1.txt，"LT-1453-332.txt","LT-1453-349.txt","LT-1458-587.txt","CH3OH.txt"
+solv = "CH3OH.txt"
+filename = "LT-1445-950-P2.txt"#"LT-1503-753-P1.txt""LT-1453-332.txt","LT-1453-349.txt","LT-1458-587.txt","CH3OH.txt"
 inp = open(filename,"r").read().split("\n")
 solvfile = open(solv,"r").read().split("\n")
 X_list = []
@@ -21,7 +21,8 @@ Y2UNITS	HT[V]
 Y3UNITS	ABSORBANCE
 '''
 for i in range(len(inp)):
-
+    if inp[i]=="":
+        continue
 
     if "XYDATA" in inp[i]:
         K = 1
@@ -56,7 +57,7 @@ plt.ylabel("△ε")
 plt.title(filename)
 plt.show()
 
-output = open("ECDout.csv","w")
+output = open("../ECDout.csv", "w")
 for i in range(len(X_list)):
     if X_list[i] == X_solv_list[i]:
         output.write(str(X_list[i])+","+str(Y1_list[i])+"\n")

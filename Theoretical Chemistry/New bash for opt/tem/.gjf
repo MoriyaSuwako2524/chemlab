@@ -1,0 +1,4 @@
+
+%mem=12GB
+%nprocshared=18
+#opt=(ts,noeigen,calcfc,maxstep=10) fre scrf=(solvent=tetrahydrofuran) nosymm def2svp UM062x guess=(mix,always)

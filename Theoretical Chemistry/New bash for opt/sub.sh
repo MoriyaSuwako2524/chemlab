@@ -1,14 +1,9 @@
 #!/bin/bash
 source ~/.bashrc
 
-optsolvent="Acetonitrile"
-enesolvent="Acetonitrile"
 chkpath=/home/zxwei/cal/chk
 mem=16
 nproc=16
-OptBasisSet="def2svp"
-EneBasisSet="def2tzvp"
-theory="UM062x"
 
 # Never edit code below unless you know what you are doing
 
@@ -70,7 +65,23 @@ EOF
 done
 }
 
-
+generate_ts_input(){
+icc=0
+nfile=`ls *.log|wc -l`
+for inf in *.log
+do
+((icc++))
+echo Converting ${inf} to ${inf//log/gjf} ... \($icc of $nfile\)
+Multiwfn ${inf} << EOF > /dev/null
+100
+2
+10
+${inf//log/gjf}-out
+0
+q
+EOF
+done
+}
 
 
 #generate tem2 input
@@ -118,12 +129,26 @@ echo "now begin to generate orca files"
 for inf in *.gjf-out
 do
 jobname="orca"
-python3 modify.py $inf $jobname
+python3 modify_orca.py $inf $jobname
 done
 echo "all orca inp files have generated ."
 }
 
 
+#run oraca jobs
+run_orca_jobs(){
+echo " Now begin to run orca jobs"
+
+for optinf in *.inp
+do
+echo "running $optinf"
+/home/zxwei/data/orca504/orca $optinf
+wait
+echo "$optinf has finished"
+done
+#rm -f *_orca.inp
+echo "all orca jobs have done."
+}
 
 
 
@@ -173,12 +198,18 @@ echo "all configuration search jobs have done."
 #run_confi_search_jobs(),generate_tdsp_input(), run_tdsp_jobs()
 
 
-generate_tem1_input
-run_tem1_jobs
-handle_tem1out
-generate_tem2_input
-run_tem2_jobs
+#handle_tem1out
+#generate_orca_input
+#run_orca_jobs
 
+
+#generate_tem1_input
+#run_tem1_jobs
+#handle_tem1out
+#generate_tem2_input
+#run_tem2_jobs
+
+run_confi_search_jobs
 
 echo "all jobs have done"
 

@@ -1,0 +1,4 @@
+
+%mem=16GB
+%nprocshared=16
+#opt=(maxstep=5) UM062x/def2SVP TD(nstates=3,root=1) scrf=(solvent=tetrahydrofuran) nosymm
