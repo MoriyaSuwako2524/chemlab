@@ -1,330 +1,287 @@
-import sys
+from qchemfile import qchem_out_file, qchem_file, molecule
+import matplotlib.pyplot as plt
 import numpy as np
+import os
+import math as ma
+import heapq
 
-# Function to classify input files by their name (currently unused)
-def judge(filename):
-    if "tem1" in filename:
-        return 1
-    elif "tem2" in filename:
-        return 2
-    elif "tem3" in filename:
-        return 3
-    elif "Q.inp" in filename:
-        return 0
-    elif "G.inp" in filename:
-        return 10
-    elif "O.inp" in filename:
-        return 20
-    else:
-        return -1
+Hartree_to_kcal = 627.51  # Conversion factor from Hartree to kcal/mol
 
-# Main class representing a Q-Chem input file
-class qchem_file(object):
-    def __init__(self):
-        self.molecule = molecule()  # molecular geometry
-        self.rem = rem()            # Q-Chem $rem section
-        self.pcm = pcm()            # PCM solvent model
-        self.opt = opt()            # optimization constraints
-        self.opt2 = opt2()          # extended constraints
-        self.remain_texts = ""      # stores any unclassified text
+# Helper function: get the file name for a specific (row, col) coordinate
+def locate_row_col(file_name_dict, row, col):
+    return file_name_dict[(int(row), int(col))]
 
-    def generate_inp(self, new_file_name):  # placeholder for file writing
-        new_file = open(new_file_name,"w")
+# Helper function: create a suffix string based on coordinate information
+def generate_addtional_suffix(i, j, p, q):
+    return f"_{i}_{j}_row{p}_col{q}"
 
-    # Read Q-Chem input from a file and parse relevant sections
-    def read_from_file(self, filename):
-        self.filename = filename
-        file = open(filename, "r").read().split("\n")
-        file_length = len(file)
-        module_start = 0
-        specifix_const = 0
+# Read all XYZ files from a folder and return them as a dictionary of molecule objects
+def read_all_xyz(path, suffix):
+    all_entries = os.listdir(path)
+    file_names = [entry for entry in all_entries if os.path.isfile(os.path.join(path, entry))]
+    mol_dict = {}
+    for filename in file_names:
+        if ".out" in filename or ".ref" in filename:
+            continue
+        mol = molecule()
+        mol.read_xyz(path + filename)
+        key = mol.filename.split("/")[-1][:-len(suffix)]
+        mol_dict[key] = mol
+    return mol_dict
 
-        for i in range(file_length):
-            line = file[i]
-            if "$end" in line:
-                if module_start == -1:
-                    self.remain_texts += line + "\n\n"
-                module_start = 0
+# Class for managing a 2D potential energy surface scan
+class scan_2d(object):
+    def __init__(self, row_max, col_max):
+        self.row_max = row_max
+        self.col_max = col_max
+        self.process_array = np.zeros((row_max, col_max))  # stores energy values
+        self.check_array = np.zeros((row_max, col_max))    # marks valid points
+        self.ref = qchem_file()
+        self.new_inp_dict = {}
+        self.job_dict = {}
+        self.new_inp_path = ""
+        self.xlabel = ""
+        self.ylabel = ""
+        self.title = ""
+        self.prefix_name = ""
+        self.path = ""
+        self.row_start = 0
+        self.col_start = 0
+        self.row_distance = 0
+        self.col_distance = 0
+        self.row_mix_list = []
+        self.col_mix_list = []
+        self.row_type = "r12"
+        self.col_type = "r12mr34"
+        self.out_path = "./new_input/"
+
+    # Initialize the reference input file for generating other inputs
+    def init_ref(self, ref_path, ref_filename, default=True):
+        if default:
+            self.ref.molecule.check = True
+            self.ref.opt2.check = True
+        self.ref_path = ref_path
+        self.ref_filename = ref_filename
+        self.ref.read_from_file(ref_path + ref_filename)
+
+    # Read all jobs from multiple .inp.out files and store energies into array
+    def read_row_tot_ene_jobs(self):
+        r = 1
+        for row in range(1, self.row_max + 1):
+            c = 1
+            row_filename = f"{self.path}{self.prefix_name}_row{row}.inp.out"
+            row_file = qchem_out_file()
+            row_file.read_multiple_jobs_out(row_filename)
+            for jobs in row_file.out_texts:
+                opt_job = qchem_out_file()
+                opt_job.read_opt_from_file("", out_text=jobs)
+                if opt_job.opt_converged:
+                    self.process_array[r - 1, c - 2] = opt_job.return_final_molecule_energy() * Hartree_to_kcal
+                    self.check_array[r - 1, c - 2] = True
+                    self.job_dict[(r, c - 1)] = opt_job
+                c += 1
+            r += 1
+
+        # Normalize by subtracting the minimum energy
+        min_energy = np.min(self.process_array)
+        self.process_array -= min_energy
+        self.process_array[self.process_array == -min_energy] = 0
+        return self.process_array
+
+    # Plot the 2D energy scan with optional minimax path overlay
+    def plot_2d_scan(self, array, path=None, max_ene=None):
+
+        plt.imshow(array, cmap="GnBu")
+        for row in range(self.row_max):
+            for col in range(self.col_max):
+                plt.text(col - 0.25, row, f"{array[row, col].round(1)}")
+        plt.yticks(np.arange(0, self.row_max, 2), np.around(np.arange(self.row_start, self.row_start+self.row_distance*self.row_max, self.row_distance*2), 2), fontsize=15)
+        plt.xticks(np.arange(0, self.col_max, 2), np.around(np.arange(self.col_start, self.col_start+self.col_distance*self.col_max,self.col_distance*2), 2), fontsize=15)
+        plt.xlabel(self.xlabel, fontsize=15)
+        plt.ylabel(self.ylabel, fontsize=15)
+        plt.title(self.title, fontsize=15)
+        plt.colorbar()
+
+        if path:
+            y_coords, x_coords = zip(*path)
+            plt.plot(x_coords, y_coords, color='red', linewidth=2.5, label='Minimax Path')
+            plt.scatter(x_coords, y_coords, color='red', s=20)
+            max_idx = np.argmax([array[i, j] for (i, j) in path])
+            max_point = path[max_idx]
+            plt.text(max_point[1] + 0.4, max_point[0] + 0.5, fr"Max $\Delta E$ = {max_ene.round(2)}",
+                     color='black', fontsize=12, bbox=dict(facecolor='white', edgecolor='black'))
+        plt.show()
+
+    # Generate a dictionary of Q-Chem inputs from optimized jobs
+    def generate_inp_dict_from_job_dict(self):
+        for row in range(self.row_max):
+            for col in range(self.col_max):
+                if (row+1, col+1) in self.job_dict:
+                    job = self.job_dict[(row+1, col+1)]
+                    inp = qchem_file()
+                    inp.molecule.check = True
+                    inp.opt2.check = True
+                    inp.read_from_file(self.ref_path + self.ref_filename)
+                    inp.molecule.carti = job.return_final_molecule_carti()
+                    inp.opt2.modify_r12(0, round(self.row_start + self.row_distance * row, 2))
+                    inp.opt2.modify_r12mr34(0, round(self.col_start + self.col_distance * col, 2))
+                    self.new_inp_dict[(row+1, col+1)] = inp
+
+    # Write new .inp files for 2D scan
+    def write_new_scan_2d_inp(self, self_generate=True):
+        if self_generate:
+            self.generate_inp_dict_from_job_dict()
+        for row in range(self.row_max):
+            for col in range(self.col_max):
+                if not self.check_array[row, col]:
+                    continue
+                row_dis = round(self.row_start + self.row_distance * row, 2)
+                col_dis = round(self.col_start + self.col_distance * col, 2)
+                filename = f"{self.prefix_name}_{row_dis}_{col_dis}_row{row+1}_col{col+1}.inp"
+                with open(self.out_path + filename, "w") as out_file:
+                    inp = self.new_inp_dict[(row+1, col+1)]
+                    text = inp.molecule.return_output_format() + inp.remain_texts + inp.opt2.return_output_format()
+                    out_file.write(text)
+
+    # Parse energy surface from .inp.out files and return normalized energy map
+    def return_2d_scan_ene_seperate_map(self, converge_only=True, optimizer="default", process_array=np.zeros((1,1))):
+        if process_array.all() == 0:
+            process_array = np.zeros((self.row_max, self.col_max))
+        check_array = np.zeros_like(process_array)
+        row_col_list, file_name_dict = self.return_row_cow_list()
+        ref_qof = qchem_out_file()
+        ref_qof.read_opt_from_file(self.path + locate_row_col(file_name_dict, 1, 1) + ".inp.out")
+
+        for row, col in row_col_list:
+            filename = self.path + locate_row_col(file_name_dict, row, col) + ".inp.out"
+            qof = qchem_out_file()
+            qof.optimizer = optimizer
+            qof.read_opt_from_file(filename)
+            if qof.opt_converged or (not converge_only and qof.geom_have_energy):
+                ene = qof.return_final_molecule_energy() * Hartree_to_kcal
+                process_array[row - 1, col - 1] = ene
+                check_array[row - 1, col - 1] = True
+
+        min_energy = np.min(process_array)
+        process_array -= min_energy
+        process_array[process_array == -min_energy] = 1e-10
+
+        self.check_array = check_array
+        self.process_array = process_array
+        return process_array
+
+    # Interpolate missing points using neighbor averaging
+    def fix_process_array(self, process_array):
+        for row in range(self.row_max):
+            for col in range(self.col_max):
+                if process_array[row, col] != 1e-10:
+                    self.check_array[row, col] = True
+                    continue
+                # Neighbor averaging
+                neighbors = []
+                for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
+                    nr, nc = row+dr, col+dc
+                    if 0 <= nr < self.row_max and 0 <= nc < self.col_max and self.check_array[nr, nc]:
+                        neighbors.append(process_array[nr, nc])
+                if neighbors:
+                    process_array[row, col] = sum(neighbors)/len(neighbors)
+                    self.check_array[row, col] = True
+        self.process_array = process_array
+        return process_array
+
+    # Compute the shortest minimax path (least maximum energy) on 2D energy grid
+    def minimax_shortest_path(self, start, end):
+        process_array = self.process_array
+        rows, cols = process_array.shape
+        visited = np.full((rows, cols), False)
+        max_energy = np.full((rows, cols), np.inf)
+        path_len = np.full((rows, cols), np.inf)
+        parent = np.full((rows, cols, 2), -1, dtype=int)
+        heap = [(process_array[start], 0, start)]
+        max_energy[start] = process_array[start]
+        path_len[start] = 0
+        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+        while heap:
+            cur_max, cur_len, (i, j) = heapq.heappop(heap)
+            if visited[i, j]:
                 continue
+            visited[i, j] = True
+            if (i, j) == end:
+                path = []
+                while (i, j) != (-1, -1):
+                    path.append((i, j))
+                    i, j = parent[i, j]
+                return path[::-1], cur_max - process_array[start]
+            for di, dj in directions:
+                ni, nj = i + di, j + dj
+                if 0 <= ni < rows and 0 <= nj < cols:
+                    new_max = max(cur_max, process_array[ni, nj])
+                    new_len = cur_len + 1
+                    if new_max < max_energy[ni, nj] or (
+                        np.isclose(new_max, max_energy[ni, nj]) and new_len < path_len[ni, nj]
+                    ):
+                        max_energy[ni, nj] = new_max
+                        path_len[ni, nj] = new_len
+                        parent[ni, nj] = [i, j]
+                        heapq.heappush(heap, (new_max, new_len, (ni, nj)))
+        return None, np.inf
 
-            # Identify start of different sections
-            elif "$molecule" in line:
-                module_start = 1 if self.molecule.check else -1
-                if module_start == -1:
-                    self.remain_texts += "\n" + line + "\n"
-                continue
-            elif "$rem" in line:
-                module_start = 2 if self.rem.check else -1
-                if module_start == -1:
-                    self.remain_texts += "\n" + line + "\n"
-                continue
-            elif "$opt" in line:
-                if "$opt2" in line and self.opt2.check:
-                    module_start = 3.5
-                elif self.opt.check:
-                    module_start = 3
+    # Modify r12 or r12mr34 constraints in input
+    def modify_opt2(self, qchem_input_file, type, type_order, num):
+        if type == "r12":
+            qchem_input_file.opt2.modify_r12(type_order, num)
+        elif type == "r12mr34":
+            qchem_input_file.opt2.modify_r12mr34(type_order, num)
+
+    # Generate .inp files over a full 2D scan grid
+    def generate_inp(self):
+        ref = qchem_file()
+        ref.opt2.check = True
+        ref.read_from_file(self.ref_path + self.ref_filename)
+        base_name = self.ref_filename.split(".")[0]
+        for row in range(self.row_max):
+            row_dis = round(self.row_start + self.row_distance * row, 2)
+            self.modify_opt2(ref, self.row_type, 0, row_dis)
+            for col in range(self.col_max):
+                col_dis = round(self.col_start + self.col_distance * col, 2)
+                if self.row_type == self.col_type:
+                    self.modify_opt2(ref, self.col_type, 1, row_dis)
                 else:
-                    module_start = -1
-                    self.remain_texts += "\n" + line + "\n"
+                    self.modify_opt2(ref, self.col_type, 0, col_dis)
+                suffix = f"_{row_dis}_{col_dis}_row{row+1}_col{col+1}"
+                with open(self.new_inp_path + base_name + suffix + ".inp", "w") as f:
+                    f.write(ref.remain_texts + ref.opt2.return_output_format())
+
+    # Return list of row/col indices and file name mapping
+    def return_row_cow_list(self):
+        file_names = os.listdir(self.out_path)
+        row_col_list = []
+        file_name_dict = {}
+        for name in file_names:
+            if self.prefix_name not in name:
                 continue
-            elif "$" in line:
-                module_start = -1
-                self.remain_texts += "\n" + line + "\n"
-                continue
-            elif "@" in line:
-                self.remain_texts += "\n" + line + "\n"
-                continue
+            parts = name.split(".")[0].split("_")
+            row = int(parts[-2][3:])
+            col = int(parts[-1][3:])
+            if row <= self.row_max and col <= self.col_max:
+                row_col_list.append([row, col])
+                file_name_dict[(row, col)] = "_".join(parts)
+        return row_col_list, file_name_dict
 
-            # Parse each module according to context
-            if module_start == -1:
-                self.remain_texts += line + "\n"
+# Example function to run a 2D scan setup
+def run_3119():
+    ID3119 = scan_2d(12, 20)
+    ID3119.ref_filename = "ID3119.ref"
+    ID3119.ref_path = "ref/"
+    ID3119.prefix_name = "ID3119"
+    ID3119.new_inp_path = "tem_input/"
+    ID3119.row_type = "r12"
+    ID3119.col_type = "r12mr34"
+    ID3119.row_start = 1.5
+    ID3119.col_start = -2.0
+    ID3119.row_distance = 0.2
+    ID3119.col_distance = 0.2
+    ID3119.generate_inp()
 
-            elif module_start == 1:  # $molecule
-                content = line.split()
-                if not content:
-                    continue
-                if "read" in content:
-                    self.remain_texts += "\n$molecule\nread\n$end\n\n"
-                elif len(content) == 2:
-                    self.molecule.charge, self.molecule.multistate = content
-                else:
-                    self.molecule.carti.append(content)
-
-            elif module_start == 2:  # $rem
-                content = line.split()
-                if not content:
-                    continue
-                self.rem.texts += line + "\n"
-                if len(content) >= 3:
-                    setattr(self.rem, content[0].lower(), content[2])
-
-            elif module_start == 3:  # $opt
-                content = line.split()
-                if not content:
-                    continue
-                if "CONSTRAINT" in content:
-                    specifix_const = 1
-                    continue
-                elif "ENDCONSTRAINT" in content:
-                    specifix_const = 0
-                    continue
-                elif "FIXED" in content:
-                    specifix_const = 2
-                    continue
-                elif "ENDFIXED" in content:
-                    specifix_const = 0
-                    continue
-                if specifix_const == 1:
-                    self.opt.constraint.stre.append(content)
-                elif specifix_const == 2:
-                    self.opt.fix_atom.input_fixed_atoms(content[0], content[-1])
-
-            elif module_start == 3.5:  # $opt2
-                content = line.split()
-                if not content:
-                    continue
-                if content[0] == "r12":
-                    self.opt2.r12.append(content[1:])
-                elif content[0] == "r12mr34":
-                    self.opt2.r12mr34.append(content[1:])
-
-# Class to represent molecular structure in $molecule section
-class molecule(object):
-    def __init__(self):
-        self.charge = 0
-        self.multistate = 1
-        self.carti = []
-        self.check = False
-
-    def return_atom_xyz(self, atom):
-        return np.array(self.carti[atom][1:4]).astype(float)
-
-    def return_output_format(self):
-        out = "\n$molecule\n" + f"{self.charge} {self.multistate}\n"
-        for cors in self.carti:
-            out += " ".join(cors) + "\n"
-        out += "$end\n\n"
-        return out
-
-    def read_xyz(self, filename):
-        file = open(filename,"r").read().split("\n")
-        carti = []
-        for texts in file:
-            text = texts.split()
-            if len(text) < 3:
-                continue
-            carti.append(text)
-        self.carti = carti
-
-# Class for $rem section parameters
-class rem(object):
-    def __init__(self):
-        self.texts = ""
-        self.check = False
-
-    def modify(self, stuff, new_stuff):
-        lines = self.texts.split("\n")
-        lines = [line for line in lines if line.strip()]
-        result = ""
-        for line in lines:
-            if stuff in line:
-                if stuff == "METHOD" and "SOLVENT" in line:
-                    result += line + "\n"
-                    continue
-                if new_stuff == "":
-                    continue
-                key_val = line.split("=")
-                line = f"{key_val[0]}= {new_stuff}"
-            result += line + "\n"
-        self.texts = result
-
-    def return_output_format(self):
-        return f"\n$rem\n{self.texts}$end\n\n"
-
-# PCM solvent model (not fully implemented)
-class pcm(object):
-    def __init__(self):
-        self.name = "pcm"
-        self.theory = "IEFPCM"
-        self.solvent = ""
-        self.solvent_die = 4.0
-        self.check = False
-
-# Constraint-handling class for $opt section
-class opt(object):
-    def __init__(self):
-        self.constraint = constraint()
-        self.fix_atom = fix_atom()
-        self.check = False
-
-    def return_output_format(self):
-        out = "\n$opt\nCONSTRAINT\n"
-        text = " ".join(self.constraint.stre[0]) + "\n"
-        out += text + "ENDCONSTRAINT\n$end\n\n"
-        return out
-
-class constraint(object):
-    def __init__(self):
-        self.stre = []
-
-    def modify_stre(self, which_line, j):
-        self.stre[which_line][3] = str(j)
-
-# Extended optimization parameters class ($opt2)
-class opt2(object):
-    def __init__(self):
-        self.check = False
-        self.r12 = []
-        self.r12mr34 = []
-        self.r12pr34 = []
-
-    def modify_r12(self, which_line, j):
-        self.r12[which_line][2] = j
-
-    def modify_r12mr34(self, which_line, j):
-        self.r12mr34[which_line][4] = j
-
-    def return_output_format(self):
-        out = "\n$opt2\n"
-        for block, label in [(self.r12, "r12"), (self.r12mr34, "r12mr34"), (self.r12pr34, "r12pr34")]:
-            for entry in block:
-                out += label + " " + " ".join(entry) + "\n"
-        out += "$end\n\n"
-        return out
-
-# Class for managing fixed atoms in optimization
-class fix_atom(object):
-    def __init__(self):
-        self.check = False
-        self.fixed_atoms = []
-
-    def input_fixed_atoms(self, atom, car="xyz"):
-        self.fixed_atoms.append([atom, car])
-
-# Class to parse and analyze Q-Chem output files
-class qchem_out_file(object):
-    def __init__(self):
-        self.molecule = molecule()
-        self.molecule.check = True
-        self.opt_converged = False
-        self.read_scf_time = False
-        self.read_final_cpu_time = False
-        self.geoms = []
-        self.filename = ""
-        self.optimizer = "default"
-
-    # Utility functions to access geometry data
-    def index_of_geom_i(self, index): return self.geoms[index].index
-    def energy_of_geom_i(self, index): return self.geoms[index].energy
-    def gradient_of_geom_i(self, index): return self.geoms[index].gradient
-    def displacement_of_geom_i(self, index): return self.geoms[index].displacement
-
-    def return_final_molecule_carti(self):
-        if self.optimizer == "default":
-            return self.geoms[-1].molecule.carti
-        elif self.optimizer == "1996":
-            return self.geoms[-2].molecule.carti
-
-    def return_final_molecule_energy(self):
-        if not self.opt_converged:
-            print(f"{self.filename} doesn't have energy")
-        for geom in reversed(self.geoms):
-            if geom.have_energy:
-                return geom.energy
-
-    def return_average_scf_time(self):
-        return sum(g.scf_time for g in self.geoms) / len(self.geoms)
-
-    def return_opt_soc_ene(self):
-        return self.opt_ene_list[-1]
-
-    def read_ene_job(self, filename):
-        for line in open(filename).readlines():
-            if " Total energy" in line:
-                self.ene = float(line.split("=")[1])
-
-    def read_multiple_jobs_out(self, filename):
-        self.filename = filename
-        with open(filename, "r") as f:
-            self.out_texts = f.read().split(" Welcome to Q-Chem")
-        self.total_jobs = len(self.out_texts) - 1
-
-    def read_pes_scan_from_file(self, filename, return_type="list"):
-        scan_value_list, scan_ene_list = [], []
-        for line in open(filename):
-            if "PES scan" in line:
-                parts = line.split(":")
-                scan_value_list.append(float(parts[1].split()[-2]))
-                scan_ene_list.append(float(parts[2]))
-        if return_type in ("numpy", "np"):
-            scan_value_list = np.array(scan_value_list)
-            scan_ene_list = np.array(scan_ene_list)
-        self.scan_value_list, self.scan_ene_list = scan_value_list, scan_ene_list
-        return scan_value_list, scan_ene_list
-
-    def read_soc_opt(self, filename, return_type):  # custom for Peizheng's SOC jobs
-        opt_time_list, opt_ene_list = [], []
-        with open(filename) as f:
-            lines = f.readlines()
-        for i, line in enumerate(lines):
-            if "E_adiab: " in line:
-                opt_time_list.append(i + 1)
-                opt_ene_list.append(float(line.split(":")[-1]))
-        if return_type in ("numpy", "np"):
-            opt_time_list = np.array(opt_time_list)
-            opt_ene_list = np.array(opt_ene_list)
-        self.opt_time_list, self.opt_ene_list = opt_time_list, opt_ene_list
-        return opt_time_list, opt_ene_list
-
-    def read_opt_from_file(self, filename, out_text=""):
-        # ... skipped for brevity (can annotate if needed)
-        pass
-
-# Geometry class for storing parsed optimization information
-class geoms(object):
-    def __init__(self):
-        self.index = 0
-        self.energy = 0
-        self.gradient = 0
-        self.displacement = 0
-        self.molecule = molecule()
+run_3119()
