@@ -2,14 +2,145 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="0421277f-b3cd-4809-a9ac-ca0555b51e5d" name="Changes" comment="fix bug">
-      <change afterPath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-R.xyz" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/transform_xyz_to_gjf.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Theoretical Chemistry/ECD/spectrum_curve.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ECDoriginate.py" beforeDir="false" afterPath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010/ECDoriginate.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ECDout.csv" beforeDir="false" afterPath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ECDout.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/sub.sh" beforeDir="false" afterPath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/sub.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Experiment/Organic Chemistry.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Experiment/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/.idea/Theoretical Chemistry.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/Conversion_Scripts.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-R.xyz" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Rcluster1.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Rcluster2.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Rcluster3.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Rcluster4.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Rcluster5.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Rcluster6.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Rcluster7.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Rcluster8.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Rcluster9.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-S.xyz" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Scluster1.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Scluster2.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Scluster3.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Scluster4.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Scluster5.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Scluster6.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1-Scluster7.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1.xyz" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1cluster1.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1cluster2.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-1cluster3.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-R.xyz" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-Rcluster1.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-Rcluster2.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-Rcluster3.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-Rcluster4.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-Rcluster5.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-Rcluster6.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-Rcluster7.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-Rcluster8.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-S.xyz" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-Scluster1.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-Scluster2.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-Scluster3.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-Scluster4.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2-Scluster5.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2.xyz" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2cluster1.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2cluster2.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2cluster3.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2cluster4.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/ZNX-2cluster5.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/extract.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/extract_total.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/gjf2xyz.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/judge.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/md.inp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/modify.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/sub.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/transform_orca_to_gjf.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/transform_xyz_to_gjf.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Bash for opt/xtb_configuration_search.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/2.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/A.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/B.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/CH3OH.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ECDcalculate.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ECDout.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/HY-1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/HYCAd_ecd.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/JB.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/LT-1453-332.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/YJ.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010/CH3OH.jws" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010/CH3OH.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010/ECDoriginate.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010/LT-1445-950-P1.jws" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010/LT-1445-950-P1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010/LT-1445-950-P2.jws" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010/LT-1445-950-P2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010/LT-1503-753-P1.jws" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010/LT-1503-753-P1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010/LT-1503-753-P2.jws" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/ZY20231010/LT-1503-753-P2.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/gau00001_tdsp_ecd.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/gau00002_tdsp_ecd.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/gau00003_tdsp_ecd.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/gau00004_tdsp_ecd.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/spectrum_curve.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/te.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/tran00001_tdsp_ecd.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/tran00002_tdsp_ecd.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/tran00003_tdsp_ecd.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/ECD/tran00004_tdsp_ecd.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/FCI.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/HF.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/Conversion_Scripts.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/extract.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/extract_total.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/gjf2xyz.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/judge.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/md.inp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/modify.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/modify_orca.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/sub.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/tem/.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/tem/ENE.inp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/tem/NMR.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/tem/NMROPT.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/tem/STEOM-DLPNO-CCSD.inp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/tem/TS.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/tem/frez-THF.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/tem/opt.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/tem/orca.inp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/tem/orcaOPT.inp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/tem/scan.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/tem/tdopt.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/tem/tem1.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/tem/tem2.gjf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/New bash for opt/xtb_configuration_search.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Numercial calculation/D2O_fid" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Numercial calculation/D2O_procpar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Numercial calculation/Gauss.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Numercial calculation/Numerial calculation.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/Numercial calculation/simulation.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/article/find.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/article/format.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/article/ori.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/article/out.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/spectra/B1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/spectra/COM24-THF.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/spectra/COM24.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/spectra/spectra.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Theoretical Chemistry/spectra/spectra.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -42,7 +173,7 @@
   "keyToString": {
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "last_opened_file_path": "D:/calculate/github/chemlab/Theoretical Chemistry/Bash for opt",
+    "last_opened_file_path": "D:/calculate/github/chemlab",
     "run.code.analysis.last.selected.profile": "aDefault",
     "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
@@ -63,7 +194,7 @@
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\ECD" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.transform_xyz_to_gjf">
+  <component name="RunManager" selected="Python.HF">
     <configuration name="ECDoriginate (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="chemlab" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -106,6 +237,27 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="HF" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="chemlab" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/Theoretical Chemistry" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Theoretical Chemistry/HF.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="spectra" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="chemlab" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -119,27 +271,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Theoretical Chemistry/spectra/spectra.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="te" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="chemlab" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/Theoretical Chemistry/ECD" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Theoretical Chemistry/ECD/te.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -171,11 +302,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.HF" />
         <item itemvalue="Python.transform_xyz_to_gjf" />
         <item itemvalue="Python.ECDoriginate (1)" />
         <item itemvalue="Python.spectra" />
         <item itemvalue="Python.ECDoriginate" />
-        <item itemvalue="Python.te" />
       </list>
     </recent_temporary>
   </component>

@@ -595,8 +595,8 @@ H2.UHF_SCF()
 #H2.molecular_orbital()
 print(H2.energy + A_R / 1.5)
 
-mol_name  = "H2-2.gjf"
-input_mol = open(mol_name,"r").read().split("\n")
+#mol_name  = "H2-2.gjf"
+#input_mol = open(mol_name,"r").read().split("\n")
 
 #read_mol(input_mol)
 #tem_mol.SCF(out=True)
