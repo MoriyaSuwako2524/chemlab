@@ -1,4 +1,4 @@
-from file_system import molecule,qchem_file,qchem_out_opt,multiple_qchem_jobs
+from file_system import molecule,qchem_file,qchem_out_opt,multiple_qchem_jobs,qchem_out_multi
 from file_system import SPIN_REF
 class check_list(object):
     def __init__(self):
@@ -123,24 +123,83 @@ class single_spin_job(base_job):
         file_name = f"{filename[:-4]}.inp"
         ref.generate_inp(file_name)
 
-class multiple_out_jobs(object):
-    def __init__(self):
-        self.path = "./"
-        self.outs = []
-class aimd_outs(multiple_out_jobs):
+class qchem_out_aimd_multi(qchem_out_multi):
+    """
+    管理多个 AIMD 输出文件
+    """
     def __init__(self):
         super().__init__()
 
-from file_system import qchem_out_aimd
-out = qchem_out_aimd()
-out.read_file(filename="./examples/aimd_bodipy_nvt_1.out")   # 读 AIMD 的 Q-Chem 输出文件
+    def read_files(self, filenames):
+        from file_system import qchem_out_aimd
+        super().read_files(filenames, qchem_out_aimd)
+
+    @property
+    def total_steps(self):
+        return sum(task.aimd_steps for task in self.tasks)
+
+    def merge_trajectories(self):
+        traj = []
+        for task in self.tasks:
+            traj.extend(task.aimd_geoms)
+        return traj
+
+    def get_all_energies(self):
+        return [g.energy for g in self.merge_trajectories() if hasattr(g, "energy")]
+
+    def summary(self):
+        print(f"共读取 {self.ntasks} 个 AIMD 输出文件, 总步数={self.total_steps}")
+        for i, task in enumerate(self.tasks):
+            last_ene = task.aimd_geoms[-1].energy if task.aimd_geoms else None
+            print(f"  [{i}] 文件={task.filename}, 步数={task.aimd_steps}, 最终能量={last_ene}")
+    def export_numpy(self, prefix=""):
+
+        import numpy as np
+
+        traj = self.merge_trajectories()
+        if not traj:
+            raise ValueError("没有 AIMD 数据可导出")
+
+        natoms = len(traj[0].carti)
+        nframes = len(traj)
+
+        coords = np.zeros((nframes, natoms, 3), dtype=float)
+        energies = np.zeros((nframes,), dtype=float)
+        grads = np.zeros((nframes, 3, natoms), dtype=float)
+        qm_types = np.zeros((natoms,), dtype=int)
+
+        for i, g in enumerate(traj):
+            coords[i] = np.array(g.carti)[:, 1:].astype(float)
+            energies[i] = g.energy if hasattr(g, "energy") else np.nan
+            if hasattr(g, "grad"):
+                grads[i] = g.grad
+            else:
+                grads[i] = 0.0
+
+
+        atom_symbols = [atm[0] for atm in traj[0].carti]
+        from file_system import atom_charge_dict
+        qm_types = np.array([atom_charge_dict[sym] for sym in atom_symbols])
+
+        np.save(prefix + "coord.npy", coords)
+        np.save(prefix + "energy.npy", energies)
+        np.save(prefix + "grad.npy", grads)
+        np.save(prefix + "type.npy", qm_types)
+
+        return coords, energies, grads, qm_types
+
+
+multi = qchem_out_aimd_multi()
+multi.read_files([
+    "./examples/aimd_bodipy_nvt_1.out",
+    "./examples/aimd_bodipy_nvt_2.out"
+])
+
+multi.export_numpy(prefix="./")
 
 
 
 
-print("总步数:", out.aimd_steps)
-print("前 5 步能量:", out.get_energies()[:5])
-print("第 1 步几何结构:", out.aimd_geoms[0].carti)
-print("第 1 步梯度 shape:", out.aimd_geoms[0].grad.shape if hasattr(out.aimd_geoms[0], "grad") else None)
-print("第 1 步温度 (K):", out.aimd_geoms[0].temperature_K)
+
+
 

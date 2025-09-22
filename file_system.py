@@ -937,20 +937,38 @@ class multiple_qchem_jobs(object):
         with open(new_file_name, "w") as f: f.write(self.output)
 
 class qchem_out_multi:
-    def __init__(self, filename=""):
-        self.filename = filename
-        self.text = None
 
-    def read_file(self, filename="", text=""):
-        if filename:
-            self.filename = filename
-        if text:
-            self.text = text
-        else:
-            with open(self.filename, "r", encoding="utf-8", errors="ignore") as f:
-                self.text = f.read()
-        self.parse()
+    def __init__(self):
+        self.tasks = []
+        self.filenames = []
 
-    def parse(self):
-        raise NotImplementedError
+    def add_task(self, out_obj):
+        if not isinstance(out_obj, qchem_out):
+            raise TypeError("只能添加 qchem_out 或其子类对象")
+        self.tasks.append(out_obj)
+
+    def read_files(self, filenames, out_cls):
+        self.filenames = filenames
+        self.tasks = []
+        for fn in filenames:
+            out = out_cls(fn)
+            out.read_file()
+            self.tasks.append(out)
+
+    @property
+    def ntasks(self):
+        return len(self.tasks)
+
+    def get_all_energies(self):
+        return [task.final_ene for task in self.tasks]
+
+    def get_all_final_geoms(self):
+        return [task.final_geom for task in self.tasks]
+
+    def summary(self):
+        print(f"包含 {self.ntasks} 个任务")
+        for i, task in enumerate(self.tasks):
+            print(f"  [{i}] 文件={task.filename}, 最终能量={task.final_ene}")
+
+
 
