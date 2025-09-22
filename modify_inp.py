@@ -195,7 +195,7 @@ multi.read_files([
     "./examples/aimd_bodipy_nvt_2.out"
 ])
 
-multi.export_numpy(prefix="./")
+multi.export_numpy(prefix="./full_")
 
 
 
