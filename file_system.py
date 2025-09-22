@@ -1,11 +1,121 @@
 import sys
 import numpy as np
 Hartree_to_kcal = 627.51
-atom_charge_dict = {"H":1,"He":2,"Li":3,"Be":4,"B":5,"C":6,"N":7,"O":8,"F":9,"Ne":10,"Na":11,"Mg":12,
-"Al":13,"Si":14,"P":15,"S":16,"Cl":17,"Ar":18,"K":19,"Ca":20,"Sc":21,"Ti":22,"V":23,"Cr":24,"Mn":25,
-"Fe":26,"Co":27,"Ni":28,"Cu":29,"Zn":30,"Ga":31,"Ge":32,"As":33,"Se":34,"Br":35,"I":53,}
+atom_charge_dict = {
+    "H":1,"He":2,"Li":3,"Be":4,"B":5,"C":6,"N":7,"O":8,"F":9,"Ne":10,"Na":11,"Mg":12,
+    "Al":13,"Si":14,"P":15,"S":16,"Cl":17,"Ar":18,"K":19,"Ca":20,"Sc":21,"Ti":22,"V":23,
+    "Cr":24,"Mn":25,"Fe":26,"Co":27,"Ni":28,"Cu":29,"Zn":30,"Ga":31,"Ge":32,"As":33,
+    "Se":34,"Br":35,"Kr":36,"Rb":37,"Sr":38,"Y":39,"Zr":40,"Nb":41,"Mo":42,"Tc":43,
+    "Ru":44,"Rh":45,"Pd":46,"Ag":47,"Cd":48,"In":49,"Sn":50,"Sb":51,"Te":52,"I":53,"Xe":54
+}
 SPIN_REF = {1:"s",2:"d",3:"t",4:"q",5:"q"}
 
+
+class unit_type:
+    category = None
+    def __init__(self, value, unit):
+        self.value = np.array(value, dtype=float)
+        self.unit = unit
+        self.DICT = {}
+        self.modify_value = False
+
+    def convert_to(self, target):
+        factor = self.DICT[target] / self.DICT[self.unit]
+        value = self.value * factor
+        if self.modify_value:
+            self.value = value
+            self.unit = target
+        return value
+
+class ENERGY(unit_type):
+    category = "energy"
+    def __init__(self, value, unit="hartree"):
+        super().__init__(value, unit)
+        self.DICT = {"hartree": 1, "kcal": 627.51, "ev": 27.2113863, "kj": 2625.5}
+
+
+class DISTANCE(unit_type):
+    category = "distance"
+    def __init__(self, value, unit="ang"):
+        super().__init__(value, unit)
+        self.DICT = {"ang": 1, "bohr": 0.529177, "nm": 10}
+
+from itertools import product
+
+
+class MASS(unit_type):
+    category = "mass"
+    def __init__(self, value, unit="amu"):
+        super().__init__(value, unit)
+        self.DICT = {
+            "amu": 1,
+            "g": 1.66054e-24,   # 克
+            "kg": 1.66054e-27   # 千克
+        }
+
+
+class TIME(unit_type):
+    category = "time"
+    def __init__(self, value, unit="fs"):
+        super().__init__(value, unit)
+        self.DICT = {
+            "fs": 1,
+            "ps": 1e-3,
+            "ns": 1e-6,
+            "s": 1e-15
+        }
+UNIT_REGISTRY = {
+    "energy": ENERGY,
+    "distance": DISTANCE,
+    "mass": MASS,
+    "time": TIME,
+}
+
+
+class complex_unit_type:
+    def __init__(self, value, units: dict):
+        """
+        value:  scalar or numpy array
+        units: dict, e.g. {"energy": ("hartree", 1), "distance": ("bohr", -1)}
+        """
+        self.value = np.array(value, dtype=float)
+        self.units = units
+        self.modify_value = False
+
+    def convert_to(self, target_units: dict):
+        factor = 1.0
+        for category, (unit, power) in self.units.items():
+            base = UNIT_REGISTRY[category](1.0, unit)
+            target_unit = target_units[category][0]
+            factor *= (base.convert_to(target_unit)) ** power
+        value = self.value * factor
+        if self.modify_value:
+            self.value = value
+            self.units = target_units
+        return value
+
+    def generate_all_conversions(self):
+
+        unit_lists = []
+        categories = []
+        for category, (unit, power) in self.units.items():
+            categories.append(category)
+            unit_lists.append(list(UNIT_REGISTRY[category](1, unit).DICT.keys()))
+
+        results = {}
+        for combo in product(*unit_lists):
+            target_units = {cat: (u, self.units[cat][1]) for cat, u in zip(categories, combo)}
+            key = " * ".join([f"{u}^{p}" if p != 1 else u
+                              for (_, (u, p)) in target_units.items()])
+            results[key] = self.convert_to(target_units)
+        return results
+
+class FORCE(complex_unit_type):
+    def __init__(self, value, energy_unit="hartree", distance_unit="bohr"):
+        super().__init__(value, {
+            "energy": (energy_unit, 1),
+            "distance": (distance_unit, -1)
+        })
 
 
 class qchem_file(object): #standard qchem inp file class
@@ -397,635 +507,6 @@ class fix_atom(object):
     def input_fixed_atoms(self,atom,car="xyz"):
         self.fixed_atoms.append([atom,car])
 
-class qchem_out_file(object):
-    def __init__(self):
-        self.molecule = molecule()
-        self.molecule.check = True
-        self.opt_converged = False
-        self.read_scf_time = False
-        self.read_final_cpu_time = False
-        self.geoms = []
-        self.filename = ""
-        self.optimizer = "default"
-        self.soc_restrain = False
-        self.cpu_time = 0
-        self.wall_time = 0
-        
-    @property
-    def final_geom(self):
-        for geom in reversed(self.geoms):
-            if hasattr(geom, "carti") and hasattr(geom, "energy") and geom.carti and geom.energy is not None:
-                return geom.carti
-        return None
-    @property
-    def final_ene(self):
-        return self.geoms[-1].energy
-    @property
-    def final_geom_class(self):
-        for geom in reversed(self.geoms):
-            if hasattr(geom, "carti") and hasattr(geom, "energy") and geom.carti and geom.energy is not None:
-                return geom
-        return None
-    @property
-    def final_adiabatic_ene(self):
-        return self.opt_ene_list[-1]
-    @property
-    def final_soc_ene(self):
-        return self.opt_esoc_list[-1]
-    @property
-    def final_soc_e1(self):
-        return self.opt_e1_list[-1]
-    @property
-    def final_soc_e2(self):
-        return self.opt_e2_list[-1]
-    @property
-    def final_soc_er(self):
-        return self.opt_er_list[-1]
-    def index_of_geom_i(self, index):
-        return self.geoms[index].index
-
-    def energy_of_geom_i(self, index):
-        return self.geoms[index].energy
-
-    def gradient_of_geom_i(self, index):
-        return self.geoms[index].gradient
-
-    def displacement_of_geom_i(self, index):
-        return self.geoms[index].displacement
-
-    def return_final_molecule_carti(self):
-        return self.final_geom
-
-    def return_final_molecule_energy(self):
-        return self.final_ene
-
-    def return_average_scf_time(self):
-        total_scf_time = sum(getattr(g, 'scf_time', 0.0) for g in self.geoms)
-        return total_scf_time / len(self.geoms) if self.geoms else 0.0
-    def return_opt_soc_ene(self):
-        return self.opt_ene_list[-1]
-    def read_time_result(self,line):
-        data = line.split(":")[1].split(",")
-        cpu_time = data[1][:-6]
-        wall_time = data[1][:-7]
-        print(cpu_time,wall_time)
-        self.cpu_time += cpu_time
-        self.wall_time += wall_time
-    def read_ene_job(self, filename="", out_text=""):
-        if filename:
-            self.filename = filename
-        content = out_text if out_text else open(self.filename, "r").read()
-        lines = content.split("\n")
-
-        # Read total energy
-        for line in lines:
-            if " Total energy" in line:
-                self.ene = float(line.split("=")[1])
-                break
-
-        # Read only the final "Standard Nuclear Orientation" structure block
-        structure_started = False
-        carti = []
-        structure_blocks = []
-
-        for i, line in enumerate(lines):
-            if "Standard Nuclear Orientation" in line:
-                structure_started = True
-                carti = []
-                continue
-            if " Total job time:" in line:
-                read_time_result(line)
-            if structure_started:
-                if "-----" in line or "Atom" in line or line.strip() == "":
-                    continue
-                tokens = line.strip().split()
-                if len(tokens) == 5:
-                    try:
-                        atom = tokens[1]
-                        x, y, z = map(float, tokens[2:5])
-                        carti.append([atom, x, y, z])
-                    except ValueError:
-                        continue
-                elif len(tokens) == 0 and carti:
-                    structure_blocks.append(carti.copy())
-                    structure_started = False
-
-        # Use only the last complete orientation block
-        if structure_blocks:
-            mol = molecule()
-            mol.carti = structure_blocks[-1]
-            mol.check = True
-            self.molecule = mol
-    def read_pes_scan_from_file(self, filename="", return_type="list", out_text=""):
-        if out_text == "":
-            file = open(filename, "r").read().split("\n")
-        else:
-            file = out_text.split("\n")
-        
-        scan_value_list = []
-        scan_ene_list = []
-        scan_structure_list = []
-    
-        i = 0
-        converged = False
-        while i < len(file):
-            line = file[i]
-            if "PES scan" in line:
-                data = line.split(":")
-                scan_value = float(data[1].split(" ")[-2])
-                energy = float(data[2])
-                scan_value_list.append(scan_value)
-                scan_ene_list.append(energy)
-                # 向后找结构
-                converged = False
-            if "OPTIMIZATION CONVERGED" in file[i]:
-                structure = []
-                converged = True
-            if converged and "Coordinates (Angstroms)" in file[i]:
-                k = i + 2
-                while k < i + 1000:
-                    tokens = file[k].split()
-                    if len(tokens) != 5:
-                        break
-                    structure.append(tokens[1:])
-                    k += 1
-                scan_structure_list.append(structure)
-            i += 1
-    
-        if return_type == "numpy" or return_type == "np":
-            scan_value_list = np.array(scan_value_list)
-            scan_ene_list = np.array(scan_ene_list)
-            # structure list 不转 numpy，因为不同步数原子数不一定一致
-    
-        self.scan_value_list = scan_value_list
-        self.scan_ene_list = scan_ene_list
-        self.scan_structure_list = scan_structure_list
-    
-        return scan_value_list, scan_ene_list, scan_structure_list
-
-
-    def read_soc_opt(self,filename,return_type="np"): #这个函数是给peizheng的soc单独写的！ this function can only use in soc opt jobs written by peizheng!
-        file = open(filename, "r").read().split("\n")
-        num = 1
-        opt_time_list = []
-        opt_ene_list = []
-        opt_e1_list = []
-        opt_e2_list = []
-        opt_er_list = []
-        opt_esoc_list = []
-        for i in range(len(file)):
-            if "E_adiab: " in file[i]:
-                data = file[i].split(":")
-                e1 = float(data[1].split()[0])
-                e2 = float(data[2].split()[0])
-                esoc = float(data[3].split()[0])
-                opt_time_list.append(num)
-                opt_ene_list.append(float(data[-1]))
-                opt_e1_list.append(e1)
-                opt_e2_list.append(e2)
-                er = float(data[3].split()[0])
-                opt_er_list.append(er)
-                esoc = float(data[4].split()[0])
-                opt_esoc_list.append(esoc)
-                num += 1
-            
-        if return_type == "list":
-            a = 1
-        elif return_type == "numpy" or return_type == "np":
-            opt_time_list = np.array(opt_time_list)
-            opt_ene_list = np.array(opt_ene_list)
-        self.opt_time_list = opt_time_list
-        self.opt_ene_list = opt_ene_list
-        self.opt_e1_list = opt_e1_list
-        self.opt_e2_list = opt_e2_list
-        self.opt_er_list = opt_er_list
-        self.opt_esoc_list = opt_esoc_list
-        self.ene = opt_ene_list[-1]
-        return opt_time_list, opt_ene_list
-
-    def read_opt_from_file(self, filename="", out_text=""):
-        if filename:
-            self.filename = filename
-        out_files = out_text if out_text else open(self.filename, "r").read()
-
-        if self.optimizer == "default":
-            out_file = out_files.split("OPTIMIZATION CYCLE")
-            for text in out_file[0].split("\n"):
-                if "geom_opt_driver = 1996" in text:
-                    self.optimizer = "1996"
-                    break
-        if self.optimizer == "1996" or self.optimizer == "constrain":
-            out_file = out_files.split("Optimization Cycle:")
-
-        for i in range(1, len(out_file)):
-            geom_texts = out_file[i].split("\n")
-            geom = geoms()
-            geom.index = i - 1
-            internal_index = int(geom_texts[0][2:])
-
-            detected_data = 0
-            molecule_check = -1
-            detected_molecule = 0
-            datas = []
-            molecule_cart = []
-            self.geom_have_energy = 0
-
-            for text_line in geom_texts:
-                if f"Step {internal_index}" in text_line or "Step Taken" in text_line:
-                    detected_data = 1
-                    continue
-
-                if self.read_scf_time and " SCF time" in text_line:
-                    scf_time = [x for x in text_line.split(" ") if x]
-                    geom.scf_time = float(scf_time[3][:-1])
-
-                if "I:" in text_line and "EI=" in text_line and "E=" in text_line and self.optimizer == "default":
-                    tokens = text_line.replace("=", "").split()
-                    opt2_info = {}
-                    for i, token in enumerate(tokens):
-                        if token.startswith("I:"):
-                            opt2_info["I"] = int(token[2:])
-                        elif token.startswith("Type:"):
-                            opt2_info["Type"] = int(token[5:])
-                        elif token == "Value":
-                            opt2_info["Value"] = float(tokens[i+1])
-                        elif token == "K":
-                            opt2_info["K"] = float(tokens[i+1])
-                        elif token == "R12":
-                            opt2_info["R12"] = float(tokens[i+1])
-                        elif token == "R34":
-                            opt2_info["R34"] = float(tokens[i+1])
-                        elif token == "R12-R34":
-                            opt2_info["R12-R34"] = float(tokens[i+1])
-                        elif token == "EI":
-                            opt2_info["EI"] = float(tokens[i+1])
-                        elif token == "E":
-                            opt2_info["E"] = float(tokens[i+1])
-                    geom.opt2_info = opt2_info
-
-                if "Energy is" in text_line:
-                    if self.optimizer == "1996" or self.optimizer == "constrain":
-                        geom.energy = float(text_line.split(" ")[-1])
-                        geom.have_energy = 1
-                        self.geom_have_energy = 1
-
-                if detected_data:
-                    datas.append(text_line)
-
-                if "Standard Nuclear Orientation (Angstroms)" in text_line:
-                    detected_molecule = 1
-                    continue
-                if detected_molecule == 1 and " ------------------------------" in text_line:
-                    molecule_check += 1
-                    continue
-                if molecule_check == 0:
-                    molecule_cart.append(text_line)
-                if "**  OPTIMIZATION CONVERGED  **" in text_line:
-                    self.opt_converged = True
-
-            for cart in molecule_cart:
-                cart = cart.split()
-                if len(cart) > 1:
-                    geom.carti.append(cart[1:])
-
-            for data in datas:
-                if self.optimizer == "1996" or self.optimizer == "constrain":
-                    break
-                if "Energy is " in data:
-                    geom.energy = float(data.split(" ")[-1])
-                    geom.have_energy = 1
-                    self.geom_have_energy = 1
-                if "Gradient" in data:
-                    parts = data.split()
-                    geom.gradient = float(parts[1].split("\t")[0])
-                if "Displacement" in data:
-                    if self.optimizer == "1996":
-                        continue
-                    parts = data.split()
-                    geom.displacement = float(parts[1].split("\t")[0])
-
-                if i == len(out_file) - 1:
-                    if self.read_final_cpu_time and " Total job time" in data:
-                        jobtime = [x for x in data.split(" ") if x]
-                        self.final_cpu_time = float(jobtime[-1][:-6])
-                    if "OPTIMIZATION DID NOT CONVERGE" in data:
-                        self.opt_converged = False
-                    if "END OF GEOMETRY OPTIMIZER USING LIBOPT3" in data:
-                        self.opt_converged = True
-
-            if self.geom_have_energy:
-                self.geoms.append(geom)
-
-        self.geom_number = len(self.geoms)
-    def read_multiple_jobs_out(self,filename):
-        self.filename = filename
-        file = open(filename,"r").read().split(" Welcome to Q-Chem")
-        self.out_texts = file
-        self.total_jobs = len(file)-1
-    def read_freq_jobs_out(self,filename="",out_text=""):
-        if filename != "":
-            self.filename = filename
-        if out_text == "":
-            out_files = open(filename,"r").read()
-        else:
-            out_files = out_text
-        file = out_files.split("\n")
-        for text in file:
-            if "Total Enthalpy:" in text:
-                if "QRRHO" not in text:
-                    data = text.split(" ")
-                    while "" in data:
-                        data.remove("")
-                    self.enthalpy = float(data[2])
-            if "Total Entropy:" in text:
-                if "QRRHO" not in text:
-                    data = text.split(" ")
-                    while "" in data:
-                        data.remove("")
-                    self.entropy = float(data[2])
-            if " Total energy" in text:
-                data = float(text.split("=")[1])
-                self.ene = data
-    
-    def read_force_from_file(self, filename, self_check=False, different_type="analytical"):
-        self.filename = filename
-        self.molecule.check = True
-        out_file = open(filename, "r").read().split("\n")
-        force_key_word = "fhiuadjskdnlashalfwwawldjalksfna"
-        force_key_word_checked = 0
-        force_check = 0
-        force = []
-        mol_structure = qchem_file()
-        mol_structure.molecule.check = True
-        mol_structure.read_from_file(filename)
-        force_e1 = [] 
-        force_e2 = [] 
-        if different_type == "soc":
-            self.read_soc_opt(filename)
-        else:
-            self.read_ene_job(filename)
-        
-        self.molecule = mol_structure.molecule
-        for text in out_file:
-            if " Total energy" in text:
-                data = float(text.split("=")[1])
-                self.ene = data
-
-            if force_key_word_checked != 1:
-                if self_check:
-                    if "ideriv" in text:
-                        ideriv_type = text.split()
-                        while "" in ideriv_type:
-                            ideriv_type.remove("")
-                        if int(ideriv_type[-1]) == 1:
-                            force_key_word = "zheng adiabatic surface gradient"
-                        elif int(ideriv_type[-1]) == 0:
-                            force_key_word = "FINAL TENSOR RESULT"
-                        force_key_word_checked = 1
-                else:
-                    if different_type == "soc":
-                        force_key_word = "zheng adiabatic surface gradient"
-                        force_key_word_e1 = "zheng ASG first state"
-                        force_key_word_e2 = "zheng ASG second state"
-                    elif different_type == "numercial":
-                        force_key_word = "FINAL TENSOR RESULT"
-                    elif different_type == "analytical":
-                        force_key_word = "Gradient of SCF Energy"
-                    elif different_type == "smd":
-                        force_key_word = "-- total gradient after adding PCM contribution --"
-                    else:
-                        force_key_word = different_type
-                    force_key_word_checked = 1
-
-            # Start reading force block
-            if force_key_word in text:
-                force_check = 1
-                force = []  # clear buffer
-                continue
-            if different_type == "soc":
-                if force_key_word_e1 in text:
-                    force_check = 2
-                    force_e1 = []  # clear buffer
-                    continue
-                elif force_key_word_e2 in text:
-                    force_check = 3
-                    force_e2 = []  # clear buffer
-                    continue
-
-            if force_key_word == "-- total gradient after adding PCM contribution --":
-                if "Atom" in text or "----" in text:
-                    continue
-                if force_check:
-                    if "----" in text or text.strip() == "":
-                        force_check = 0
-                        continue
-                    data = text.split()
-                    if len(data) == 4:
-                        force.append(data[1:])  # skip atom index
-            else:
-                if "Gradient time" in text or "#" in text or "gradient" in text:
-                    force_check = 0
-                    continue
-                if force_check == 1:
-                    data = text.split()
-                    while "" in data:
-                        data.remove("")
-                    force.append(data)
-                elif force_check == 2:
-                    data = text.split()
-                    while "" in data:
-                        data.remove("")
-                    force_e1.append(data)
-                elif force_check == 3:
-                    data = text.split()
-                    while "" in data:
-                        data.remove("")
-                    force_e2.append(data)
-
-        
-        # Postprocess into numpy array
-        if force_key_word == "zheng adiabatic surface gradient":
-            force = reshape_force(force)
-            force_e1 = reshape_force(force_e1)
-            force_e2 = reshape_force(force_e2)
-            self.force = force.astype(float)
-            self.force_e1 = force_e1.astype(float)
-            self.force_e2 = force_e2.astype(float)
-        elif force_key_word == "FINAL TENSOR RESULT":
-            while [] in force:
-                force.remove([])
-            force = np.array(force[2:])
-            force = force[:, 1:]
-        elif force_key_word == "Gradient of SCF Energy":
-            while [] in force:
-                force.remove([])
-            # flatten and reshape
-            flat_force = []
-            check = 0
-            x_force = []
-            y_force = []
-            z_force = []
-            for row in force:
-                if check % 4==1:
-                    x_force.extend(row[1:])
-                    check+=1
-                elif check % 4==2:
-                    y_force.extend(row[1:])
-                    check+=1
-                elif check % 4==3:
-                    z_force.extend(row[1:])
-                    check+=1
-                else:
-                    check+=1
-            x_force = np.array(x_force)
-            y_force = np.array(y_force)
-            z_force = np.array(z_force)
-            force = np.column_stack((x_force, y_force, z_force)).T #Shape should be (3,Natom)
-        elif force_key_word == "-- total gradient after adding PCM contribution --":
-            force = np.array(force)
-
-        self.force = force.astype(float)
-
-    @property
-    def final_EI(self):
-        return self.geoms[-1].opt2_info["EI"]
-    def calc_gibbs(self):
-        global Hartree_to_kcal
-        gibbs_energy = self.ene*Hartree_to_kcal  + self.enthalpy - (0.273+0.025)*self.entropy
-        self.gibbs_energy = gibbs_energy
-        return gibbs_energy
-    def plot_optimization(self, show=True, save_as=None):
-        import matplotlib.pyplot as plt
-        """
-        Plot the energy, gradient, and displacement during geometry optimization.
-        
-        Parameters:
-            show (bool): If True, display the plot.
-            save_as (str or None): If a string is given, save the plot to this filename.
-        """
-        if not self.geoms:
-            print("No optimization data available. Please run read_opt_from_file() first.")
-            return
-    
-        steps = list(range(len(self.geoms)))
-        energies = [g.energy for g in self.geoms]
-        gradients = [g.gradient for g in self.geoms if hasattr(g, "gradient")]
-        displacements = [g.displacement for g in self.geoms if hasattr(g, "displacement")]
-    
-        # Normalize energies to initial value
-        energies = [e - energies[0] for e in energies]
-    
-        fig, axs = plt.subplots(3, 1, figsize=(8, 10), sharex=True)
-        fig.suptitle("Geometry Optimization Progress", fontsize=14)
-    
-        axs[0].plot(steps, energies, marker='o', color='tab:blue')
-        axs[0].set_ylabel("ΔE (Hartree)")
-        axs[0].grid(True)
-    
-        if gradients:
-            axs[1].plot(steps[:len(gradients)], gradients, marker='o', color='tab:green')
-            axs[1].set_ylabel("Gradient Norm")
-            axs[1].grid(True)
-    
-        if displacements:
-            axs[2].plot(steps[:len(displacements)], displacements, marker='o', color='tab:red')
-            axs[2].set_ylabel("Displacement")
-            axs[2].set_xlabel("Optimization Step")
-            axs[2].grid(True)
-    
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    
-        if save_as:
-            plt.savefig(save_as, dpi=300)
-        if show:
-            plt.show()
-        else:
-            plt.close()
-    def animate_optimization(self): #this function needs to be developed
-        """
-        Show an interactive animation of the geometry optimization using nglview.
-        Requires: nglview, ase
-        """
-        import nglview as nv
-        from ase import Atoms
-    
-        structures = []
-        for geom in self.geoms:
-            try:
-                from ase import Atoms
-                atoms = Atoms(symbols=geom.atoms, positions=geom.xyz.astype(float))
-                structures.append(atoms)
-            except Exception as e:
-                print(f"Skipped step {geom.index}: {e}")
-    
-        if not structures:
-            raise ValueError("No valid geometries to animate.")
-    
-        return nv.show_ase(structures)
-    def read_job_time(self, filename="",out_text=""):
-        if filename:
-            self.filename = filename
-        lines = open(self.filename, "r").read().splitlines()
-    
-        wall_time = None
-        cpu_time = None
-    
-        for line in lines[::-1]:  # 从文件结尾往前找，能加速匹配
-            if "Total job time" in line:
-                parts = line.strip().split(',')
-                try:
-                    wall_time = float(parts[0].split()[3][:-1])  # 去掉"s"
-                    cpu_time = float(parts[1].split()[0][:-1])
-                except Exception as e:
-                    print(f"Failed to parse job time from line: {line}\nError: {e}")
-                break
-    
-        self.wall_time = wall_time
-        self.cpu_time = cpu_time
-        return wall_time, cpu_time
-class MECP_report(object):
-    def __init__(self):
-        self.geoms = []
-        self.filename = "ReportFile"
-        self.path = ""
-    def read_from_report(self,path="",filename="ReportFile"):
-        if path:
-            self.path = path
-        else:
-            path = self.path
-        if filename != "ReportFile":
-            self.filename = filename
-        else:
-            filename = self.filename
-        
-        file = open(path+filename,"r").read().split("Geometry at Step")
-        for texts in file:
-            geom = geoms()
-            texts = texts.split("\n")
-            start_read_geom = True
-            for text in texts:
-                text = text.split(" ")
-                while "" in text:
-                    text.remove("")
-                if start_read_geom == True:
-                    if len(text) == 4 and "Gradient:" not in text and 'version' not in text:
-                        geom.molecule.carti.append(text)
-                    if text == []:
-                        start_read_geom = False
-                if "Energy" in text:
-                    if "First" in text:
-                        geom.state_1_energy = float(text[-1])
-                    if "Second" in text:
-                        geom.state_2_energy = float(text[-1])
-            self.geoms.append(geom)
-    def return_final_geomery(self): #need read reportfile first
-        return self.geoms[-1].molecule.carti
-    def return_final_states_energy(self):
-        return self.geoms[-1].state_1_energy,self.geoms[-1].state_2_energy
-    def return_final_state_energy_difference(self):
-        return (self.geoms[-1].state_1_energy - self.geoms[-1].state_2_energy)*Hartree_to_kcal
-
-
 class geoms(molecule):
     def __init__(self):
         super().__init__()
@@ -1034,33 +515,383 @@ class geoms(molecule):
         self.gradient = 0
         self.displacement = 0
 
+class qchem_out:
+    def __init__(self, filename=""):
+        self.filename = filename
+        self.text = ""
+        self.molecule = molecule()
+        self.molecule.check = True
+        self.geoms = []
+        self.ene = None
+        self.wall_time = None
+        self.cpu_time = None
+
+    def read_file(self, filename=None, text=None):
+        if filename:
+            self.filename = filename
+        if text:
+            self.text = text
+        else:
+            self.text = open(self.filename, "r").read()
+        self.parse()
+
+    def parse(self):
+        raise NotImplementedError
+
+    def read_job_time(self):
+        lines = self.text.splitlines()
+        for line in lines[::-1]:
+            if "Total job time" in line:
+                parts = line.strip().split(',')
+                try:
+                    self.wall_time = float(parts[0].split()[3][:-1])
+                    self.cpu_time = float(parts[1].split()[0][:-1])
+                except Exception:
+                    pass
+                break
+        return self.wall_time, self.cpu_time
+
+    @property
+    def final_geom(self):
+        for geom in reversed(self.geoms):
+            if hasattr(geom, "carti") and hasattr(geom, "energy") and geom.carti and geom.energy is not None:
+                return geom.carti
+        return None
+
+    @property
+    def final_geom_class(self):
+        for geom in reversed(self.geoms):
+            if hasattr(geom, "carti") and hasattr(geom, "energy") and geom.carti and geom.energy is not None:
+                return geom
+        return None
+
+    @property
+    def final_ene(self):
+        return self.geoms[-1].energy if self.geoms else None
+
+class qchem_out_opt(qchem_out):
+    def __init__(self, filename=""):
+        super().__init__(filename)
+        self.opt_converged = False
+
+    def parse(self):
+        out_file = self.text.split("Optimization Cycle:")
+        for i in range(1, len(out_file)):
+            geom_texts = out_file[i].split("\n")
+            geom = geoms()
+            geom.index = i - 1
+
+            for text_line in geom_texts:
+                if "Energy is" in text_line:
+                    geom.energy = float(text_line.split()[-1])
+                if "Gradient" in text_line:
+                    geom.gradient = float(text_line.split()[-1])
+                if "Displacement" in text_line:
+                    geom.displacement = float(text_line.split()[-1])
+                if "**  OPTIMIZATION CONVERGED  **" in text_line:
+                    self.opt_converged = True
+                if "Standard Nuclear Orientation" in text_line:
+                    geom.carti = self._parse_geom(geom_texts, text_line)
+
+            self.geoms.append(geom)
+
+        if self.geoms:
+            self.ene = self.geoms[-1].energy
+
+    def _parse_geom(self, lines, marker):
+        carti = []
+        start = lines.index(marker) + 2
+        for line in lines[start:]:
+            parts = line.split()
+            if len(parts) == 5:
+                carti.append(parts[1:])
+            else:
+                break
+        return carti
+
+class qchem_out_scan(qchem_out):
+    def parse(self):
+        lines = self.text.splitlines()
+        self.scan_value_list = []
+        self.scan_ene_list = []
+        self.scan_structure_list = []
+        converged = False
+
+        for i, line in enumerate(lines):
+            if "PES scan" in line:
+                data = line.split(":")
+                self.scan_value_list.append(float(data[1].split()[-2]))
+                self.scan_ene_list.append(float(data[2]))
+                converged = False
+            if "OPTIMIZATION CONVERGED" in line:
+                structure = []
+                converged = True
+            if converged and "Coordinates (Angstroms)" in line:
+                k = i + 2
+                while k < len(lines):
+                    tokens = lines[k].split()
+                    if len(tokens) != 5:
+                        break
+                    structure.append(tokens[1:])
+                    k += 1
+                self.scan_structure_list.append(structure)
+
+        if self.scan_ene_list:
+            self.ene = self.scan_ene_list[-1]
+
+class qchem_out_soc(qchem_out):
+    def parse(self):
+        lines = self.text.splitlines()
+        self.opt_time_list = []
+        self.opt_ene_list = []
+        self.opt_e1_list = []
+        self.opt_e2_list = []
+        self.opt_esoc_list = []
+        self.opt_er_list = []
+
+        num = 1
+        for line in lines:
+            if "E_adiab:" in line:
+                data = line.split(":")
+                e1 = float(data[1].split()[0])
+                e2 = float(data[2].split()[0])
+                esoc = float(data[3].split()[0])
+                self.opt_time_list.append(num)
+                self.opt_e1_list.append(e1)
+                self.opt_e2_list.append(e2)
+                self.opt_er_list.append(esoc)
+                self.opt_esoc_list.append(float(data[4].split()[0]))
+                self.opt_ene_list.append(float(data[-1]))
+                num += 1
+
+        if self.opt_ene_list:
+            self.ene = self.opt_ene_list[-1]
+
+    @property
+    def final_soc_ene(self):
+        return self.opt_esoc_list[-1] if self.opt_esoc_list else None
+class qchem_out_force(qchem_out):
+    def __init__(self, filename=""):
+        super().__init__(filename)
+        self.force = None
+
+    def parse(self):
+        lines = self.text.splitlines()
+        force_block = []
+        reading = False
+        for line in lines:
+            if "Gradient of SCF Energy" in line:
+                reading = True
+                continue
+            if reading:
+                if "Gradient time" in line:
+                    break
+                parts = line.split()
+                if parts:
+                    force_block.append(parts)
+        if force_block:
+            self.force = reshape_force(force_block)
+class qchem_out_freq(qchem_out):
+    def __init__(self, filename=""):
+        super().__init__(filename)
+        self.enthalpy = None
+        self.entropy = None
+
+    def parse(self):
+        for line in self.text.splitlines():
+            if "Total Enthalpy:" in line and "QRRHO" not in line:
+                self.enthalpy = float(line.split()[2])
+            if "Total Entropy:" in line and "QRRHO" not in line:
+                self.entropy = float(line.split()[2])
+            if " Total energy" in line:
+                self.ene = float(line.split("=")[1])
+
+    def calc_gibbs(self):
+        global Hartree_to_kcal
+        if self.ene is None or self.enthalpy is None or self.entropy is None:
+            raise ValueError("Missing ene/enthalpy/entropy for Gibbs calculation.")
+        gibbs_energy = self.ene * Hartree_to_kcal + self.enthalpy - (0.273 + 0.025) * self.entropy
+        self.gibbs_energy = gibbs_energy
+        return gibbs_energy
 def reshape_force(force):
     while [] in force:
-        force.remove([])
-    # flatten and reshape
-    flat_force = []
-    check = 0
-    x_force = []
-    y_force = []
-    z_force = []
-    for row in force:
-        if check % 4==1:
-            x_force.extend(row[1:])
-            check+=1
-        elif check % 4==2:
-            y_force.extend(row[1:])
-            check+=1
-        elif check % 4==3:
-            z_force.extend(row[1:])
-            check+=1
-        else:
-            check+=1
-    x_force = np.array(x_force)
-    y_force = np.array(y_force)
-    z_force = np.array(z_force)
-    force = np.column_stack((x_force, y_force, z_force)).T #Shape should be (3,Natom)
-    return force
+        force.remove([]) # flatten and reshape
+        flat_force = []
+        check = 0
+        x_force = []
+        y_force = []
+        z_force = []
+        for row in force:
+            if check % 4==1:
+                x_force.extend(row[1:])
+                check+=1
+            elif check % 4==2:
+                y_force.extend(row[1:])
+                check+=1
+            elif check % 4==3:
+                z_force.extend(row[1:])
+                check+=1
+            else: check+=1
+        x_force = np.array(x_force)
+        y_force = np.array(y_force)
+        z_force = np.array(z_force)
+        force = np.column_stack((x_force, y_force, z_force)).T #Shape should be (3,Natom)
+        return force
 
+class qchem_out_geomene(qchem_out):
+    """
+    Minimal parser: only reads Total energy and last Standard Nuclear Orientation geometry
+    """
+    def __init__(self, filename=""):
+        super().__init__(filename)
+
+    def parse(self):
+        lines = self.text.splitlines()
+        self.ene = None
+        carti, blocks = [], []
+
+        for i, line in enumerate(lines):
+            if " Total energy" in line:
+                try:
+                    self.ene = float(line.split("=")[1])
+                except Exception:
+                    pass
+
+            if "Standard Nuclear Orientation" in line:
+                carti = []
+                continue
+
+            if carti is not None and len(line.strip().split()) == 5:
+                tokens = line.split()
+                try:
+                    atom, x, y, z = tokens[1], float(tokens[2]), float(tokens[3]), float(tokens[4])
+                    carti.append([atom, x, y, z])
+                except Exception:
+                    continue
+
+            elif carti:
+                blocks.append(carti.copy())
+                carti = None
+
+        if blocks:
+            mol = molecule()
+            mol.carti = blocks[-1]  # 最后一帧几何
+            mol.check = True
+            self.molecule = mol
+import re
+class qchem_out_aimd(qchem_out):
+
+    def __init__(self, filename=""):
+        super().__init__(filename)
+        self.aimd_geoms = []
+        self.aimd_steps = 0
+
+    def parse(self):
+        step_re = re.compile(
+            r"^TIME STEP #\s*(\d+)\s*\(t\s*=\s*([+\-0-9.eEdD]+)\s*a\.u\.\s*=\s*([+\-0-9.eEdD]+)\s*fs\)",
+            re.M,
+        )
+        matches = list(step_re.finditer(self.text))
+        if not matches:
+            return
+
+        def _parse_gradient_from_block(lines):
+            key = "Gradient of SCF Energy"
+            collecting, rows = False, []
+            for ln in lines:
+                if key in ln:
+                    collecting = True
+                    continue
+                if not collecting:
+                    continue
+                low = ln.strip().lower()
+                if any(w in low for w in ["gradient time", "maximum gradient", "rms gradient",
+                                          "cartesian coordinates", "standard nuclear orientation"]) or ln.strip() == "":
+                    if rows:
+                        break
+                    else:
+                        continue
+                parts = ln.split()
+                if parts:
+                    rows.append(parts)
+            if not rows:
+                return None
+
+            x_vals, y_vals, z_vals, chk = [], [], [], 0
+            for r in rows:
+                if chk % 4 == 1:
+                    x_vals.extend(r[1:] if len(r) >= 2 else r)
+                elif chk % 4 == 2:
+                    y_vals.extend(r[1:] if len(r) >= 2 else r)
+                elif chk % 4 == 3:
+                    z_vals.extend(r[1:] if len(r) >= 2 else r)
+                chk += 1
+            if not (x_vals and y_vals and z_vals):
+                return None
+
+            def to_float(a):
+                return np.array([float(t.replace("D", "E").replace("d", "e")) for t in a], dtype=float)
+
+            try:
+                return np.column_stack((to_float(x_vals), to_float(y_vals), to_float(z_vals))).T
+            except Exception:
+                return None
+
+        for k, m in enumerate(matches):
+            b_start, b_end = m.start(), (matches[k + 1].start() if (k + 1 < len(matches)) else len(self.text))
+            block, lines = self.text[b_start:b_end], self.text[b_start:b_end].splitlines()
+
+            step_idx = int(m.group(1))
+            t_au = float(m.group(2).replace("D", "E")) if m.group(2) else None
+            t_fs = float(m.group(3).replace("D", "E")) if m.group(3) else None
+
+            temp = None
+            mtemp = re.search(r"Instantaneous\s+Temperature\s*=\s*([+\-0-9.eEdD]+)\s*K", block)
+            if mtemp:
+                try:
+                    temp = float(mtemp.group(1).replace("D", "E"))
+                except Exception:
+                    pass
+
+            tmp = qchem_out_geomene()
+            tmp.read_file(text=block)
+
+            g = geoms()
+            g.index = step_idx
+            g.energy = getattr(tmp, "ene", None)
+            g.carti = getattr(tmp.molecule, "carti", []) if hasattr(tmp, "molecule") else []
+
+            charge, mult = None, None
+            m1 = re.search(r"Charge\s*=\s*(-?\d+)\s+Multiplicity\s*=\s*(\d+)", block)
+            if m1:
+                charge, mult = int(m1.group(1)), int(m1.group(2))
+            else:
+                m2 = re.search(r"Net\s+Charge\s*[:=]\s*(-?\d+)", block)
+                if m2:
+                    charge = int(m2.group(1))
+                m3 = (re.search(r"Multiplicity\s*[:=]\s*(\d+)", block)
+                      or re.search(r"Spin\s+multiplicity\s*[:=]\s*(\d+)", block))
+                if m3:
+                    mult = int(m3.group(1))
+            if charge is not None:
+                g.charge = charge
+            if mult is not None:
+                g.multistate = mult
+
+            grad = _parse_gradient_from_block(lines)
+            if grad is not None:
+                g.grad = grad
+
+            g.time_au, g.time_fs, g.temperature_K = t_au, t_fs, temp
+            self.aimd_geoms.append(g)
+
+        self.aimd_steps = len(self.aimd_geoms)
+
+    def get_trajectory(self):
+        return [g.carti for g in self.aimd_geoms]
+
+    def get_energies(self):
+        return np.array([g.energy for g in self.aimd_geoms if g.energy is not None])
 
 class multiple_qchem_jobs(object):
     def __init__(self):
@@ -1070,24 +901,19 @@ class multiple_qchem_jobs(object):
         self.rem_check = True
         self.opt_check = False
         self.pcm_check = False
-
     def match_check(self, job):
         if self.molecule_check:
             job.molecule.check = True
-        else:
-            job.molecule.check = False
+        else: job.molecule.check = False
         if self.rem_check:
             job.rem.check = True
-        else:
-            job.rem.check = False
+        else: job.rem.check = False
         if self.opt_check:
             job.opt.check = True
-        else:
-            job.opt.check = False
+        else: job.opt.check = False
         if self.pcm_check:
             job.pcm.check = True
-        else:
-            job.pcm.check = False
+        else: job.pcm.check = False
     @property
     def job_nums(self):
         return len(self.jobs)
@@ -1104,11 +930,27 @@ class multiple_qchem_jobs(object):
         out = ""
         for i in range(self.job_nums):
             job = self.jobs[i]
-            if i == 0:
-                out += f"{job.output}\n"
-            else:
-                out += f"\n@@@\n\n{job.output}\n"
+            if i == 0: out += f"{job.output}\n"
+            else: out += f"\n@@@\n\n{job.output}\n"
         return out
     def generate_inp(self, new_file_name):
-        with open(new_file_name, "w") as f:
-            f.write(self.output)
+        with open(new_file_name, "w") as f: f.write(self.output)
+
+class qchem_out_multi:
+    def __init__(self, filename=""):
+        self.filename = filename
+        self.text = None
+
+    def read_file(self, filename="", text=""):
+        if filename:
+            self.filename = filename
+        if text:
+            self.text = text
+        else:
+            with open(self.filename, "r", encoding="utf-8", errors="ignore") as f:
+                self.text = f.read()
+        self.parse()
+
+    def parse(self):
+        raise NotImplementedError
+

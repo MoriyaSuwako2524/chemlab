@@ -1,4 +1,4 @@
-from file_system import multiple_qchem_jobs,molecule,qchem_file,qchem_out_file
+from file_system import molecule,qchem_file,qchem_out_opt,multiple_qchem_jobs
 from file_system import SPIN_REF
 class check_list(object):
     def __init__(self):
@@ -30,33 +30,20 @@ def ex_match_check(fjob,tjob):
         tjob.opt_check = False
 
 
-class custum_job(multiple_qchem_jobs):
-    def __init__(self):
-        super(custum_job, self).__init__()
-        self.single_ref = qchem_file()
-        self.multi_ref = multiple_qchem_jobs()
-    def read_single_job_ref(self,ref_name):
-        self.match_check(self.single_ref)
-        self.single_ref.read_from_file(ref_name)
 
 
-class opt_fre(multiple_qchem_jobs):
-    def __init__(self):
-        super(opt_fre, self).__init__()
-
-
-class conver_out_to_inp(object):
+class conver_opt_out_to_inp(object):
     def __init__(self):
         self.out_job_name = ""
         self.inp_file_name = ""
         self.ref_file_name = ""
     def convert(self,new_out_file_name="",new_inp_file_name=""):
-        opt = qchem_out_file()
+        opt = qchem_out_opt()
         if new_out_file_name == "":
             filename = self.out_job_name
         else:
             filename = new_out_file_name
-        opt.read_opt_from_file(filename)
+        opt.read_file(filename)
         if new_out_file_name == "":
             inp_filename = self.inp_file_name
         else:
@@ -64,7 +51,7 @@ class conver_out_to_inp(object):
         inp = qchem_file()
         inp.molecule.check = True
         inp.read_from_file(self.ref_file_name)
-        molecule_carti = opt.return_final_molecule_carti()
+        molecule_carti = opt.final_geom
         inp.molecule.carti = molecule_carti
         inp.generate_inp(inp_filename)
 
@@ -135,3 +122,25 @@ class single_spin_job(base_job):
         ref.jobs[0].molecule.multistate = self.spin
         file_name = f"{filename[:-4]}.inp"
         ref.generate_inp(file_name)
+
+class multiple_out_jobs(object):
+    def __init__(self):
+        self.path = "./"
+        self.outs = []
+class aimd_outs(multiple_out_jobs):
+    def __init__(self):
+        super().__init__()
+
+from file_system import qchem_out_aimd
+out = qchem_out_aimd()
+out.read_file(filename="./examples/aimd_bodipy_nvt_1.out")   # 读 AIMD 的 Q-Chem 输出文件
+
+
+
+
+print("总步数:", out.aimd_steps)
+print("前 5 步能量:", out.get_energies()[:5])
+print("第 1 步几何结构:", out.aimd_geoms[0].carti)
+print("第 1 步梯度 shape:", out.aimd_geoms[0].grad.shape if hasattr(out.aimd_geoms[0], "grad") else None)
+print("第 1 步温度 (K):", out.aimd_geoms[0].temperature_K)
+
