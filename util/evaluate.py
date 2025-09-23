@@ -63,7 +63,7 @@ def hexbin_on_ax(ax, x, y, xlabel, ylabel, title, panel_letter, scale=1.0, manua
     cbar = ax.figure.colorbar(hb, cax=cax)
     cbar.set_label('log$_{10}$(count)')
 
-def evaluate(model_path, coord_path, type_path, energy_path, grad_path, batch_size=1, output_path="eval_plots"):
+def evaluate(model_path, coord_path, type_path, energy_path, grad_path,split_path=None, batch_size=1, output_path="eval_plots"):
     os.makedirs(output_path, exist_ok=True)
 
     # ===== Load model =====
@@ -75,6 +75,15 @@ def evaluate(model_path, coord_path, type_path, energy_path, grad_path, batch_si
     types  = np.load(type_path)    # (n_atoms,)
     energies_ref = np.load(energy_path)  # (n_frames,)
     forces_ref   = np.load(grad_path)    # (n_frames, n_atoms, 3)
+
+    # === 根据 split 切 test ===
+    if split_path is not None:
+        split = np.load(split_path)
+        test_idx = split["idx_test"]   # test 部分的索引
+
+        coords = coords[test_idx]
+        energies_ref = energies_ref[test_idx]
+        forces_ref = forces_ref[test_idx]
 
     n_frames, n_atoms, _ = coords.shape
     z0 = torch.tensor(types, dtype=torch.long)
@@ -123,14 +132,14 @@ def evaluate(model_path, coord_path, type_path, energy_path, grad_path, batch_si
     hexbin_on_ax(
         axes[0], energies_ref.detach().numpy(), energies_pred.detach().numpy(),
         "Reference Energy (kcal/mol)", "Predicted Energy (kcal/mol)",
-        "Energy Prediction", "A", scale=EV_TO_KCAL, manual_axis=True
+        "Energy Prediction", "A", scale=1.0, manual_axis=True
     )
 
-    # Force (B) - flatten all atom components
+    # Force (B)
     hexbin_on_ax(
         axes[1], forces_ref.detach().numpy().ravel(), forces_pred.detach().numpy().ravel(),
         r"Reference Force ($kcal/mol \cdot \AA$)", r"Predicted Force ($kcal/mol \cdot \AA$)",
-        "Force Prediction", "B", scale=EV_TO_KCAL, manual_axis=False
+        "Force Prediction", "B", scale=1.0, manual_axis=False
     )
 
     out_file = os.path.join(output_path, "energy_force_hexbin.png")
@@ -141,10 +150,10 @@ def evaluate(model_path, coord_path, type_path, energy_path, grad_path, batch_si
 
 
 if __name__ == "__main__":
-    model_path  = "./torchmdnet2/epoch=59-val_loss=0.0010.ckpt"
-    coord_path  = "./raw_datas/test_qm_coord.npy"
-    type_path   = "./raw_datas/test_qm_type.npy"
-    energy_path = "./raw_datas/test_qm_energy.npy"
-    grad_path   = "./raw_datas/test_qm_grad.npy"
-
-    evaluate(model_path, coord_path, type_path, energy_path, grad_path, batch_size=8)
+    model_path  = "./torchmdnet4/epoch=239-val_loss=8.1274-test_loss=0.0000.ckpt"
+    coord_path  = "./raw_datas2/full_coord.npy"
+    type_path   = "./raw_datas2/full_type.npy"
+    energy_path = "./raw_datas2/full_energy.npy"
+    grad_path   = "./raw_datas2/full_grad.npy"
+    split_path = "./raw_datas2/1000_split.npz"
+    evaluate(model_path, coord_path, type_path, energy_path, grad_path,split_path, batch_size=8)
