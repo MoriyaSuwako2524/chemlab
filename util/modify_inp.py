@@ -1,5 +1,5 @@
-from file_system import molecule,qchem_file,qchem_out_opt,multiple_qchem_jobs,qchem_out_multi
-from file_system import SPIN_REF
+from .file_system import molecule,qchem_file,qchem_out_opt,multiple_qchem_jobs,qchem_out_multi
+from .file_system import SPIN_REF
 class check_list(object):
     def __init__(self):
         self.molecule_check = True
@@ -131,7 +131,7 @@ class qchem_out_aimd_multi(qchem_out_multi):
         super().__init__()
 
     def read_files(self, filenames):
-        from file_system import qchem_out_aimd
+        from .file_system import qchem_out_aimd
         super().read_files(filenames, qchem_out_aimd)
 
     @property
@@ -152,9 +152,25 @@ class qchem_out_aimd_multi(qchem_out_multi):
         for i, task in enumerate(self.tasks):
             last_ene = task.aimd_geoms[-1].energy if task.aimd_geoms else None
             print(f"  [{i}] 文件={task.filename}, 步数={task.aimd_steps}, 最终能量={last_ene}")
-    def export_numpy(self, prefix=""):
 
+    def export_numpy(
+        self,
+        prefix="",
+        energy_unit="hartree",
+        distance_unit="ang",
+        force_unit=("hartree", "bohr"),
+        save_as_force=True,
+    ):
+        """
+        Args:
+            prefix (str):
+            energy_unit (str): "hartree" / "kcal" / "ev" / "kj"
+            distance_unit (str): "ang" / "bohr" / "nm"
+            force_unit (tuple): (energy_unit, distance_unit)，如 ("hartree","bohr")
+            save_as_force (bool): True=-∇E，False=∇E
+        """
         import numpy as np
+        from .file_system import ENERGY, DISTANCE, FORCE, GRADIENT, atom_charge_dict
 
         traj = self.merge_trajectories()
         if not traj:
@@ -165,21 +181,33 @@ class qchem_out_aimd_multi(qchem_out_multi):
 
         coords = np.zeros((nframes, natoms, 3), dtype=float)
         energies = np.zeros((nframes,), dtype=float)
-        grads = np.zeros((nframes, 3, natoms), dtype=float)
-        qm_types = np.zeros((natoms,), dtype=int)
+        grads = np.zeros((nframes, natoms, 3), dtype=float)
+
 
         for i, g in enumerate(traj):
             coords[i] = np.array(g.carti)[:, 1:].astype(float)
             energies[i] = g.energy if hasattr(g, "energy") else np.nan
             if hasattr(g, "grad"):
-                grads[i] = g.grad
+                grads[i] = g.grad.T
             else:
                 grads[i] = 0.0
 
 
+        energies = ENERGY(energies, "hartree").convert_to(energy_unit)
+        coords = DISTANCE(coords, "ang").convert_to(distance_unit)
+        if save_as_force:
+            grads = FORCE(grads, energy_unit="hartree", distance_unit="bohr").convert_to(
+                {"energy": (force_unit[0], 1), "distance": (force_unit[1], -1)}
+            )
+        else:
+            grads = GRADIENT(grads, energy_unit="hartree", distance_unit="bohr").convert_to(
+                {"energy": (force_unit[0], 1), "distance": (force_unit[1], -1)}
+            )
+
+
         atom_symbols = [atm[0] for atm in traj[0].carti]
-        from file_system import atom_charge_dict
         qm_types = np.array([atom_charge_dict[sym] for sym in atom_symbols])
+
 
         np.save(prefix + "coord.npy", coords)
         np.save(prefix + "energy.npy", energies)
@@ -189,13 +217,7 @@ class qchem_out_aimd_multi(qchem_out_multi):
         return coords, energies, grads, qm_types
 
 
-multi = qchem_out_aimd_multi()
-multi.read_files([
-    "./examples/aimd_bodipy_nvt_1.out",
-    "./examples/aimd_bodipy_nvt_2.out"
-])
 
-multi.export_numpy(prefix="./full_")
 
 
 

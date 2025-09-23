@@ -112,11 +112,18 @@ class complex_unit_type:
 
 class FORCE(complex_unit_type):
     def __init__(self, value, energy_unit="hartree", distance_unit="bohr"):
-        super().__init__(value, {
+        super().__init__( -np.array(value, dtype=float), {  # 注意加负号
             "energy": (energy_unit, 1),
             "distance": (distance_unit, -1)
         })
 
+
+class GRADIENT(complex_unit_type):
+    def __init__(self, value, energy_unit="hartree", distance_unit="bohr"):
+        super().__init__( np.array(value, dtype=float), {
+            "energy": (energy_unit, 1),
+            "distance": (distance_unit, -1)
+        })
 
 class qchem_file(object): #standard qchem inp file class
     def __init__(self):

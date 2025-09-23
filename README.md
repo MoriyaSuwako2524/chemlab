@@ -15,3 +15,7 @@ structure and standard input details. for qchem, this should include at lease $r
 
 The detailed tutorial is the notebook in the scan_2d folder.
 
+### util
+
+Functions to handle qchem outputs
+
