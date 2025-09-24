@@ -38,7 +38,7 @@ class DISTANCE(unit_type):
     category = "distance"
     def __init__(self, value, unit="ang"):
         super().__init__(value, unit)
-        self.DICT = {"ang": 1, "bohr": 0.529177, "nm": 10}
+        self.DICT = {"ang": 1, "bohr": 1/0.529177, "nm": 10}
 
 from itertools import product
 

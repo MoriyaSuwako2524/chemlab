@@ -82,7 +82,7 @@ def evaluate(model_path, coord_path, type_path, energy_path, grad_path,split_pat
         test_idx = split["idx_test"]   # test 部分的索引
 
         coords = coords[test_idx]
-        energies_ref = energies_ref[test_idx]
+        energies_ref = energies_ref[test_idx] 
         forces_ref = forces_ref[test_idx]
 
     n_frames, n_atoms, _ = coords.shape
@@ -113,16 +113,19 @@ def evaluate(model_path, coord_path, type_path, energy_path, grad_path,split_pat
     forces_ref = torch.tensor(forces_ref, dtype=torch.float32)
 
     # ===== Compute errors =====
-    mae_e = torch.mean(torch.abs(energies_pred - energies_ref))
-    rmse_e = torch.sqrt(torch.mean((energies_pred - energies_ref) ** 2))
+    energies_pred_centered = energies_pred - energies_pred.mean()
+    energies_ref_centered = energies_ref - energies_ref.mean()
+
+    mae_e = torch.mean(torch.abs(energies_pred_centered - energies_ref_centered))
+    rmse_e = torch.sqrt(torch.mean((energies_pred_centered - energies_ref_centered) ** 2))
     mae_f = torch.mean(torch.abs(forces_pred - forces_ref))
     rmse_f = torch.sqrt(torch.mean((forces_pred - forces_ref) ** 2))
 
     print("==== Evaluation Results ====")
-    print(f"Energy MAE  : {mae_e.item():.6f} eV")
-    print(f"Energy RMSE : {rmse_e.item():.6f} eV")
-    print(f"Force MAE   : {mae_f.item():.6f} eV/Angstrom")
-    print(f"Force RMSE  : {rmse_f.item():.6f} eV/Angstrom")
+    print(f"Energy MAE  : {mae_e.item():.4f} kcal/mol")
+    print(f"Energy RMSE : {rmse_e.item():.4f} kcal/mol")
+    print(f"Force MAE   : {mae_f.item():.4f} kcal/mol/Å")
+    print(f"Force RMSE  : {rmse_f.item():.4f} kcal/mol/Å")
 
     # ===== Plotting =====
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
@@ -150,10 +153,10 @@ def evaluate(model_path, coord_path, type_path, energy_path, grad_path,split_pat
 
 
 if __name__ == "__main__":
-    model_path  = "./torchmdnet4/epoch=239-val_loss=8.1274-test_loss=0.0000.ckpt"
-    coord_path  = "./raw_datas2/full_coord.npy"
-    type_path   = "./raw_datas2/full_type.npy"
-    energy_path = "./raw_datas2/full_energy.npy"
-    grad_path   = "./raw_datas2/full_grad.npy"
-    split_path = "./raw_datas2/1000_split.npz"
+    model_path  = "./torchmdnet_phbdi_1000_1/epoch=59-val_loss=2.7685-test_loss=0.0000.ckpt"
+    coord_path  = "./phbdi_datas/full_coord.npy"
+    type_path   = "./phbdi_datas/full_type.npy"
+    energy_path = "./phbdi_datas/full_energy.npy"
+    grad_path   = "./phbdi_datas/full_grad.npy"
+    split_path = "./phbdi_datas/1000_split.npz"
     evaluate(model_path, coord_path, type_path, energy_path, grad_path,split_path, batch_size=8)
