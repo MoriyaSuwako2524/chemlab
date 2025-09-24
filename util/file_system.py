@@ -343,19 +343,28 @@ class molecule(qchem_inp_block):
                 out += text
             out += "$end\n\n"
             return out
-    def read_xyz(self,filename):
-        file = open(filename,"r").read().split("\n")
+    def read_xyz(self, filename):
+        with open(filename, "r") as f:
+            lines = f.read().splitlines()
         self.filename = filename
         carti = []
-        for texts in file:
-            text = texts.split(" ")
-            while "" in text:
-                text.remove("")
-            if len(text) <3:
+        if not lines:
+            self.carti = []
+            self.comment = ""
+            return
+        try:
+            self.natoms = int(lines[0].strip())
+        except ValueError:
+            self.natoms = None
+        self.comment = lines[1].strip() if len(lines) > 1 else ""
+        for texts in lines[2:]:
+            parts = texts.split()
+            if len(parts) < 4:
                 continue
-            else:
-                carti.append(text)
+            carti.append(parts)
+    
         self.carti = carti
+
     def calc_distance_of_2_atoms(self,i,j):
         R_atom_1_atom_2 = self.calc_array_from_atom_1_to_atom_2(i,j)
         return np.dot(R_atom_1_atom_2,R_atom_1_atom_2) **0.5

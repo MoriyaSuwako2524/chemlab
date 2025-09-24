@@ -1,5 +1,5 @@
 import numpy as np
-
+import os
 def load_npy_files(prefix, files):
     """
     Load multiple .npy files from prefix.
@@ -112,4 +112,39 @@ class MLData:
             else:
                 subset[k] = v
         return subset
+    def export_xyz_from_split(self, split_file, outdir="./xyz_export", prefix_map=None):
+        import os
+        if isinstance(split_file, str):
+            split = np.load(split_file, allow_pickle=True)
+        else:
+            split = split_file
+        if prefix_map is None:
+            prefix_map = {"idx_train": "train", "idx_val": "val", "idx_test": "test"}
+    
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+    
+        # 原子序号→元素符号
+        from .file_system import atom_charge_dict
+        inv_dict = {v: k for k, v in atom_charge_dict.items()}
+    
+        for key, prefix in prefix_map.items():
+            if key not in split:
+                continue
+            indices = split[key]
+            for i, idx in enumerate(indices, 1):
+                coords = self.coords[idx]
+                # 这里 types 不再按 idx 取，而是整个数组
+                types = self.qm_types  
+                natoms = len(types)
+                fname = f"{prefix}_{i:04d}.xyz"
+                path = os.path.join(outdir, fname)
+                with open(path, "w") as f:
+                    f.write(f"{natoms}\n")
+                    f.write(f"{prefix} frame {idx}\n")
+                    for sym, (x, y, z) in zip(types, coords):
+                        if isinstance(sym, (int, np.integer)):
+                            sym = inv_dict.get(int(sym), str(sym))
+                        f.write(f"{sym} {x:.8f} {y:.8f} {z:.8f}\n")
+        print(f"XYZ files exported to {outdir}")
 
