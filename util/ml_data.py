@@ -19,14 +19,14 @@ def load_npy_files(prefix, files):
 
 
 class MLData:
-    def __init__(self, prefix="./", files=None):
+    def __init__(self, prefix="./", files=None, energy_key="energy"):
         if files is None:
             files = ["coord", "energy", "grad", "type"]
 
         self.data = {f: np.load(prefix + f + ".npy", allow_pickle=True) for f in files}
 
         self.coords = self.data.get("coord", None)
-        self.energies = self.data.get("energy", None)
+        self.energies = self.data.get(energy_key, None)
         self.grads = self.data.get("grad", None)
         self.qm_types = self.data.get("type", None)
 

@@ -8,7 +8,7 @@ atom_charge_dict = {
     "Se":34,"Br":35,"Kr":36,"Rb":37,"Sr":38,"Y":39,"Zr":40,"Nb":41,"Mo":42,"Tc":43,
     "Ru":44,"Rh":45,"Pd":46,"Ag":47,"Cd":48,"In":49,"Sn":50,"Sb":51,"Te":52,"I":53,"Xe":54
 }
-SPIN_REF = {1:"s",2:"d",3:"t",4:"q",5:"q"}
+SPIN_REF = {1:"s",2:"d",3:"t",4:"quartlet",5:"q",6:"sextuplet"}
 
 
 class unit_type:
@@ -31,7 +31,7 @@ class ENERGY(unit_type):
     category = "energy"
     def __init__(self, value, unit="hartree"):
         super().__init__(value, unit)
-        self.DICT = {"hartree": 1, "kcal": 627.51, "ev": 27.2113863, "kj": 2625.5}
+        self.DICT = {"hartree": 1, "kcal/mol":627.51,"kcal": 627.51, "ev": 27.2113863, "kj": 2625.5}
 
 
 class DISTANCE(unit_type):
@@ -49,8 +49,8 @@ class MASS(unit_type):
         super().__init__(value, unit)
         self.DICT = {
             "amu": 1,
-            "g": 1.66054e-24,   # 克
-            "kg": 1.66054e-27   # 千克
+            "g": 1.66054e-24,
+            "kg": 1.66054e-27
         }
 
 
@@ -64,12 +64,7 @@ class TIME(unit_type):
             "ns": 1e-6,
             "s": 1e-15
         }
-UNIT_REGISTRY = {
-    "energy": ENERGY,
-    "distance": DISTANCE,
-    "mass": MASS,
-    "time": TIME,
-}
+
 
 
 class complex_unit_type:
@@ -110,6 +105,31 @@ class complex_unit_type:
             results[key] = self.convert_to(target_units)
         return results
 
+class CHARGE(unit_type):
+    category = "charge"
+
+    def __init__(self, value, unit="e"):
+        super().__init__(value, unit)
+        self.DICT = {
+            "e": 1.0,                 # 1 e = 1 e
+            "C": 1.0 / 1.602176634e-19,  # 1 C = 6.2415e18 e
+        }
+
+# --- 偶极矩单位 ---
+class DIPOLE(complex_unit_type):
+    category = "dipole"
+    def __init__(self, value, charge_unit="e", distance_unit="bohr"):
+        super().__init__(np.array(value, dtype=float), {
+            "charge": (charge_unit, 1),
+            "distance": (distance_unit, 1)
+        })
+        # 1 Debye = 0.393430307 e·Å = 0.20819434 e·bohr
+        self.DICT = {
+            "Debye": 1.0,  # 作为基准
+            "e*bohr": 1.0 / 0.20819434,
+            "e*ang":  1.0 / 0.393430307,
+            "C*m":    1.0 / 3.33564e-30,
+        }
 class FORCE(complex_unit_type):
     def __init__(self, value, energy_unit="hartree", distance_unit="bohr"):
         super().__init__( -np.array(value, dtype=float), {  # 注意加负号
@@ -124,6 +144,16 @@ class GRADIENT(complex_unit_type):
             "energy": (energy_unit, 1),
             "distance": (distance_unit, -1)
         })
+UNIT_REGISTRY = {
+    "energy": ENERGY,
+    "distance": DISTANCE,
+    "mass": MASS,
+    "time": TIME,
+    "charge": CHARGE,
+    "dipole": DIPOLE,
+    "force": FORCE,
+    "gradient": GRADIENT,
+}
 
 class qchem_file(object): #standard qchem inp file class
     def __init__(self):
@@ -729,30 +759,32 @@ class qchem_out_freq(qchem_out):
         gibbs_energy = self.ene * Hartree_to_kcal + self.enthalpy - (0.273 + 0.025) * self.entropy
         self.gibbs_energy = gibbs_energy
         return gibbs_energy
-def reshape_force(force):
-    while [] in force:
-        force.remove([]) # flatten and reshape
-        flat_force = []
-        check = 0
-        x_force = []
-        y_force = []
-        z_force = []
-        for row in force:
-            if check % 4==1:
-                x_force.extend(row[1:])
-                check+=1
-            elif check % 4==2:
-                y_force.extend(row[1:])
-                check+=1
-            elif check % 4==3:
-                z_force.extend(row[1:])
-                check+=1
-            else: check+=1
-        x_force = np.array(x_force)
-        y_force = np.array(y_force)
-        z_force = np.array(z_force)
-        force = np.column_stack((x_force, y_force, z_force)).T #Shape should be (3,Natom)
-        return force
+def reshape_force(force_block):
+
+    x_force, y_force, z_force = [], [], []
+    check = 0
+    for row in force_block:
+        if all(p.isdigit() for p in row):
+            check = 0
+            continue
+
+        if check % 3 == 0:   # x 分量行
+            x_force.extend([float(v) for v in row[1:]])
+        elif check % 3 == 1: # y 分量行
+            y_force.extend([float(v) for v in row[1:]])
+        elif check % 3 == 2: # z 分量行
+            z_force.extend([float(v) for v in row[1:]])
+        check += 1
+
+    x_force = np.array(x_force)
+    y_force = np.array(y_force)
+    z_force = np.array(z_force)
+
+    if not (len(x_force) == len(y_force) == len(z_force)):
+        raise ValueError(f"梯度分量长度不一致: X={len(x_force)}, Y={len(y_force)}, Z={len(z_force)}")
+
+    return np.vstack([x_force, y_force, z_force])
+
 
 class qchem_out_geomene(qchem_out):
     """
@@ -987,4 +1019,150 @@ class qchem_out_multi:
             print(f"  [{i}] 文件={task.filename}, 最终能量={task.final_ene}")
 
 
+class ExcitedState:
+    def __init__(self, state_idx, charge=None, multiplicity=None):
+        self.state_idx = state_idx
+        self.charge = charge
+        self.multiplicity = multiplicity
+        self.excitation_energy = None   # eV
+        self.total_energy = None        # Hartree
+        self.osc_strength = None
+        self.trans_mom = None           # (Tx, Ty, Tz)
+        self.trans_mom_norm = None      # |T|
+        self.transitions = []           # list of dict: {"from":..,"to":..,"amplitude":..}
+        self.gradient = None            # (Natom, 3)
 
+    def __repr__(self):
+        e_ev = f"{self.excitation_energy:.3f}" if self.excitation_energy is not None else "N/A"
+        e_tot = f"{self.total_energy:.6f}" if self.total_energy is not None else "N/A"
+        f_str = f"{self.osc_strength:.4f}" if self.osc_strength is not None else "N/A"
+        mult = self.multiplicity if self.multiplicity is not None else "N/A"
+        return f"<ExcitedState {self.state_idx}: E={e_ev} eV, Etot={e_tot} au, f={f_str}, Mult={mult}>"
+
+
+class qchem_out_excite(qchem_out):
+    def __init__(self, filename=""):
+        super().__init__(filename)
+        self.states = []  # list of ExcitedState
+
+    def parse(self):
+        lines = self.text.splitlines()
+        charge, multiplicity = None, None
+        carti = []
+        for i, line in enumerate(lines):
+            if "Standard Nuclear Orientation" in line:
+                carti = []
+                k = i + 3  # 跳过标题和分隔线
+                while k < len(lines):
+                    parts = lines[k].split()
+                    if len(parts) == 5:  # 格式: index, atom, x, y, z
+                        atom, x, y, z = parts[1], float(parts[2]), float(parts[3]), float(parts[4])
+                        carti.append([atom, x, y, z])
+                    else:
+                        break
+                    k += 1
+        if carti:
+            self.molecule.carti = carti
+        for ln in lines:
+            if "Charge =" in ln and "Multiplicity" in ln:
+                parts = ln.split()
+                charge = int(parts[2])
+                multiplicity = int(parts[-1])
+                break
+
+        gs = ExcitedState(0, charge, multiplicity)
+        for ln in lines:
+            if "SCF   energy" in ln:
+                gs.total_energy = float(ln.split("=")[-1])
+                break
+        self.states.append(gs)
+
+
+        for i, line in enumerate(lines):
+            if line.strip().startswith("Excited state"):
+                parts = line.split()
+                state_idx = int(parts[2].strip(":"))
+                energy_ev = float(parts[-1])
+                st = ExcitedState(state_idx, charge, "Singlet")  # 默认Singlet, 后面覆盖
+                st.excitation_energy = energy_ev
+
+                j = i + 1
+                while j < len(lines) and lines[j].strip() != "":
+                    l = lines[j].strip()
+                    if l.startswith("Total energy for state"):
+                        st.total_energy = float(l.split()[-2])
+                    elif l.startswith("Multiplicity"):
+                        st.multiplicity = l.split(":")[1].strip()
+                    elif l.startswith("Strength"):
+                        st.osc_strength = float(l.split(":")[1])
+                    elif "->" in l and "amplitude" in l:
+                        tparts = l.replace("=", "").split()
+                        st.transitions.append({
+                            "from": tparts[0],
+                            "to": tparts[2],
+                            "amplitude": float(tparts[-1])
+                        })
+                    elif l.startswith("Trans. Mom."):
+                        parts = l.replace("Trans. Mom.:", "").split()
+                        tx, ty, tz = float(parts[0]), float(parts[2]), float(parts[4])
+                        st.trans_mom = (tx, ty, tz)
+                        st.trans_mom_norm = (tx ** 2 + ty ** 2 + tz ** 2) ** 0.5
+
+                    elif "amplitude" in l and "-->" in l:
+                        segs = l.replace("=", "").split()
+                        st.transitions.append({
+                            "from": segs[0],
+                            "to": segs[2],
+                            "amplitude": float(segs[-1])
+                        })
+                    j += 1
+
+                self.states.append(st)
+
+        if "Gradient of SCF Energy" in self.text:
+            start = self.text.index("Gradient of SCF Energy")
+            end = self.text.index("Gradient time", start)
+            block = self.text[start:end]
+            self._parse_gradient_block(block, 0)  # 基态=0
+        current_state = None
+        for i, line in enumerate(lines):
+            if "CIS" in line and "State Energy" in line:
+                m = re.search(r"CIS\s+(\d+)\s+State Energy", line)
+                if m:
+                    current_state = int(m.group(1))
+
+            if "Gradient of the state energy" in line and current_state is not None:
+                j = i
+                while j < len(lines) and "Gradient time" not in lines[j]:
+                    j += 1
+                block = "\n".join(lines[i:j + 1])
+                self._parse_gradient_block(block, current_state)
+                current_state = None  # reset
+
+        if self.states:
+            self.ene = self.states[-1].total_energy
+
+    def _parse_gradient_block(self, block, st_idx):
+        force_block = []
+        for line in block.splitlines():
+            parts = line.split()
+            if not parts:
+                continue
+            try:
+                int(parts[0])  # 原子编号行
+                [float(x.replace("D", "E")) for x in parts[1:]]  # 确认其余是数值
+                force_block.append(parts)
+            except Exception:
+                continue  # 非数值行直接跳过
+
+        if force_block:
+            grad = reshape_force(force_block)  # 用改进版 reshape
+            if grad is not None:
+                for st in self.states:
+                    if st.state_idx == st_idx:
+                        st.gradient = grad.T  # (Natoms, 3)
+                        break
+    def summary(self):
+        print(f"解析到 {len(self.states)} 个态 (含基态)")
+        for st in self.states:
+            print(st)

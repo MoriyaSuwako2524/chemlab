@@ -216,6 +216,92 @@ class qchem_out_aimd_multi(qchem_out_multi):
 
         return coords, energies, grads, qm_types
 
+class qchem_out_excite_multi(qchem_out_multi):
+    """
+    管理多个激发态输出文件
+    """
+    def __init__(self):
+        super().__init__()
+
+    def read_files(self, filenames, path=""):
+        from .file_system import qchem_out_excite
+        import os
+        fullpaths = [os.path.join(path, fn) if path else fn for fn in filenames]
+        super().read_files(fullpaths, qchem_out_excite)
+
+    def export_numpy(
+            self,
+            state_idx=1,
+            prefix="",
+            energy_unit="hartree",
+            distance_unit="ang",
+            grad_unit=("hartree", "bohr"),
+            force_unit=("hartree", "bohr"),
+            transmom_unit="au",  # "au" = e·bohr; "Debye" 需外部转
+    ):
+
+        import numpy as np
+        from .file_system import ENERGY, DISTANCE, GRADIENT, FORCE, atom_charge_dict
+
+        if not self.tasks:
+            raise ValueError("没有读取任何激发态输出文件")
+
+        natoms = len(self.tasks[0].molecule.carti)
+        nframes = len(self.tasks)
+
+        coords = np.zeros((nframes, natoms, 3), dtype=float)
+        energies = np.zeros((nframes,), dtype=float)
+        ex_energies = np.zeros((nframes,), dtype=float)
+        grads = np.zeros((nframes, natoms, 3), dtype=float)
+        transmom = np.zeros((nframes, 3), dtype=float)
+
+        for i, task in enumerate(self.tasks):
+            st = None
+            for s in task.states:
+                if s.state_idx == state_idx:
+                    st = s
+                    break
+            if st is None:
+                raise ValueError(f"文件 {task.filename} 没有找到 state {state_idx}")
+
+            coords[i] = np.array(task.molecule.carti)[:, 1:].astype(float)
+            energies[i] = st.total_energy if st.total_energy else np.nan
+            ex_energies[i] = st.excitation_energy if st.excitation_energy else np.nan
+
+            if st.gradient is not None:
+                grads[i] = np.array(st.gradient, dtype=float)  # 原始梯度
+            else:
+                grads[i] = 0.0
+
+            if st.trans_mom is not None:
+                transmom[i] = np.array(st.trans_mom, dtype=float)
+            else:
+                transmom[i] = 0.0
+
+        # 单位转换
+        energies = ENERGY(energies, "hartree").convert_to(energy_unit)
+        coords = DISTANCE(coords, "ang").convert_to(distance_unit)
+        grads = GRADIENT(grads, energy_unit="hartree", distance_unit="bohr").convert_to(
+            {"energy": (grad_unit[0], 1), "distance": (grad_unit[1], -1)}
+        )
+        forces = FORCE(grads, energy_unit=grad_unit[0], distance_unit=grad_unit[1]).convert_to(
+            {"energy": (force_unit[0], 1), "distance": (force_unit[1], -1)}
+        )
+
+        atom_symbols = [atm[0] for atm in self.tasks[0].molecule.carti]
+        qm_types = np.array([atom_charge_dict[sym] for sym in atom_symbols])
+
+        # 保存
+        np.save(prefix + "coord.npy", coords)
+        np.save(prefix + "energy.npy", energies)
+        np.save(prefix + "ex_energy.npy", ex_energies)
+        np.save(prefix + "grad.npy", grads)
+        np.save(prefix + "force.npy", forces)
+        np.save(prefix + "transmom.npy", transmom)
+        np.save(prefix + "type.npy", qm_types)
+
+        return coords, energies, ex_energies, grads, forces, transmom, qm_types
+
 
 
 
