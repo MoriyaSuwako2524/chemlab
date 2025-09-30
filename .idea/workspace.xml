@@ -2,12 +2,13 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="0421277f-b3cd-4809-a9ac-ca0555b51e5d" name="Changes" comment="fix bug">
+      <change afterPath="$PROJECT_DIR$/util/1d_scan_script.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/util/unit.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/shelf/_2025_9_22_20_49___Changes_.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/shelf/_2025_9_22_20_49___Changes_.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/torchmdnet_phbdi2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/torchmdnet_phbdi3.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/notes/Fe-NAT.pptx" beforeDir="false" afterPath="$PROJECT_DIR$/notes/Fe-NAT.pptx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/notes/ML-TDDFT.pptx" beforeDir="false" afterPath="$PROJECT_DIR$/notes/ML-TDDFT.pptx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/util/file_system.py" beforeDir="false" afterPath="$PROJECT_DIR$/util/file_system.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/util/ml_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/util/ml_data.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
