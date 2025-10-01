@@ -2,12 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="0421277f-b3cd-4809-a9ac-ca0555b51e5d" name="Changes" comment="fix bug">
-      <change afterPath="$PROJECT_DIR$/util/1d_scan_script.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/util/unit.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/_2025_9_22_20_49___Changes_.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/shelf/_2025_9_22_20_49___Changes_.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/_2025_9_22_20_49___Changes_.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/在进行更新之前于_2025_9_22_20_49_取消提交了更改_[Changes]/shelved.patch" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notes/Fe-NAT.pptx" beforeDir="false" afterPath="$PROJECT_DIR$/notes/Fe-NAT.pptx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notes/ML-TDDFT.pptx" beforeDir="false" afterPath="$PROJECT_DIR$/notes/ML-TDDFT.pptx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/util/file_system.py" beforeDir="false" afterPath="$PROJECT_DIR$/util/file_system.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -37,22 +34,22 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/calculate/github/chemlab&quot;,
-    &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "last_opened_file_path": "D:/calculate/chemlab/util",
+    "run.code.analysis.last.selected.profile": "aDefault",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\calculate\chemlab\util" />
+      <recent name="D:\calculate\chemlab" />
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\Bash for opt" />
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\ECD" />
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\Numercial calculation" />
-      <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\New bash for opt" />
-      <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\spectra" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="D:\calculate\github\chemlab\Scripts" />
@@ -250,7 +247,14 @@
       <option name="project" value="LOCAL" />
       <updated>1758577818780</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="fix bug">
+      <created>1759266156432</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1759266156432</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">

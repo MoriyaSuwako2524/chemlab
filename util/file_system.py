@@ -10,6 +10,151 @@ atom_charge_dict = {
 }
 SPIN_REF = {1:"s",2:"d",3:"t",4:"quartlet",5:"q",6:"sextuplet"}
 
+
+class unit_type:
+    category = None
+    def __init__(self, value, unit):
+        self.value = np.array(value, dtype=float)
+        self.unit = unit
+        self.DICT = {}
+        self.modify_value = False
+
+    def convert_to(self, target):
+        factor = self.DICT[target] / self.DICT[self.unit]
+        value = self.value * factor
+        if self.modify_value:
+            self.value = value
+            self.unit = target
+        return value
+
+class ENERGY(unit_type):
+    category = "energy"
+    def __init__(self, value, unit="hartree"):
+        super().__init__(value, unit)
+        self.DICT = {"hartree": 1, "kcal/mol":627.51,"kcal": 627.51, "ev": 27.2113863, "kj": 2625.5}
+
+
+class DISTANCE(unit_type):
+    category = "distance"
+    def __init__(self, value, unit="ang"):
+        super().__init__(value, unit)
+        self.DICT = {"ang": 1, "bohr": 1/0.529177, "nm": 10}
+
+from itertools import product
+
+
+class MASS(unit_type):
+    category = "mass"
+    def __init__(self, value, unit="amu"):
+        super().__init__(value, unit)
+        self.DICT = {
+            "amu": 1,
+            "g": 1.66054e-24,
+            "kg": 1.66054e-27
+        }
+
+
+class TIME(unit_type):
+    category = "time"
+    def __init__(self, value, unit="fs"):
+        super().__init__(value, unit)
+        self.DICT = {
+            "fs": 1,
+            "ps": 1e-3,
+            "ns": 1e-6,
+            "s": 1e-15
+        }
+
+
+
+class complex_unit_type:
+    def __init__(self, value, units: dict):
+        """
+        value:  scalar or numpy array
+        units: dict, e.g. {"energy": ("hartree", 1), "distance": ("bohr", -1)}
+        """
+        self.value = np.array(value, dtype=float)
+        self.units = units
+        self.modify_value = False
+
+    def convert_to(self, target_units: dict):
+        factor = 1.0
+        for category, (unit, power) in self.units.items():
+            base = UNIT_REGISTRY[category](1.0, unit)
+            target_unit = target_units[category][0]
+            factor *= (base.convert_to(target_unit)) ** power
+        value = self.value * factor
+        if self.modify_value:
+            self.value = value
+            self.units = target_units
+        return value
+
+    def generate_all_conversions(self):
+
+        unit_lists = []
+        categories = []
+        for category, (unit, power) in self.units.items():
+            categories.append(category)
+            unit_lists.append(list(UNIT_REGISTRY[category](1, unit).DICT.keys()))
+
+        results = {}
+        for combo in product(*unit_lists):
+            target_units = {cat: (u, self.units[cat][1]) for cat, u in zip(categories, combo)}
+            key = " * ".join([f"{u}^{p}" if p != 1 else u
+                              for (_, (u, p)) in target_units.items()])
+            results[key] = self.convert_to(target_units)
+        return results
+
+class CHARGE(unit_type):
+    category = "charge"
+
+    def __init__(self, value, unit="e"):
+        super().__init__(value, unit)
+        self.DICT = {
+            "e": 1.0,                 # 1 e = 1 e
+            "C": 1.0 / 1.602176634e-19,  # 1 C = 6.2415e18 e
+        }
+
+# --- 偶极矩单位 ---
+class DIPOLE(complex_unit_type):
+    category = "dipole"
+    def __init__(self, value, charge_unit="e", distance_unit="bohr"):
+        super().__init__(np.array(value, dtype=float), {
+            "charge": (charge_unit, 1),
+            "distance": (distance_unit, 1)
+        })
+        # 1 Debye = 0.393430307 e·Å = 0.20819434 e·bohr
+        self.DICT = {
+            "Debye": 1.0,  # 作为基准
+            "e*bohr": 1.0 / 0.20819434,
+            "e*ang":  1.0 / 0.393430307,
+            "C*m":    1.0 / 3.33564e-30,
+        }
+class FORCE(complex_unit_type):
+    def __init__(self, value, energy_unit="hartree", distance_unit="bohr"):
+        super().__init__( -np.array(value, dtype=float), {  # 注意加负号
+            "energy": (energy_unit, 1),
+            "distance": (distance_unit, -1)
+        })
+
+
+class GRADIENT(complex_unit_type):
+    def __init__(self, value, energy_unit="hartree", distance_unit="bohr"):
+        super().__init__( np.array(value, dtype=float), {
+            "energy": (energy_unit, 1),
+            "distance": (distance_unit, -1)
+        })
+UNIT_REGISTRY = {
+    "energy": ENERGY,
+    "distance": DISTANCE,
+    "mass": MASS,
+    "time": TIME,
+    "charge": CHARGE,
+    "dipole": DIPOLE,
+    "force": FORCE,
+    "gradient": GRADIENT,
+}
+
 class qchem_file(object): #standard qchem inp file class
     def __init__(self):
         self.molecule = molecule()
@@ -476,8 +621,10 @@ class qchem_out_opt(qchem_out):
         self.opt_converged = False
 
     def parse(self):
-        out_file = self.text.split("Optimization Cycle:")
+        out_file = self.text.split("Optimization Cycle:".upper())
+        
         for i in range(1, len(out_file)):
+                
             geom_texts = out_file[i].split("\n")
             geom = geoms()
             geom.index = i - 1
@@ -486,9 +633,15 @@ class qchem_out_opt(qchem_out):
                 if "Energy is" in text_line:
                     geom.energy = float(text_line.split()[-1])
                 if "Gradient" in text_line:
-                    geom.gradient = float(text_line.split()[-1])
+                    try:
+                        geom.gradient = float(text_line.split()[1])
+                    except:
+                        continue
                 if "Displacement" in text_line:
-                    geom.displacement = float(text_line.split()[-1])
+                    try:
+                        geom.displacement = float(text_line.split()[1])
+                    except:
+                        continue
                 if "**  OPTIMIZATION CONVERGED  **" in text_line:
                     self.opt_converged = True
                 if "Standard Nuclear Orientation" in text_line:
