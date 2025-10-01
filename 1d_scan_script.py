@@ -149,6 +149,7 @@ def run_1d_scan_parallel(
     ncore: int = 8,
     njob: int = 8,
     scan_limit_init: int = 0,
+    scan_limit_progress = 4,
     poll_interval: float = 8.0,
     launcher: str = "srun",  # "srun" for multi-node, "local" for single node
 ) -> None:
@@ -195,15 +196,15 @@ def run_1d_scan_parallel(
                 print(f"[NOT_FOUND] row={job.row_idx}  r={job.row_dis} A  (will run)", flush=True)
 
     highest_done = max([-1] + list(final_carti_by_row.keys()))
-    scan_limit = max(scan_limit_init, highest_done + 1)
+    scan_limit = max(scan_limit_init, highest_done + scan_limit_progress)
 
     def pick_start_carti(r: int) -> Tuple[list, Optional[int]]:
-        """Prefer the nearest converged row < r; otherwise use ref coords."""
-        prev = [j for j in final_carti_by_row.keys() if j < r]
-        if prev:
-            jbest = max(prev)
-            return final_carti_by_row[jbest], jbest
-        return ref_carti, None
+        """Pick the nearest converged row (lower or higher); fallback to ref."""
+        if not final_carti_by_row:
+            return ref_carti, None
+        nearest = min(final_carti_by_row.keys(), key=lambda x: abs(x - r))
+        return final_carti_by_row[nearest], nearest
+
 
     running: Dict[int, ScanJob] = {}
 
@@ -225,14 +226,21 @@ def run_1d_scan_parallel(
                     job.converged = True
                     final_carti_by_row[ridx] = carti
                     print(f"[DONE_OK] row={ridx}  r={job.row_dis:.3f} A  (from={job.start_from_row})", flush=True)
+                    # ✅ 只有成功时才推进 scan_limit
+                    new_limit = ridx + scan_limit_init
+                    if new_limit > scan_limit:
+                        print(f"[PROMOTE] scan_limit {scan_limit} -> {new_limit}", flush=True)
+                    scan_limit = max(scan_limit, new_limit)
                 else:
                     job.converged = False
                     print(f"[DONE_FAIL] row={ridx}  r={job.row_dis:.3f} A  (from={job.start_from_row})", flush=True)
-                # Promote scan_limit to unlock the next row ONLY after completion
-                new_limit = max(scan_limit, ridx + 1)
-                if new_limit != scan_limit:
-                    print(f"[PROMOTE] scan_limit {scan_limit} -> {new_limit}", flush=True)
-                scan_limit = new_limit
+                    # 失败的点重新尝试，直到超过最大尝试次数
+                    if job.attempts < 3:
+                        job.started = False
+                        job.finished = False
+                        print(f"[RETRY] row={ridx}  r={job.row_dis:.3f} A  (attempt={job.attempts+1})", flush=True)
+                    else:
+                        print(f"[GIVEUP] row={ridx} after {job.attempts} attempts", flush=True)
                 to_clear.append(ridx)
 
         for ridx in to_clear:
@@ -241,7 +249,7 @@ def run_1d_scan_parallel(
         # Status after polling
         print_status(jobs, running, scan_limit)
 
-        # ---- Launch new jobs while we have free slots (STRICT <= scan_limit)
+        # ---- Launch new jobs while we have free slots
         ready = [j for j in jobs if (not j.started) and (not j.finished) and (j.row_idx <= scan_limit)]
         while len(running) < njob and ready:
             job = ready.pop(0)
@@ -263,11 +271,11 @@ def run_1d_scan_parallel(
             break
         time.sleep(poll_interval)
 
+
     n_conv = sum(1 for j in jobs if j.converged)
     print(f"[ALL_DONE] Finished={finished}/{row_max}, Converged={n_conv}", flush=True)
 
-# ================== Example main ==================
-# 2 nodes x 32 cores; each task 8 cores; total njob=8
+
 if __name__ == "__main__":
     run_1d_scan_parallel(
         path="/scratch/moriya/calculation/Fe/scan/TS2/",
@@ -278,8 +286,8 @@ if __name__ == "__main__":
         row_distance=-0.02,
         ncore=16,            # 8 cores per Q-Chem job
         njob=4,             # 2 nodes x (32/8) = 8 concurrent jobs
-        scan_limit_init=4,
+        scan_limit_init=5,
+        scan_limit_progress=4,
         poll_interval=60.0,
         launcher="srun",    # use Slurm multi-node steps
     )
-
