@@ -218,89 +218,131 @@ class qchem_out_aimd_multi(qchem_out_multi):
 
 class qchem_out_excite_multi(qchem_out_multi):
     """
-    管理多个激发态输出文件
+    Manage multiple Q-Chem excited-state output files,
+    and provide modular export utilities for specific attributes (energy, gradient, etc.)
     """
+
     def __init__(self):
         super().__init__()
 
     def read_files(self, filenames, path=""):
+        """
+        Read multiple Q-Chem excited-state output files.
+
+        Args:
+            filenames (list[str]): List of output filenames.
+            path (str): Optional path prefix for all files.
+        """
         from .file_system import qchem_out_excite
         import os
         fullpaths = [os.path.join(path, fn) if path else fn for fn in filenames]
         super().read_files(fullpaths, qchem_out_excite)
 
-    def export_numpy(
-            self,
-            state_idx=1,
-            prefix="",
-            energy_unit="hartree",
-            distance_unit="ang",
-            grad_unit=("hartree", "bohr"),
-            force_unit=("hartree", "bohr"),
-            transmom_unit="au",  # "au" = e·bohr; "Debye" 需外部转
+    # =============================================================
+    #  Generic export function (core abstraction)
+    # =============================================================
+    def export_attr(
+        self,
+        attr_name,
+        extractor,
+        shape_func=None,
+        dtype=float,
+        prefix="",
+        filename=None,
+        state_idx=1,
     ):
+        """
+        Generic method to extract and export any attribute from each excited-state output.
 
+        Args:
+            attr_name (str): The attribute name, used for filename and identification.
+            extractor (Callable): A lambda function `extractor(st, task)` returning the value to export.
+            shape_func (Callable): Optional lambda `(natoms, nframes) -> shape` to allocate array shape.
+            dtype (type): Numpy dtype for the exported array (default: float).
+            prefix (str): File name prefix for output `.npy` files.
+            filename (str): Custom file name (if None, use prefix + attr_name + ".npy").
+            state_idx (int): Index of the excited state to extract (default: 1).
+
+        Returns:
+            np.ndarray: The extracted and exported data array.
+        """
         import numpy as np
-        from .file_system import ENERGY, DISTANCE, GRADIENT, FORCE, atom_charge_dict
 
         if not self.tasks:
-            raise ValueError("没有读取任何激发态输出文件")
+            raise ValueError("No excited-state output files have been read.")
 
-        natoms = len(self.tasks[0].molecule.carti)
         nframes = len(self.tasks)
-
-        coords = np.zeros((nframes, natoms, 3), dtype=float)
-        energies = np.zeros((nframes,), dtype=float)
-        ex_energies = np.zeros((nframes,), dtype=float)
-        grads = np.zeros((nframes, natoms, 3), dtype=float)
-        transmom = np.zeros((nframes, 3), dtype=float)
+        natoms = len(self.tasks[0].molecule.carti)
+        shape = shape_func(natoms, nframes) if shape_func else (nframes,)
+        arr = np.zeros(shape, dtype=dtype)
 
         for i, task in enumerate(self.tasks):
+            # Find the target excited state
             st = None
             for s in task.states:
                 if s.state_idx == state_idx:
                     st = s
                     break
             if st is None:
-                raise ValueError(f"文件 {task.filename} 没有找到 state {state_idx}")
+                raise ValueError(f"File {task.filename} does not contain state {state_idx}")
 
-            coords[i] = np.array(task.molecule.carti)[:, 1:].astype(float)
-            energies[i] = st.total_energy if st.total_energy else np.nan
-            ex_energies[i] = st.excitation_energy if st.excitation_energy else np.nan
+            # Apply extractor to obtain attribute value
+            val = extractor(st, task)
+            arr[i] = val if val is not None else np.nan
 
-            if st.gradient is not None:
-                grads[i] = np.array(st.gradient, dtype=float)  # 原始梯度
-            else:
-                grads[i] = 0.0
+        filename = filename or (prefix + attr_name + ".npy")
+        np.save(filename, arr)
+        return arr
 
-            if st.trans_mom is not None:
-                transmom[i] = np.array(st.trans_mom, dtype=float)
-            else:
-                transmom[i] = 0.0
-
-        # 单位转换
-        energies = ENERGY(energies, "hartree").convert_to(energy_unit)
-        coords = DISTANCE(coords, "ang").convert_to(distance_unit)
-        grads = GRADIENT(grads, energy_unit="hartree", distance_unit="bohr").convert_to(
-            {"energy": (grad_unit[0], 1), "distance": (grad_unit[1], -1)}
+    def export_gs_energy(self, prefix="", energy_unit="hartree", state_idx=0):
+        """
+        Export total energy for each frame.
+        """
+        from .file_system import ENERGY
+        energies = self.export_attr(
+            "energy",
+            extractor=lambda st, task: st.total_energy,
+            prefix=prefix,
+            state_idx=state_idx,
         )
-        forces = FORCE(grads, energy_unit=grad_unit[0], distance_unit=grad_unit[1]).convert_to(
-            {"energy": (force_unit[0], 1), "distance": (force_unit[1], -1)}
+        return ENERGY(energies, "hartree").convert_to(energy_unit)
+
+    def export_ex_energy(self, prefix="", energy_unit="hartree", state_idx=1):
+        """
+        Export excitation energy for each frame.
+        """
+        from .file_system import ENERGY
+        ex_energies = self.export_attr(
+            "ex_energy",
+            extractor=lambda st, task: st.excitation_energy,
+            prefix=prefix,
+            state_idx=state_idx,
+        )
+        return ENERGY(ex_energies, "hartree").convert_to(energy_unit)
+
+    def export_transmom(self, prefix="", unit="au", state_idx=1):
+        """
+        Export transition dipole moment vectors for each frame.
+        """
+        import numpy as np
+        return self.export_attr(
+            "transmom",
+            extractor=lambda st, task: np.array(st.trans_mom, dtype=float)
+            if st.trans_mom is not None else None,
+            shape_func=lambda natoms, nframes: (nframes, 3),
+            prefix=prefix,
+            state_idx=state_idx,
         )
 
-        atom_symbols = [atm[0] for atm in self.tasks[0].molecule.carti]
-        qm_types = np.array([atom_charge_dict[sym] for sym in atom_symbols])
-
-        # 保存
+    def export_coords(self, prefix="", distance_unit="ang"):
+        """
+        Export molecular Cartesian coordinates for each frame.
+        """
+        import numpy as np
+        from .file_system import DISTANCE
+        coords = np.array([np.array(t.molecule.carti)[:, 1:].astype(float) for t in self.tasks])
         np.save(prefix + "coord.npy", coords)
-        np.save(prefix + "energy.npy", energies)
-        np.save(prefix + "ex_energy.npy", ex_energies)
-        np.save(prefix + "grad.npy", grads)
-        np.save(prefix + "force.npy", forces)
-        np.save(prefix + "transmom.npy", transmom)
-        np.save(prefix + "type.npy", qm_types)
-
-        return coords, energies, ex_energies, grads, forces, transmom, qm_types
+        return DISTANCE(coords, "ang").convert_to(distance_unit)
 
 
 
