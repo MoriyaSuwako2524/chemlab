@@ -1,5 +1,6 @@
 from .file_system import molecule,qchem_file,qchem_out_opt,multiple_qchem_jobs,qchem_out_multi
 from .file_system import SPIN_REF
+import numpy as np
 class check_list(object):
     def __init__(self):
         self.molecule_check = True
@@ -224,6 +225,8 @@ class qchem_out_excite_multi(qchem_out_multi):
 
     def __init__(self):
         super().__init__()
+        self._exporters = {}
+        self._register_default_exporters()
 
     def read_files(self, filenames, path=""):
         """
@@ -243,12 +246,9 @@ class qchem_out_excite_multi(qchem_out_multi):
     # =============================================================
     def export_attr(
         self,
-        attr_name,
         extractor,
         shape_func=None,
         dtype=float,
-        prefix="",
-        filename=None,
         state_idx=1,
     ):
         """
@@ -266,7 +266,6 @@ class qchem_out_excite_multi(qchem_out_multi):
         Returns:
             np.ndarray: The extracted and exported data array.
         """
-        import numpy as np
 
         if not self.tasks:
             raise ValueError("No excited-state output files have been read.")
@@ -290,59 +289,142 @@ class qchem_out_excite_multi(qchem_out_multi):
             val = extractor(st, task)
             arr[i] = val if val is not None else np.nan
 
-        filename = filename or (prefix + attr_name + ".npy")
-        np.save(filename, arr)
         return arr
 
-    def export_gs_energy(self, prefix="", energy_unit="hartree", state_idx=0):
+    def export_gs_energy(self, prefix="gs", energy_unit="kcal", state_idx=0):
         """
         Export total energy for each frame.
         """
-        from .file_system import ENERGY
+        from .unit import ENERGY
         energies = self.export_attr(
-            "energy",
             extractor=lambda st, task: st.total_energy,
-            prefix=prefix,
             state_idx=state_idx,
         )
-        return ENERGY(energies, "hartree").convert_to(energy_unit)
+        energies = ENERGY(energies, "hartree").convert_to(energy_unit)
+        np.save(f"{prefix}_energies.npy", energies)
+        return energies
 
-    def export_ex_energy(self, prefix="", energy_unit="hartree", state_idx=1):
+    def export_ex_energy(self, prefix="ex", energy_unit="kcal", state_idx=1):
         """
         Export excitation energy for each frame.
         """
-        from .file_system import ENERGY
+        from .unit import ENERGY
         ex_energies = self.export_attr(
-            "ex_energy",
             extractor=lambda st, task: st.excitation_energy,
-            prefix=prefix,
             state_idx=state_idx,
         )
-        return ENERGY(ex_energies, "hartree").convert_to(energy_unit)
-
-    def export_transmom(self, prefix="", unit="au", state_idx=1):
+        ex_energies = ENERGY(ex_energies, "hartree").convert_to(energy_unit)
+        np.save(f"{prefix}{state_idx}_energies.npy", ex_energies)
+        return ex_energies
+    def export_transmom(self, prefix="S", unit="au", state_idx=1):
         """
         Export transition dipole moment vectors for each frame.
         """
-        import numpy as np
-        return self.export_attr(
-            "transmom",
+        from .unit import DIPOLE
+        transmom = self.export_attr(
             extractor=lambda st, task: np.array(st.trans_mom, dtype=float)
             if st.trans_mom is not None else None,
             shape_func=lambda natoms, nframes: (nframes, 3),
-            prefix=prefix,
             state_idx=state_idx,
         )
+        transmom = DIPOLE(transmom, "au").convert_to(unit)
+        np.save(f"{prefix}{state_idx}_transmom.npy", transmom)
+        return transmom
+    def export_dipolemom(self, prefix="", unit="au", state_idx=0):
+        """
+        Export ground state dipole moment vectors for each frame.
+        """
+        from .unit import DIPOLE
+        dipolemom = self.export_attr(
+            extractor=lambda st, task: np.array(st.trans_mom, dtype=float)
+            if st.trans_mom is not None else None,
+            shape_func=lambda natoms, nframes: (nframes, 3),
+            state_idx=state_idx,
+        )
+        dipolemom = DIPOLE(dipolemom, "au").convert_to(unit)
+        np.save(f"{prefix}_dipolemom.npy", dipolemom)
+        return dipolemom
 
     def export_coords(self, prefix="", distance_unit="ang"):
         """
         Export molecular Cartesian coordinates for each frame.
         """
-        import numpy as np
-        from .file_system import DISTANCE
+        from .unit import DISTANCE
         coords = np.array([np.array(t.molecule.carti)[:, 1:].astype(float) for t in self.tasks])
-        np.save(prefix + "coord.npy", coords)
-        return DISTANCE(coords, "ang").convert_to(distance_unit)
+        coords = DISTANCE(coords, "ang").convert_to(distance_unit)
+        np.save(f"{prefix}_coord.npy", coords)
+        return coords
+    def export_forces(self, prefix="", grad_unit=("hartree", "bohr"),state_idx=1):
+        """
+        Export Forces of state_idx state energy for each frame.
+        """
+        from .unit import FORCE
+        gradients = self.export_attr(
+            extractor=lambda st, task: np.array(st.gradient, dtype=float)
+            if st.gradient is not None else np.zeros((len(task.molecule.carti), 3)),
+            shape_func=lambda natoms, nframes: (nframes, natoms, 3),
+            state_idx=state_idx,
+        )
+
+        forces = FORCE(gradients, energy_unit="hartree", distance_unit="bohr").convert_to(
+        {"energy": (grad_unit[0], 1), "distance": (grad_unit[1], -1)}
+    )
+        np.save(f"{prefix}_forces.npy", forces)
+        return forces
+
+    def export_gradients(self, prefix="", grad_unit=("hartree", "bohr"),state_idx=1):
+        """
+         Export gradients of state_idx state energy for each frame.
+         """
+        from .unit import GRADIENT
+        gradients = self.export_attr(
+            extractor=lambda st, task: np.array(st.gradient, dtype=float)
+            if st.gradient is not None else np.zeros((len(task.molecule.carti), 3)),
+            shape_func=lambda natoms, nframes: (nframes, natoms, 3),
+            state_idx=state_idx,
+        )
+
+        gradients = GRADIENT(gradients, energy_unit="hartree", distance_unit="bohr").convert_to(
+        {"energy": (grad_unit[0], 1), "distance": (grad_unit[1], -1)}
+    )
+        np.save(f"{prefix}_gradients.npy", gradients)
+        return gradients
+
+    def register_exporter(self, name, func):
+        """
+        Register a new exporter.
+
+        Args:
+            name (str): Exporter name (e.g. 'dipole', 'osc_strength')
+            func (callable): Function with signature f(self, **kwargs)
+        """
+        self._exporters[name] = func
+
+    def _register_default_exporters(self):
+        """
+        Register the built-in exporters.
+        """
+        self.register_exporter("coords", self.export_coords)
+        self.register_exporter("energy", self.export_energy)
+        self.register_exporter("ex_energy", self.export_ex_energy)
+        self.register_exporter("gradient", self.export_gradient)
+        self.register_exporter("force", self.export_force)
+        self.register_exporter("transmom", self.export_transmom)
+        self.register_exporter("dipolemom", self.export_dipolemom)
+
+    def export_all(self, prefix="", **kwargs):
+        """
+        Run all registered exporters sequentially.
+
+        Args:
+            prefix (str): Prefix for output files.
+            kwargs: Additional arguments passed to each exporter.
+        """
+        results = {}
+        for name, func in self._exporters.items():
+            print(f"[Export] {name}")
+            results[name] = func(prefix=prefix, **kwargs)
+        return results
 
 
 
