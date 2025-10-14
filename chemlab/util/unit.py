@@ -165,7 +165,7 @@ class CHARGE(unit_type):
         }
 
 
-class DIPOLE(unit_type):
+class DIPOLE(complex_unit_type):
     """Dipole moment with common conversions (Debye, e·bohr, e·Å, C·m)."""
 
     category = "dipole"
