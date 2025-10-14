@@ -1091,7 +1091,7 @@ class qchem_out_excite(qchem_out):
                 continue
             if dipole_find:
                 dipoles = ln.split()
-                tx, ty, tz = float(dipoles[0]), float(dipoles[2]), float(dipoles[4])
+                tx, ty, tz = float(dipoles[1]), float(dipoles[3]), float(dipoles[5])
                 gs.dipole_mom = (tx, ty, tz)
                 dipole_find = False
                 break
