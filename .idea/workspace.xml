@@ -1,16 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="0421277f-b3cd-4809-a9ac-ca0555b51e5d" name="Changes" comment="fix bug">
-      <change afterPath="$PROJECT_DIR$/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/util/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Scripts/2dscan_test/bash_script/1a.inp" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/2dscan_test/bash_script/1a.inp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Scripts/2dscan_test/tem_input/ID3119_1.9_1.6_row3_col19.inp" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/2dscan_test/tem_input/ID3119_1.9_1.6_row3_col19.inp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Scripts/2dscan_test/tem_input/ID3119_3.5_1.6_row11_col19.inp" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/2dscan_test/tem_input/ID3119_3.5_1.6_row11_col19.inp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Scripts/2dscan_test/tem_input/ID3119_3.7_-0.6_row12_col8.inp" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/2dscan_test/tem_input/ID3119_3.7_-0.6_row12_col8.inp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Scripts/old files/New bash for opt/tem/TS.gjf" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/old files/New bash for opt/tem/TS.gjf" afterDir="false" />
-    </list>
+    <list default="true" id="0421277f-b3cd-4809-a9ac-ca0555b51e5d" name="Changes" comment="Reshape" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -56,11 +47,11 @@
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\spectra" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\calculate\github\chemlab\scripts\1d_scan" />
       <recent name="D:\calculate\github\chemlab\Scripts" />
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\Bash for opt" />
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\ECD\ZY20231010" />
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\article" />
-      <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\Numercial calculation" />
     </key>
   </component>
   <component name="RunManager" selected="Python.HF">
@@ -230,7 +221,14 @@
       <option name="project" value="LOCAL" />
       <updated>1760465307817</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Reshape">
+      <created>1760465707789</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1760465707789</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -302,7 +300,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="fix bug" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix bug" />
+    <MESSAGE value="Reshape" />
+    <option name="LAST_COMMIT_MESSAGE" value="Reshape" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
