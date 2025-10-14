@@ -179,6 +179,7 @@ class DIPOLE(complex_unit_type):
         self.DICT = {
             "Debye": 1.0,            # treat Debye as canonical for convenience
             "e*bohr": 1.0 / 0.20819434,
+            "au" : 1.0 / 0.20819434,
             "e*ang":  1.0 / 0.393430307,
             "C*m":    1.0 / 3.33564e-30,
         }
