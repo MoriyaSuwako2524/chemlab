@@ -330,7 +330,7 @@ class qchem_out_excite_multi(qchem_out_multi):
         if unit == "au":
             unit = ["e", "bohr"]
         transmom = DIPOLE(transmom, charge_unit="e", distance_unit="bohr").convert_to(
-            {"charge_unit": (unit[0], 1), "distance_unit": (unit[1], 1)})
+            {"charge": (unit[0], 1), "distance": (unit[1], 1)})
         np.save(f"{prefix}{state_idx}_transmom.npy", transmom)
         return transmom
     def export_dipolemom(self, prefix="", unit="au", state_idx=0):
@@ -347,7 +347,7 @@ class qchem_out_excite_multi(qchem_out_multi):
         if unit == "au":
             unit = ["e","bohr"]
         dipolemom = DIPOLE(dipolemom, charge_unit="e", distance_unit="bohr").convert_to(
-        {"charge_unit": (unit[0], 1), "distance_unit": (unit[1], 1)})
+        {"charge": (unit[0], 1), "distance": (unit[1], 1)})
         np.save(f"{prefix}_dipolemom.npy", dipolemom)
         return dipolemom
 
