@@ -1,3 +1,0 @@
-! B2PLYP def2-TZVP def2/J def2-TZVP/C RIJCOSX tightSCF noautostart miniprint nopop Opt NumFreq
-%maxcore 6000
-%pal nprocs 16 end

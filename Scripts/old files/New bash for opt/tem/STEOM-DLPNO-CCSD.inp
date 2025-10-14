@@ -1,7 +1,0 @@
-! PWPB95 D3 def2-QZVPP def2/J def2-QZVPP/C RIJCOSX tightSCF noautostart miniprint nopop
-%maxcore 6000
-%pal nprocs 16 end
-%cpcm 
-smd true        
-SMDsolvent "tetrahydrofuran" 
-end

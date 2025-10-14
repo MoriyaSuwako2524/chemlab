@@ -1,4 +1,0 @@
-
-%mem=16GB
-%nprocshared=16
-#opt=(modredundant,loose) scrf=(solvent=tetrahydrofuran) nosymm UM062X def2SVP guess=(mix,always)

@@ -2,10 +2,14 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="0421277f-b3cd-4809-a9ac-ca0555b51e5d" name="Changes" comment="fix bug">
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/_2025_9_22_20_49___Changes_.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/在进行更新之前于_2025_9_22_20_49_取消提交了更改_[Changes]/shelved.patch" beforeDir="false" />
+      <change afterPath="$PROJECT_DIR$/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/util/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/util/file_system.py" beforeDir="false" afterPath="$PROJECT_DIR$/util/file_system.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Scripts/2dscan_test/bash_script/1a.inp" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/2dscan_test/bash_script/1a.inp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Scripts/2dscan_test/tem_input/ID3119_1.9_1.6_row3_col19.inp" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/2dscan_test/tem_input/ID3119_1.9_1.6_row3_col19.inp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Scripts/2dscan_test/tem_input/ID3119_3.5_1.6_row11_col19.inp" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/2dscan_test/tem_input/ID3119_3.5_1.6_row11_col19.inp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Scripts/2dscan_test/tem_input/ID3119_3.7_-0.6_row12_col8.inp" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/2dscan_test/tem_input/ID3119_3.7_-0.6_row12_col8.inp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Scripts/old files/New bash for opt/tem/TS.gjf" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/old files/New bash for opt/tem/TS.gjf" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -34,22 +38,22 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "last_opened_file_path": "D:/calculate/chemlab/util",
-    "run.code.analysis.last.selected.profile": "aDefault",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/calculate/github/chemlab&quot;,
+    &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="D:\calculate\chemlab\util" />
-      <recent name="D:\calculate\chemlab" />
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\Bash for opt" />
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\ECD" />
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\Numercial calculation" />
+      <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\New bash for opt" />
+      <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\spectra" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="D:\calculate\github\chemlab\Scripts" />
@@ -59,7 +63,7 @@
       <recent name="D:\calculate\github\chemlab\Theoretical Chemistry\Numercial calculation" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.modify_inp">
+  <component name="RunManager" selected="Python.HF">
     <configuration name="ECDoriginate (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="chemlab" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -81,6 +85,27 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="ECDoriginate" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="chemlab" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/Theoretical Chemistry/ECD" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="D:\calculate\github\chemlab\Theoretical Chemistry\ECD\ZY20231010\ECDoriginate.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="HF" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="chemlab" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -94,27 +119,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Theoretical Chemistry/HF.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="modify_inp" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="chemlab" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/modify_inp.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -167,11 +171,11 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.modify_inp" />
         <item itemvalue="Python.HF" />
         <item itemvalue="Python.transform_xyz_to_gjf" />
         <item itemvalue="Python.ECDoriginate (1)" />
         <item itemvalue="Python.spectra" />
+        <item itemvalue="Python.ECDoriginate" />
       </list>
     </recent_temporary>
   </component>
@@ -220,41 +224,13 @@
       <updated>1694160767074</updated>
     </task>
     <task id="LOCAL-00006" summary="fix bug">
-      <created>1758566371408</created>
+      <created>1760465307817</created>
       <option name="number" value="00006" />
       <option name="presentableId" value="LOCAL-00006" />
       <option name="project" value="LOCAL" />
-      <updated>1758566371408</updated>
+      <updated>1760465307817</updated>
     </task>
-    <task id="LOCAL-00007" summary="fix bug">
-      <created>1758566380842</created>
-      <option name="number" value="00007" />
-      <option name="presentableId" value="LOCAL-00007" />
-      <option name="project" value="LOCAL" />
-      <updated>1758566380842</updated>
-    </task>
-    <task id="LOCAL-00008" summary="fix bug">
-      <created>1758576991091</created>
-      <option name="number" value="00008" />
-      <option name="presentableId" value="LOCAL-00008" />
-      <option name="project" value="LOCAL" />
-      <updated>1758576991091</updated>
-    </task>
-    <task id="LOCAL-00009" summary="fix bug">
-      <created>1758577818780</created>
-      <option name="number" value="00009" />
-      <option name="presentableId" value="LOCAL-00009" />
-      <option name="project" value="LOCAL" />
-      <updated>1758577818780</updated>
-    </task>
-    <task id="LOCAL-00010" summary="fix bug">
-      <created>1759266156432</created>
-      <option name="number" value="00010" />
-      <option name="presentableId" value="LOCAL-00010" />
-      <option name="project" value="LOCAL" />
-      <updated>1759266156432</updated>
-    </task>
-    <option name="localTasksCounter" value="11" />
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">

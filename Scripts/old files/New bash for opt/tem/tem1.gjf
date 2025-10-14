@@ -1,4 +1,0 @@
-
-%mem=16GB
-%nprocshared=16
-# scrf=(SMD,solvent=methanol) TD(nstates=50) b3lyp/6-311g(d,p)

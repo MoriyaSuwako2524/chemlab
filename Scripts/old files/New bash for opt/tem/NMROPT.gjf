@@ -1,4 +1,0 @@
-
-%mem=16GB
-%nprocshared=16
-# opt b3lyp/6-311+g(2d,p) nosymm fre
