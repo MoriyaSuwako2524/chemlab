@@ -1085,6 +1085,7 @@ class qchem_out_excite(qchem_out):
             if "SCF   energy" in ln:
                 gs.total_energy = float(ln.split("=")[-1])
                 break
+        for ln in lines:
             if "Dipole Moment (Debye)" in ln:
                 dipole_find = True
                 continue
@@ -1093,6 +1094,7 @@ class qchem_out_excite(qchem_out):
                 tx, ty, tz = float(dipoles[0]), float(dipoles[2]), float(dipoles[4])
                 gs.dipole_mom = (tx, ty, tz)
                 dipole_find = False
+                break
         self.states.append(gs)
 
 
