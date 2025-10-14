@@ -1035,6 +1035,7 @@ class ExcitedState:
         self.excitation_energy = None   # eV
         self.total_energy = None        # Hartree
         self.osc_strength = None
+        self.dipole_mom = None
         self.trans_mom = None           # (Tx, Ty, Tz)
         self.trans_mom_norm = None      # |T|
         self.transitions = []           # list of dict: {"from":..,"to":..,"amplitude":..}
@@ -1079,10 +1080,18 @@ class qchem_out_excite(qchem_out):
                 break
 
         gs = ExcitedState(0, charge, multiplicity)
+        dipole_find = False
         for ln in lines:
             if "SCF   energy" in ln:
                 gs.total_energy = float(ln.split("=")[-1])
                 break
+            if "Dipole Moment (Debye)" in ln:
+                dipole_find = True
+            if dipole_find:
+                dipoles = ln.split()
+                tx, ty, tz = float(dipoles[0]), float(dipoles[2]), float(dipoles[4])
+                gs.dipole_mom = (tx, ty, tz)
+                dipole_find = False
         self.states.append(gs)
 
 

@@ -90,7 +90,8 @@ class scan_2d(object):
 
     # Plot the 2D energy scan with optional minimax path overlay
     def plot_2d_scan(self, array, path=None, max_ene=None):
-
+        row_start = self.row_start
+        col_start = self.col_start
         plt.imshow(array, cmap="GnBu")
         for row in range(self.row_max):
             for col in range(self.col_max):
