@@ -405,10 +405,10 @@ class qchem_out_excite_multi(qchem_out_multi):
         Register the built-in exporters.
         """
         self.register_exporter("coords", self.export_coords)
-        self.register_exporter("energy", self.export_energy)
+        self.register_exporter("energy", self.export_gs_energy)
         self.register_exporter("ex_energy", self.export_ex_energy)
-        self.register_exporter("gradient", self.export_gradient)
-        self.register_exporter("force", self.export_force)
+        self.register_exporter("gradient", self.export_gradients)
+        self.register_exporter("force", self.export_forces)
         self.register_exporter("transmom", self.export_transmom)
         self.register_exporter("dipolemom", self.export_dipolemom)
 
