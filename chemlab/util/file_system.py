@@ -1087,9 +1087,9 @@ class qchem_out_excite(qchem_out):
                 break
             if "Dipole Moment (Debye)" in ln:
                 dipole_find = True
+                continue
             if dipole_find:
                 dipoles = ln.split()
-                print(ln)
                 tx, ty, tz = float(dipoles[0]), float(dipoles[2]), float(dipoles[4])
                 gs.dipole_mom = (tx, ty, tz)
                 dipole_find = False
