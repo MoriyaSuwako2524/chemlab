@@ -339,8 +339,8 @@ class qchem_out_excite_multi(qchem_out_multi):
         """
         from .unit import DIPOLE
         dipolemom = self.export_attr(
-            extractor=lambda st, task: np.array(st.trans_mom, dtype=float)
-            if st.trans_mom is not None else None,
+            extractor=lambda st, task: np.array(st.dipole_mom, dtype=float)
+            if st.dipole_mom is not None else None,
             shape_func=lambda natoms, nframes: (nframes, 3),
             state_idx=state_idx,
         )
