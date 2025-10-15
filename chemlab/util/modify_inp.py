@@ -54,7 +54,7 @@ class conver_opt_out_to_inp(object):
             inp_filename = new_inp_file_name
         inp = single_spin_job()
         inp.spin = opt.spin
-        int.charge = opt.charge
+        inp.charge = opt.charge
         inp._xyz.carti = opt.final_geom
         inp.generate_outputs(inp_filename)
 
