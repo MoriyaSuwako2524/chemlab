@@ -37,7 +37,7 @@ class conver_opt_out_to_inp(object):
     def __init__(self):
         self.out_job_name = ""
         self.inp_file_name = ""
-        self.ref_file_name = ""
+        self.ref_name = ""
     def convert(self,new_out_file_name="",new_inp_file_name=""):
         opt = qchem_out_opt()
         if new_out_file_name == "":
@@ -56,6 +56,7 @@ class conver_opt_out_to_inp(object):
         inp.spin = opt.spin
         inp.charge = opt.charge
         inp._xyz.carti = opt.final_geom
+        inp.ref_name = self.ref_name
         inp.generate_outputs(inp_filename)
 
 
