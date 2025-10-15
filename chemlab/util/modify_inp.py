@@ -52,20 +52,20 @@ class conver_opt_out_to_inp(object):
                 inp_filename = f"{filename[:-4]}.inp"
         else:
             inp_filename = new_inp_file_name
-        inp = qchem_file()
-        inp.molecule.check = True
-        inp.read_from_file(self.ref_file_name)
-        molecule_carti = opt.final_geom
-        inp.molecule.carti = molecule_carti
-        inp.generate_inp(inp_filename)
+        inp = single_spin_job()
+        inp.spin = opt.spin
+        int.charge = opt.charge
+        inp._xyz.carti = opt.final_geom
+        inp.generate_outputs(inp_filename)
 
 
 class base_job(object):
     def __init__(self):
         self.charge = -100
-        self.ref_name = ""
-        self.xyz_name = ""
+        self.ref_name = None
+        self.xyz_name = None
         self.xyz_check = True
+        self._xyz = molecule()
         self.check_list = check_list()
         self.spin = 1
 
@@ -86,7 +86,10 @@ class base_job(object):
     def _prepare_ref(self):
         """Prepare reference input file with updated geometry/charge."""
         ref = self.ref
-        xyz = self.xyz
+        if self.xyz_name:
+            xyz = self.xyz
+        else:
+            xyz = self._xyz
         ref.jobs[0].molecule.carti = xyz.carti
         ref.jobs[0].molecule.read = False
         if self.charge > -50:
@@ -122,7 +125,6 @@ class single_spin_job(base_job):
     def generate_outputs(self, new_file_name=""):
         filename = self.xyz_name if new_file_name == "" else new_file_name
         ref = self._prepare_ref()
-
         ref.jobs[0].molecule.multistate = self.spin
         file_name = f"{filename[:-4]}.inp"
         ref.generate_inp(file_name)

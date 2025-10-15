@@ -571,6 +571,8 @@ class qchem_out:
         self.ene = None
         self.wall_time = None
         self.cpu_time = None
+        self.spin = 1
+        self.charge = 0
 
     def read_file(self, filename=None, text=None):
         if filename:
@@ -579,6 +581,7 @@ class qchem_out:
             self.text = text
         else:
             self.text = open(self.filename, "r").read()
+        self._parse_charge_and_spin()
         self.parse()
 
     def parse(self):
@@ -614,6 +617,16 @@ class qchem_out:
     @property
     def final_ene(self):
         return self.geoms[-1].energy if self.geoms else None
+    def _parse_charge_and_spin(self):
+        lines = self.text.splitlines()
+        for i, line in enumerate(lines):
+            if line.strip().lower().startswith("$molecule"):
+                next_line = lines[i + 1].strip()
+                charge, spin = map(int, next_line.split()[:2])
+                self.charge  = charge
+                self.spin = spin
+                return charge, spin
+        raise ValueError("No '$molecule' section found or missing charge/spin line.")
 
 class qchem_out_opt(qchem_out):
     def __init__(self, filename=""):
