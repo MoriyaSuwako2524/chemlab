@@ -654,7 +654,7 @@ class qchem_out_opt(qchem_out):
 
     def _parse_geom(self, lines, marker):
         carti = []
-        start = lines.index(marker) + 2
+        start = lines.index(marker) + 3
         for line in lines[start:]:
             parts = line.split()
             if len(parts) == 5:
