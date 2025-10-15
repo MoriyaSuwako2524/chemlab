@@ -45,8 +45,11 @@ class conver_opt_out_to_inp(object):
         else:
             filename = new_out_file_name
         opt.read_file(filename)
-        if new_out_file_name == "":
-            inp_filename = self.inp_file_name
+        if new_inp_file_name == "":
+            if self.inp_file_name != "":
+                inp_filename = self.inp_file_name
+            else:
+                inp_filename = f"{filename[:-4]}.inp"
         else:
             inp_filename = new_inp_file_name
         inp = qchem_file()
