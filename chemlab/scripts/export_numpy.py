@@ -55,7 +55,26 @@ def main():
     ex_energy = np.concatenate(all_ex_energy, axis=0)   # eV
     grad = np.concatenate(all_grad, axis=0)             
     force = np.concatenate(all_force, axis=0)           
-    transmom = np.concatenate(all_transmom, axis=0)     
+    transmom = np.concatenate(all_transmom, axis=0)
+    ref_mom = transmom[0]
+    ref_norm = np.linalg.norm(ref_mom)
+
+    if ref_norm == 0:
+        raise ValueError("Reference dipole moment is zero; cannot determine direction alignment.")
+
+    aligned_mom = []
+    for mom in transmom:
+        dot = np.dot(ref_mom, mom)
+        mom_norm = np.linalg.norm(mom)
+        if mom_norm == 0:
+            aligned_mom.append(mom)
+            continue
+        cos_val = dot / (ref_norm * mom_norm)
+
+        if cos_val < 0:
+            mom = -mom
+        aligned_mom.append(mom)
+    transmom_aligned = np.array(aligned_mom)
 
     prefix = "./full_"
     np.save(prefix + "coord.npy", coords)
@@ -63,7 +82,7 @@ def main():
     np.save(prefix + "ex_energy.npy", ex_energy)
     np.save(prefix + "grad.npy", grad)
     np.save(prefix + "force.npy", force)
-    np.save(prefix + "transmom.npy", transmom)
+    np.save(prefix + "transmom.npy", transmom_aligned)
     np.save(prefix + "qm_type.npy", qm_type)
     np.savez(prefix + "split.npz", **split_idx)
 
@@ -73,7 +92,7 @@ def main():
     print("   ex_energy:", ex_energy.shape)
     print("   grad:", grad.shape)
     print("   force:", force.shape)
-    print("   transmom:", transmom.shape)
+    print("   transmom:", transmom_aligned.shape)
     print("   qm_type:", qm_type.shape)
     print("   split:", split_idx)
 
