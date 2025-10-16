@@ -297,7 +297,7 @@ class qchem_out_excite_multi(qchem_out_multi):
 
         return arr
 
-    def export_gs_energy(self, prefix="gs", energy_unit="kcal", state_idx=0):
+    def export_gs_energy(self, prefix="gs", energy_unit="kcal", state_idx=0,np_save=False):
         """
         Export total energy for each frame.
         """
@@ -310,7 +310,7 @@ class qchem_out_excite_multi(qchem_out_multi):
         np.save(f"{prefix}_energies.npy", energies)
         return energies
 
-    def export_ex_energy(self, prefix="ex", energy_unit="kcal", state_idx=1):
+    def export_ex_energy(self, prefix="ex", energy_unit="kcal", state_idx=1,np_save=False):
         """
         Export excitation energy for each frame.
         """
@@ -320,9 +320,10 @@ class qchem_out_excite_multi(qchem_out_multi):
             state_idx=state_idx,
         )
         ex_energies = ENERGY(ex_energies, "hartree").convert_to(energy_unit)
-        np.save(f"{prefix}{state_idx}_energies.npy", ex_energies)
+        if np_save:
+            np.save(f"{prefix}{state_idx}_energies.npy", ex_energies)
         return ex_energies
-    def export_transmom(self, prefix="S", unit="au", state_idx=1):
+    def export_transmom(self, prefix="S", unit="au", state_idx=1,np_save=False):
         """
         Export transition dipole moment vectors for each frame.
         """
@@ -337,9 +338,10 @@ class qchem_out_excite_multi(qchem_out_multi):
             unit = ["e", "bohr"]
         transmom = DIPOLE(transmom, charge_unit="e", distance_unit="bohr").convert_to(
             {"charge": (unit[0], 1), "distance": (unit[1], 1)})
-        np.save(f"{prefix}{state_idx}_transmom.npy", transmom)
+        if np_save:
+            np.save(f"{prefix}{state_idx}_transmom.npy", transmom)
         return transmom
-    def export_dipolemom(self, prefix="", unit="au", state_idx=0):
+    def export_dipolemom(self, prefix="", unit="au", state_idx=0,np_save=False):
         """
         Export ground state dipole moment vectors for each frame.
         """
@@ -354,19 +356,21 @@ class qchem_out_excite_multi(qchem_out_multi):
             unit = ["e","bohr"]
         dipolemom = DIPOLE(dipolemom, charge_unit="e", distance_unit="bohr").convert_to(
         {"charge": (unit[0], 1), "distance": (unit[1], 1)})
-        np.save(f"{prefix}_dipolemom.npy", dipolemom)
+        if np_save:
+            np.save(f"{prefix}_dipolemom.npy", dipolemom)
         return dipolemom
 
-    def export_coords(self, prefix="", distance_unit="ang"):
+    def export_coords(self, prefix="", distance_unit="ang",np_save=False):
         """
         Export molecular Cartesian coordinates for each frame.
         """
         from .unit import DISTANCE
         coords = np.array([np.array(t.molecule.carti)[:, 1:].astype(float) for t in self.tasks])
         coords = DISTANCE(coords, "ang").convert_to(distance_unit)
-        np.save(f"{prefix}_coord.npy", coords)
+        if np_save:
+            np.save(f"{prefix}_coord.npy", coords)
         return coords
-    def export_forces(self, prefix="", grad_unit=("hartree", "bohr"),state_idx=1):
+    def export_forces(self, prefix="", grad_unit=("hartree", "bohr"),state_idx=1,np_save=False):
         """
         Export Forces of state_idx state energy for each frame.
         """
@@ -381,10 +385,11 @@ class qchem_out_excite_multi(qchem_out_multi):
         forces = FORCE(gradients, energy_unit="hartree", distance_unit="bohr").convert_to(
         {"energy": (grad_unit[0], 1), "distance": (grad_unit[1], -1)}
     )
-        np.save(f"{prefix}_forces.npy", forces)
+        if np_save:
+            np.save(f"{prefix}_forces.npy", forces)
         return forces
 
-    def export_gradients(self, prefix="", grad_unit=("hartree", "bohr"),state_idx=1):
+    def export_gradients(self, prefix="", grad_unit=("hartree", "bohr"),state_idx=1,np_save=False):
         """
          Export gradients of state_idx state energy for each frame.
          """
@@ -399,7 +404,8 @@ class qchem_out_excite_multi(qchem_out_multi):
         gradients = GRADIENT(gradients, energy_unit="hartree", distance_unit="bohr").convert_to(
         {"energy": (grad_unit[0], 1), "distance": (grad_unit[1], -1)}
     )
-        np.save(f"{prefix}_gradients.npy", gradients)
+        if np_save:
+            np.save(f"{prefix}_gradients.npy", gradients)
         return gradients
 
     def register_exporter(self, name, func):
