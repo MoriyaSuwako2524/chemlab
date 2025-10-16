@@ -44,7 +44,7 @@ def main():
         all_grad.append(grad)
         all_force.append(force)
         all_transmom.append(transmom)
-	all_dipolemom.append(dipolemom)
+        all_dipolemom.append(dipolemom)
 
         split_idx[f"idx_{grp}"] = np.arange(idx_offset, idx_offset + len(files))
         idx_offset += len(files)
