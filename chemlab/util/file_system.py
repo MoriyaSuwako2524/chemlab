@@ -1065,11 +1065,12 @@ class ExcitedState:
 
 
 class qchem_out_excite(qchem_out):
-    def __init__(self, filename=""):
+    def __init__(self, filename="",read_esp=False):
         super().__init__(filename)
         self.states = []  # list of ExcitedState
+        self.read_esp = read_esp
 
-    def parse(self,read_esp=False):
+    def parse(self):
         lines = self.text.splitlines()
         charge, multiplicity = None, None
         carti = []
