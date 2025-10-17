@@ -1053,6 +1053,8 @@ class ExcitedState:
         self.trans_mom_norm = None      # |T|
         self.transitions = []           # list of dict: {"from":..,"to":..,"amplitude":..}
         self.gradient = None            # (Natom, 3)
+        self.esp_transition_charges = None
+        self.esp_charges = None
 
     def __repr__(self):
         e_ev = f"{self.excitation_energy:.3f}" if self.excitation_energy is not None else "N/A"
@@ -1067,7 +1069,7 @@ class qchem_out_excite(qchem_out):
         super().__init__(filename)
         self.states = []  # list of ExcitedState
 
-    def parse(self):
+    def parse(self,read_esp=False):
         lines = self.text.splitlines()
         charge, multiplicity = None, None
         carti = []
@@ -1171,7 +1173,8 @@ class qchem_out_excite(qchem_out):
                 block = "\n".join(lines[i:j + 1])
                 self._parse_gradient_block(block, current_state)
                 current_state = None  # reset
-
+        if read_esp:
+            self._parse_esp_blocks(lines)
         if self.states:
             self.ene = self.states[-1].total_energy
 
@@ -1195,6 +1198,34 @@ class qchem_out_excite(qchem_out):
                     if st.state_idx == st_idx:
                         st.gradient = grad.T  # (Natoms, 3)
                         break
+    def _parse_esp_blocks(self, lines):
+        text = "\n".join(lines)
+        # --- ESP charges for excited states ---
+        m1 = re.search(r"ESP charges for excited states(.+?)ESP charges for transition densities", text, re.S)
+        m2 = re.search(r"ESP charges for transition densities(.+?)(?:\Z|\n\s*\n)", text, re.S)
+        if not (m1 and m2):
+            return
+
+        block_excited = m1.group(1)
+        block_transition = m2.group(1)
+
+        def parse_esp_block(block):
+            rows = []
+            for ln in block.splitlines():
+                if re.match(r"\s*\d+", ln):
+                    nums = re.findall(r"[-+]?\d*\.\d+|\d+", ln)
+                    if len(nums) > 1:
+                        rows.append([float(x) for x in nums[1:]])  # skip atom index
+            return np.array(rows).T  # (n_state, n_atom)
+
+        esp_excited = parse_esp_block(block_excited)
+        esp_trans = parse_esp_block(block_transition)
+
+        # Assign per-state
+        n_states = min(len(self.states) - 1, esp_excited.shape[0])
+        for i in range(n_states):
+            self.states[i + 1].esp_charges = esp_excited[i]
+            self.states[i + 1].esp_transition_charges = esp_trans[i]
     def summary(self):
         print(f"解析到 {len(self.states)} 个态 (含基态)")
         for st in self.states:
