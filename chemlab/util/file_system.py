@@ -1209,10 +1209,12 @@ class qchem_out_excite(qchem_out):
 
         block_excited = m1.group(1)
         block_transition = m2.group(1)
-        print(block_excited.splitlines()[2:])
+        print(block_transition.splitlines()[2:])
         def parse_esp_block(block):
             rows = []
             for ln in block.splitlines()[2:]:
+                if "---" in ln:
+                    break
                 if re.match(r"\s*\d+", ln):
                     nums = re.findall(r"[-+]?\d*\.\d+|\d+", ln)
                     if len(nums) > 1:
