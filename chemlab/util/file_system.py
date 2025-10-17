@@ -1212,7 +1212,7 @@ class qchem_out_excite(qchem_out):
         print(block_excited.splitlines()[1:])
         def parse_esp_block(block):
             rows = []
-            for ln in block.splitlines()[1:]:
+            for ln in block.splitlines()[2:]:
                 if re.match(r"\s*\d+", ln):
                     nums = re.findall(r"[-+]?\d*\.\d+|\d+", ln)
                     if len(nums) > 1:
