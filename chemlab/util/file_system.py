@@ -1209,7 +1209,7 @@ class qchem_out_excite(qchem_out):
 
         block_excited = m1.group(1)
         block_transition = m2.group(1)
-        print(block_excited.splitlines()[1:])
+        print(block_excited.splitlines()[2:])
         def parse_esp_block(block):
             rows = []
             for ln in block.splitlines()[2:]:
