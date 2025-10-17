@@ -1211,15 +1211,39 @@ class qchem_out_excite(qchem_out):
         block_transition = m2.group(1)
         print(block_transition.splitlines()[2:])
         def parse_esp_block(block):
-            rows = []
-            for ln in block.splitlines()[2:]:
-                if "---" in ln:
-                    break
-                if re.match(r"\s*\d+", ln):
-                    nums = re.findall(r"[-+]?\d*\.\d+|\d+", ln)
-                    if len(nums) > 1:
-                        rows.append([float(x) for x in nums[1:]])  # skip atom index
-            return np.array(rows).T  # (n_state, n_atom)
+            """
+            Parse ESP charge tables for multiple excited states (possibly split into several sub-tables).
+            Returns array of shape (n_state, n_atom)
+            """
+            lines = block.strip().splitlines()
+            data_dict = {}  # atom_idx -> accumulated ESP charges
+            current_cols = []
+
+            for ln in lines:
+                # Header line (e.g. '1  2  3  4  5  6')
+                if re.match(r"^\s*\d+(\s+\d+)+\s*$", ln):
+                    nums = [int(x) for x in re.findall(r"\d+", ln)]
+                    if all(n < 100 for n in nums):
+                        current_cols = nums
+                        continue
+
+                # Data line (starts with atom index)
+                m = re.match(r"\s*(\d+)\s+([-+0-9.Ee\s]+)", ln)
+                if m:
+                    atom_idx = int(m.group(1))
+                    vals = [float(x) for x in re.findall(r"[-+]?\d*\.\d+(?:[Ee][-+]?\d+)?", ln)]
+                    if len(vals) == len(current_cols):
+                        if atom_idx not in data_dict:
+                            data_dict[atom_idx] = []
+                        data_dict[atom_idx].extend(vals)
+
+            # Convert dict → array (n_state, n_atom)
+            n_atom = len(data_dict)
+            n_state = len(next(iter(data_dict.values())))
+            data = np.zeros((n_state, n_atom))
+            for i, atom_idx in enumerate(sorted(data_dict)):
+                data[:, i] = data_dict[atom_idx]
+            return data
 
         esp_excited = parse_esp_block(block_excited)
         esp_trans = parse_esp_block(block_transition)
