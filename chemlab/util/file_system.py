@@ -1174,7 +1174,7 @@ class qchem_out_excite(qchem_out):
                 block = "\n".join(lines[i:j + 1])
                 self._parse_gradient_block(block, current_state)
                 current_state = None  # reset
-        if read_esp:
+        if self.read_esp:
             self._parse_esp_blocks(lines)
         if self.states:
             self.ene = self.states[-1].total_energy
