@@ -1209,45 +1209,51 @@ class qchem_out_excite(qchem_out):
 
         block_excited = m1.group(1)
         block_transition = m2.group(1)
-        print(block_transition.splitlines()[2:])
+
         def parse_esp_block(block):
             """
-            Parse ESP charge tables for multiple excited states (possibly split into several sub-tables).
+            Parse possibly multi-part ESP block. Concatenate horizontally all sub-blocks.
             Returns array of shape (n_state, n_atom)
             """
             lines = block.strip().splitlines()
-            data_dict = {}  # atom_idx -> accumulated ESP charges
-            current_cols = []
+            subblocks = []
+            i = 0
+            while i < len(lines):
+                # find header line with state indices, e.g. "1 2 3 4 5 6"
+                if "---" in lines[i]:
+                    break
+                if re.match(r"^\s*\d+(\s+\d+)+\s*$", lines[i]):
+                    header_nums = [int(x) for x in re.findall(r"\d+", lines[i])]
+                    j = i + 1
+                    block_rows = []
+                    while j < len(lines):
+                        if "---" in lines[j]:
+                            break
+                        ln = lines[j]
+                        # next header or empty line terminates subblock
+                        if re.match(r"^\s*\d+(\s+\d+)+\s*$", ln) or not ln.strip():
 
-            for ln in lines:
-                # Header line (e.g. '1  2  3  4  5  6')
-                if re.match(r"^\s*\d+(\s+\d+)+\s*$", ln):
-                    nums = [int(x) for x in re.findall(r"\d+", ln)]
-                    if all(n < 100 for n in nums):
-                        current_cols = nums
-                        continue
+                            break
 
-                # Data line (starts with atom index)
-                m = re.match(r"\s*(\d+)\s+([-+0-9.Ee\s]+)", ln)
-                if m:
-                    atom_idx = int(m.group(1))
-                    vals = [float(x) for x in re.findall(r"[-+]?\d*\.\d+(?:[Ee][-+]?\d+)?", ln)]
-                    if len(vals) == len(current_cols):
-                        if atom_idx not in data_dict:
-                            data_dict[atom_idx] = []
-                        data_dict[atom_idx].extend(vals)
+                        parts = re.findall(r"[-+]?\d*\.\d+(?:[Ee][-+]?\d+)?", ln)
+                        if len(parts) == len(header_nums) :  # includes atom index
+                            block_rows.append([float(x) for x in parts[0:]])
 
-            # Convert dict → array (n_state, n_atom)
-            n_atom = len(data_dict)
-            n_state = len(next(iter(data_dict.values())))
-            data = np.zeros((n_state, n_atom))
-            for i, atom_idx in enumerate(sorted(data_dict)):
-                data[:, i] = data_dict[atom_idx]
-            return data
+                        j += 1
+                    if block_rows:
+                        subblocks.append(np.array(block_rows))  # shape (n_atom, n_substates)
+                    i = j
+                else:
+                    i += 1
+            #print(subblocks)
+            if not subblocks:
+                return np.zeros((0, 0))
+            # concatenate horizontally (same atoms, different states)
+            full = np.concatenate(subblocks, axis=1)  # (n_atom, n_total_state)
+            return full.T  # (n_state, n_atom)
 
         esp_excited = parse_esp_block(block_excited)
         esp_trans = parse_esp_block(block_transition)
-
         # Assign per-state
         n_states = min(len(self.states) - 1, esp_excited.shape[0])
         for i in range(n_states):
@@ -1257,3 +1263,4 @@ class qchem_out_excite(qchem_out):
         print(f"解析到 {len(self.states)} 个态 (含基态)")
         for st in self.states:
             print(st)
+
