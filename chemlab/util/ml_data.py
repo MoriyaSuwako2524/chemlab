@@ -154,7 +154,20 @@ class MLData:
 
         atoms_list = read(xyz, index=":")
         self.coords = np.array([a.positions for a in atoms_list])
-        self.energies = np.array([a.info.get("energy") for a in atoms_list])
+
+        for atoms in atoms_list:
+            info_keys = list(atoms.info.keys())
+            for i, key in enumerate(info_keys):
+                if "energy" in key:
+                    try:
+                        e = float(info_keys[i + 1])
+                        energies.append(e)
+                    except (IndexError, ValueError):
+                        energies.append(np.nan)
+                    break
+            else:
+                energies.append(np.nan)
+        self.energies = np.array(energies)
         self.qm_types = np.array(atoms_list[0].get_chemical_symbols())  # assume same atoms each frame
 
 '''
