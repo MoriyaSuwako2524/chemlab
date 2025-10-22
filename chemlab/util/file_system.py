@@ -1065,7 +1065,7 @@ class ExcitedState:
 
 
 class qchem_out_excite(qchem_out):
-    def __init__(self, filename="",read_esp=False):
+    def __init__(self, filename="",read_esp=True):
         super().__init__(filename)
         self.states = []  # list of ExcitedState
         self.read_esp = read_esp
