@@ -134,9 +134,8 @@ class MLData:
             if key not in split:
                 continue
             indices = split[key]
-            for i, idx in enumerate(indices, 1):
+            for i, idx in enumerate(indices, 0):
                 coords = self.coords[idx]
-                # 这里 types 不再按 idx 取，而是整个数组
                 types = self.qm_types  
                 natoms = len(types)
                 fname = f"{prefix}_{i:04d}.xyz"
