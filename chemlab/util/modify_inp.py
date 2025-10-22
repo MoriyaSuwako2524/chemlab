@@ -410,16 +410,16 @@ class qchem_out_excite_multi(qchem_out_multi):
     def export_transition_dentsity(self, prefix="S", unit="e", state_idx=1,np_save=False):
         from .unit import CHARGE
         transition_dentsity = self.export_attr(
-            extractor=lambda st, task: np.array(st.transition_dentsity, dtype=float)
+            extractor=lambda st, task: np.array(st.esp_trainsition_dentsity, dtype=float)
             if st.transition_dentsity is not None else None,
             shape_func=lambda natoms, nframes: (nframes, natoms),
             state_idx=state_idx,
         )
 
-        transmom = transition_dentsity
+        esp_trainsition_dentsity = transition_dentsity
         if np_save:
-            np.save(f"{prefix}{state_idx}_transmom.npy", transmom)
-        return transmom
+            np.save(f"{prefix}{state_idx}_esp_trainsition_dentsity.npy", esp_trainsition_dentsity)
+        return esp_trainsition_dentsity
     def register_exporter(self, name, func):
         """
         Register a new exporter.
