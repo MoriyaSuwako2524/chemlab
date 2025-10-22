@@ -151,7 +151,7 @@ class MLData:
     def read_xtb_traj_ase(self,xyz):
         from ase.io import read
 
-        atoms_list = read("traj.xyz", index=":")
+        atoms_list = read(xyz, index=":")
         self.coords = np.array([a.positions for a in atoms_list])
         self.energies = np.array([a.info.get("energy") for a in atoms_list])
         self.qm_types = np.array(atoms_list[0].get_chemical_symbols())  # assume same atoms each frame
