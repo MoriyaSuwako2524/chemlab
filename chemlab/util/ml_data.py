@@ -159,4 +159,4 @@ class MLData:
 '''
 Example:
 '''
-test = MLData("D:\calculate\github\chemlab\examples\rhodamin\\xtb.traj")
+#test = MLData("D:\calculate\github\chemlab\examples\rhodamin\\xtb.traj")
