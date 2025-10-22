@@ -19,21 +19,22 @@ def load_npy_files(prefix, files):
 
 
 class MLData:
-    def __init__(self, prefix="./", files=None, energy_key="energy"):
-        if files is None:
-            files = ["coord", "energy", "grad", "type"]
+    def __init__(self, prefix="./", files=["coord", "energy", "grad", "type"], energy_key="energy",type="npy"):
+        if type == "npy":
+            self.data = {f: np.load(prefix + f + ".npy", allow_pickle=True) for f in files}
 
-        self.data = {f: np.load(prefix + f + ".npy", allow_pickle=True) for f in files}
+            self.coords = self.data.get("coord", None)
+            self.energies = self.data.get(energy_key, None)
+            self.grads = self.data.get("grad", None)
+            self.qm_types = self.data.get("type", None)
 
-        self.coords = self.data.get("coord", None)
-        self.energies = self.data.get(energy_key, None)
-        self.grads = self.data.get("grad", None)
-        self.qm_types = self.data.get("type", None)
-
-        self.nframes = len(self.energies) if self.energies is not None else 0
-        print(f"Loaded dataset with {self.nframes} frames, "
-              f"{self.coords.shape[1] if self.coords is not None else '?'} atoms")
-
+            self.nframes = len(self.energies) if self.energies is not None else 0
+            print(f"Loaded dataset with {self.nframes} frames, "
+                  f"{self.coords.shape[1] if self.coords is not None else '?'} atoms")
+        elif type == "xyz":
+            read_xtb_traj_ase(prefix+"traj.xyz")
+            print(f"Loaded dataset with {self.nframes} frames, "
+                  f"{self.coords.shape[1] if self.coords is not None else '?'} atoms")
     def split_dataset(self, n_train, n_val, n_test, seed=42):
         """
         Energy-aware balanced split:
@@ -112,7 +113,7 @@ class MLData:
             else:
                 subset[k] = v
         return subset
-    def export_xyz_from_split(self, split_file, outdir="./xyz_export", prefix_map=None):
+    def export_xyz_from_split(self, split_file, outdir="./raw_data", prefix_map=None):
         import os
         if isinstance(split_file, str):
             split = np.load(split_file, allow_pickle=True)
@@ -147,4 +148,15 @@ class MLData:
                             sym = inv_dict.get(int(sym), str(sym))
                         f.write(f"{sym} {x:.8f} {y:.8f} {z:.8f}\n")
         print(f"XYZ files exported to {outdir}")
+    def read_xtb_traj_ase(self,xyz):
+        from ase.io import read
 
+        atoms_list = read("traj.xyz", index=":")
+        self.coords = np.array([a.positions for a in atoms_list])
+        self.energies = np.array([a.info.get("energy") for a in atoms_list])
+        self.qm_types = np.array(atoms_list[0].get_chemical_symbols())  # assume same atoms each frame
+
+'''
+Example:
+'''
+test = MLData("D:\calculate\github\chemlab\examples\rhodamin\\xtb.traj")
