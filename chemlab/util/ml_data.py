@@ -33,6 +33,7 @@ class MLData:
                   f"{self.coords.shape[1] if self.coords is not None else '?'} atoms")
         elif type == "xyz":
             self.read_xtb_traj_ase(prefix+"traj.xyz")
+            self.nframes = len(self.coords) if self.coords is not None else 0
             print(f"Loaded dataset with {self.nframes} frames, "
                   f"{self.coords.shape[1] if self.coords is not None else '?'} atoms")
     def split_dataset(self, n_train, n_val, n_test, seed=42):
