@@ -154,7 +154,7 @@ class MLData:
 
         atoms_list = read(xyz, index=":")
         self.coords = np.array([a.positions for a in atoms_list])
-
+        energies = []
         for atoms in atoms_list:
             info_keys = list(atoms.info.keys())
             for i, key in enumerate(info_keys):
