@@ -55,6 +55,7 @@ def main():
             "force": multi.export_forces(prefix=grp, grad_unit=force_unit, state_idx=state_idx),
             "transmom": multi.export_transmom(prefix=grp, unit="au", state_idx=state_idx),
             "dipolemom": multi.export_dipolemom(prefix=grp, unit="au", state_idx=0),
+            "transition_density": multi.export_dipolemom(prefix=grp, unit="e", state_idx=state_idx),
 	}
         # === Append arrays ===
         all_coords.append(results["coords"])
@@ -64,6 +65,7 @@ def main():
         all_force.append(results["force"])
         all_transmom.append(results["transmom"])
         all_dipolemom.append(results["dipolemom"])
+        all_transition_density.append(results["transition_density"])
 
         # === Atom types (from first file only) ===
         if qm_type is None:
@@ -83,6 +85,7 @@ def main():
     force = np.concatenate(all_force, axis=0)
     transmom = np.concatenate(all_transmom, axis=0)
     dipolemom = np.concatenate(all_dipolemom, axis=0)
+    transition_dentsity = np,concatenate(all_transition_density,axis=0)
 
     ref_mom = transmom[0]
     ref_norm = np.linalg.norm(ref_mom)
@@ -114,6 +117,7 @@ def main():
     np.save(prefix + "force.npy", force)
     np.save(prefix + "transmom.npy", transmom_aligned)
     np.save(prefix + "dipolemom.npy", dipolemom)
+    np.save(prefix + "transition_density", transition_dentsity)
     np.save(prefix + "qm_type.npy", qm_type)
     np.savez(prefix + "split.npz", **split_idx)
 
@@ -126,6 +130,7 @@ def main():
     print("   transmom:", transmom_aligned.shape)
     print("   dipolemom:", dipolemom.shape)
     print("   qm_type:", qm_type.shape)
+    print("transition_density:", transition_dentsity)
     print("   split:", {k: v.shape for k, v in split_idx.items()})
 
 

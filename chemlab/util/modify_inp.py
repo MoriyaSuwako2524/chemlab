@@ -408,7 +408,6 @@ class qchem_out_excite_multi(qchem_out_multi):
             np.save(f"{prefix}_gradients.npy", gradients)
         return gradients
     def export_transition_dentsity(self, prefix="S", unit="e", state_idx=1,np_save=False):
-        from .unit import CHARGE
         transition_dentsity = self.export_attr(
             extractor=lambda st, task: np.array(st.esp_trainsition_dentsity, dtype=float)
             if st.esp_trainsition_dentsity is not None else None,
