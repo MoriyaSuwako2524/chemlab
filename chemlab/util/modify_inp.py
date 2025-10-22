@@ -411,7 +411,7 @@ class qchem_out_excite_multi(qchem_out_multi):
         from .unit import CHARGE
         transition_dentsity = self.export_attr(
             extractor=lambda st, task: np.array(st.esp_trainsition_dentsity, dtype=float)
-            if st.transition_dentsity is not None else None,
+            if st.esp_trainsition_dentsity is not None else None,
             shape_func=lambda natoms, nframes: (nframes, natoms),
             state_idx=state_idx,
         )
