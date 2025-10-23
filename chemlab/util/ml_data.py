@@ -95,6 +95,63 @@ class MLData:
               f"(idx_train={len(split_dict['idx_train'])}, "
               f"idx_val={len(split_dict['idx_val'])}, "
               f"idx_test={len(split_dict['idx_test'])})")
+
+    def save_multiple_splits_same_test(self, train_sizes, n_val, n_test, prefix="./", seed=42):
+        """
+        Generate multiple dataset splits with the same test set.
+        Different train sizes but fixed test indices.
+
+        Parameters
+        ----------
+        train_sizes : list[int]
+            List of training set sizes to generate (e.g., [2000, 1000, 500, 250]).
+        n_val : int
+            Validation set size for all splits.
+        n_test : int
+            Fixed test set size (shared across all splits).
+        prefix : str
+            Output directory or filename prefix (e.g., "./" or "./phbdi_").
+        seed : int
+            Random seed for reproducibility.
+        """
+        rng = np.random.default_rng(seed)
+        n_total = self.nframes
+        all_indices = np.arange(n_total)
+
+        # Step 1: create fixed test set
+        idx_test = rng.choice(all_indices, size=n_test, replace=False)
+        remaining = np.setdiff1d(all_indices, idx_test)
+
+        print(f"Fixed test set selected: {len(idx_test)} samples.")
+
+        # Step 2: loop over multiple train sizes
+        for n_train in train_sizes:
+            # avoid exceeding remaining count
+            if n_train + n_val > len(remaining):
+                print(f"⚠️ Skipping n_train={n_train} (too large for available data)")
+                continue
+
+            # create new RNG for reproducibility per split (optional)
+            rng_split = np.random.default_rng(seed + n_train)
+
+            idx_train = rng_split.choice(remaining, size=n_train, replace=False)
+            idx_val_candidates = np.setdiff1d(remaining, idx_train)
+            idx_val = rng_split.choice(idx_val_candidates, size=n_val, replace=False)
+
+            # Step 3: save split
+            split_dict = {
+                "idx_train": idx_train,
+                "idx_val": idx_val,
+                "idx_test": idx_test,
+            }
+
+            out_file = os.path.join(prefix, f"{n_train}_split.npz")
+            np.savez(out_file, **split_dict)
+
+            print(
+                f"✅ Saved {out_file} "
+                f"(train={len(idx_train)}, val={len(idx_val)}, test={len(idx_test)})"
+            )
     def get_split_data(self, split, part="train"):
 
         if isinstance(split, str):
