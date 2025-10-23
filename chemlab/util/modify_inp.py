@@ -310,7 +310,7 @@ class qchem_out_excite_multi(qchem_out_multi):
         np.save(f"{prefix}_energies.npy", energies)
         return energies
 
-    def export_ex_energy(self, prefix="ex", energy_unit="kcal", state_idx=1,np_save=False):
+    def export_ex_energy(self, prefix="ex", energy_unit="ev", state_idx=1,np_save=False):
         """
         Export excitation energy for each frame.
         """

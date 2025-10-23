@@ -32,7 +32,7 @@ def main():
     split_idx = {}
     idx_offset = 0
 
-    all_coords, all_gs_energy, all_ex_energy = [], [], []
+    all_coords, all_gs_energy, all_ex_energy,all_ex_state_energy = [], [], [], []
     all_grad, all_force, all_transmom, all_dipolemom,all_transition_density = [], [], [], [] ,[]
     qm_type = None
 
@@ -51,6 +51,7 @@ def main():
             "coords": multi.export_coords(prefix=grp, distance_unit=distance_unit),
             "gs_energy": multi.export_gs_energy(prefix=grp, energy_unit=energy_unit, state_idx=0),
             "ex_energy": multi.export_ex_energy(prefix=grp, energy_unit=energy_unit, state_idx=state_idx),
+            "ex_state_energy": multi.export_gs_energy(prefix=grp, energy_unit=energy_unit, state_idx=state_idx),
             "grad": multi.export_gradients(prefix=grp, grad_unit=grad_unit, state_idx=state_idx),
             "force": multi.export_forces(prefix=grp, grad_unit=force_unit, state_idx=state_idx),
             "transmom": multi.export_transmom(prefix=grp, unit="au", state_idx=state_idx),
@@ -61,6 +62,7 @@ def main():
         all_coords.append(results["coords"])
         all_gs_energy.append(results["gs_energy"])
         all_ex_energy.append(results["ex_energy"])
+        all_ex_state_energy.append(results["ex_state_energy"])
         all_grad.append(results["grad"])
         all_force.append(results["force"])
         all_transmom.append(results["transmom"])
@@ -81,6 +83,7 @@ def main():
     coords = np.concatenate(all_coords, axis=0)
     gs_energy = np.concatenate(all_gs_energy, axis=0)
     ex_energy = np.concatenate(all_ex_energy, axis=0)
+    ex_state_energy = np.concatenate(all_ex_state_energy, axis=0)
     grad = np.concatenate(all_grad, axis=0)
     force = np.concatenate(all_force, axis=0)
     transmom = np.concatenate(all_transmom, axis=0)
@@ -113,6 +116,7 @@ def main():
     np.save(prefix + "coord.npy", coords)
     np.save(prefix + "gs_energy.npy", gs_energy)
     np.save(prefix + "ex_energy.npy", ex_energy)
+    np.save(prefix + "ex_state_energy.npy", ex_state_energy)
     np.save(prefix + "grad.npy", grad)
     np.save(prefix + "force.npy", force)
     np.save(prefix + "transmom.npy", transmom_aligned)
@@ -124,7 +128,8 @@ def main():
     print("\n? Export Completed Successfully")
     print("   coords:", coords.shape)
     print("   gs_energy:", gs_energy.shape)
-    print("   S1_energy:", ex_energy.shape)
+    print("   ex_energy:", ex_energy.shape)
+    print("   ex_state_energy:", ex_state_energy.shape)
     print("   grad:", grad.shape)
     print("   force:", force.shape)
     print("   transmom:", transmom_aligned.shape)
