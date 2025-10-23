@@ -33,7 +33,7 @@ def main():
     idx_offset = 0
 
     all_coords, all_gs_energy, all_ex_energy = [], [], []
-    all_grad, all_force, all_transmom, all_dipolemom = [], [], [], []
+    all_grad, all_force, all_transmom, all_dipolemom,all_transition_density = [], [], [], [] ,[]
     qm_type = None
 
     # ======== Process each subset ========
