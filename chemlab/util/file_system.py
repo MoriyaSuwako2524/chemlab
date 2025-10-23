@@ -1053,7 +1053,7 @@ class ExcitedState:
         self.trans_mom_norm = None      # |T|
         self.transitions = []           # list of dict: {"from":..,"to":..,"amplitude":..}
         self.gradient = None            # (Natom, 3)
-        self.esp_trainsition_dentsity = None
+        self.esp_transition_density = None
         self.esp_charges = None
 
     def __repr__(self):
@@ -1258,7 +1258,7 @@ class qchem_out_excite(qchem_out):
         n_states = min(len(self.states) - 1, esp_excited.shape[0])
         for i in range(n_states):
             self.states[i + 1].esp_charges = esp_excited[i]
-            self.states[i + 1].esp_trainsition_dentsity = esp_trans[i]
+            self.states[i + 1].esp_transition_density = esp_trans[i]
     def summary(self):
         print(f"解析到 {len(self.states)} 个态 (含基态)")
         for st in self.states:

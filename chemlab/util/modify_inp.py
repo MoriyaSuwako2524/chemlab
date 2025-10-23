@@ -407,18 +407,18 @@ class qchem_out_excite_multi(qchem_out_multi):
         if np_save:
             np.save(f"{prefix}_gradients.npy", gradients)
         return gradients
-    def export_transition_dentsity(self, prefix="S", unit="e", state_idx=1,np_save=False):
-        transition_dentsity = self.export_attr(
-            extractor=lambda st, task: np.array(st.esp_trainsition_dentsity, dtype=float)
-            if st.esp_trainsition_dentsity is not None else None,
+    def export_transition_density(self, prefix="S", unit="e", state_idx=1,np_save=False):
+        transition_density = self.export_attr(
+            extractor=lambda st, task: np.array(st.esp_transition_density, dtype=float)
+            if st.esp_transition_density is not None else None,
             shape_func=lambda natoms, nframes: (nframes, natoms),
             state_idx=state_idx,
         )
 
-        esp_trainsition_dentsity = transition_dentsity
+        esp_transition_density = transition_density
         if np_save:
-            np.save(f"{prefix}{state_idx}_esp_trainsition_dentsity.npy", esp_trainsition_dentsity)
-        return esp_trainsition_dentsity
+            np.save(f"{prefix}{state_idx}_esp_transition_density.npy", esp_transition_density)
+        return esp_transition_density
     def register_exporter(self, name, func):
         """
         Register a new exporter.
@@ -440,7 +440,7 @@ class qchem_out_excite_multi(qchem_out_multi):
         self.register_exporter("force", self.export_forces)
         self.register_exporter("transmom", self.export_transmom)
         self.register_exporter("dipolemom", self.export_dipolemom)
-        self.register_exporter("transition_dentsity",self.export_transition_dentsity)
+        self.register_exporter("transition_density",self.export_transition_density)
 
     def export_all(self, prefix="", **kwargs):
         """

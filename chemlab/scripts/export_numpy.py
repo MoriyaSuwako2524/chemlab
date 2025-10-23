@@ -55,7 +55,7 @@ def main():
             "force": multi.export_forces(prefix=grp, grad_unit=force_unit, state_idx=state_idx),
             "transmom": multi.export_transmom(prefix=grp, unit="au", state_idx=state_idx),
             "dipolemom": multi.export_dipolemom(prefix=grp, unit="au", state_idx=0),
-            "transition_density": multi.export_transition_dentsity(prefix=grp, unit="e", state_idx=state_idx),
+            "transition_density": multi.export_transition_density(prefix=grp, unit="e", state_idx=state_idx),
 	}
         # === Append arrays ===
         all_coords.append(results["coords"])
@@ -117,7 +117,7 @@ def main():
     np.save(prefix + "force.npy", force)
     np.save(prefix + "transmom.npy", transmom_aligned)
     np.save(prefix + "dipolemom.npy", dipolemom)
-    np.save(prefix + "transition_density", transition_dentsity)
+    np.save(prefix + "transition_density.npy", transition_dentsity)
     np.save(prefix + "qm_type.npy", qm_type)
     np.savez(prefix + "split.npz", **split_idx)
 
@@ -130,7 +130,7 @@ def main():
     print("   transmom:", transmom_aligned.shape)
     print("   dipolemom:", dipolemom.shape)
     print("   qm_type:", qm_type.shape)
-    print(" transition_density:", transition_dentsity)
+    print(" transition_density:", transition_dentsity.shape)
     print("   split:", {k: v.shape for k, v in split_idx.items()})
 
 
