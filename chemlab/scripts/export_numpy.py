@@ -13,6 +13,7 @@ def main():
     prefix = "./full_"             # Output file prefix
     state_idx = 1                  # Excited state index (e.g. S1)
     energy_unit = "kcal/mol"       # Energy output unit
+    ex_energy_unit = "ev"
     distance_unit = "ang"          # Coordinate output unit
     grad_unit = ("kcal/mol", "ang")  # For gradient conversion
     force_unit = ("kcal/mol", "ang") # For force conversion
@@ -50,7 +51,7 @@ def main():
         results = {
             "coords": multi.export_coords(prefix=grp, distance_unit=distance_unit),
             "gs_energy": multi.export_gs_energy(prefix=grp, energy_unit=energy_unit, state_idx=0),
-            "ex_energy": multi.export_ex_energy(prefix=grp, energy_unit=energy_unit, state_idx=state_idx),
+            "ex_energy": multi.export_ex_energy(prefix=grp, energy_unit=ex_energy_unit, state_idx=state_idx),
             "ex_state_energy": multi.export_gs_energy(prefix=grp, energy_unit=energy_unit, state_idx=state_idx),
             "grad": multi.export_gradients(prefix=grp, grad_unit=grad_unit, state_idx=state_idx),
             "force": multi.export_forces(prefix=grp, grad_unit=force_unit, state_idx=state_idx),

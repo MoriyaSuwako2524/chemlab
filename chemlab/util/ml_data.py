@@ -19,14 +19,14 @@ def load_npy_files(prefix, files):
 
 
 class MLData:
-    def __init__(self, prefix="./", files=["coord", "energy", "grad", "type"], energy_key="energy",type="npy"):
+    def __init__(self, prefix="./", files=["coord", "energy", "grad", "type"], energy_key="energy", qm_types_key="type", coords_key="coord",grad_key = "grad",type="npy"):
         if type == "npy":
             self.data = {f: np.load(prefix + f + ".npy", allow_pickle=True) for f in files}
 
-            self.coords = self.data.get("coord", None)
+            self.coords = self.data.get(coords_key, None)
             self.energies = self.data.get(energy_key, None)
-            self.grads = self.data.get("grad", None)
-            self.qm_types = self.data.get("type", None)
+            self.grads = self.data.get(grad_key, None)
+            self.qm_types = self.data.get(qm_types_key, None)
 
             self.nframes = len(self.energies) if self.energies is not None else 0
             print(f"Loaded dataset with {self.nframes} frames, "
