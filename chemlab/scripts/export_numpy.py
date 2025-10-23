@@ -85,7 +85,7 @@ def main():
     force = np.concatenate(all_force, axis=0)
     transmom = np.concatenate(all_transmom, axis=0)
     dipolemom = np.concatenate(all_dipolemom, axis=0)
-    transition_dentsity = np,concatenate(all_transition_density,axis=0)
+    transition_dentsity = np.concatenate(all_transition_density,axis=0)
 
     ref_mom = transmom[0]
     ref_norm = np.linalg.norm(ref_mom)
