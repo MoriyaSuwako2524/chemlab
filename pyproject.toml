@@ -15,3 +15,6 @@ dependencies = ["numpy"]
 
 [tool.setuptools.packages.find]
 where = ["."]
+
+[project.scripts]
+run_mecp = "chemlab.scripts.run_mecp:main"

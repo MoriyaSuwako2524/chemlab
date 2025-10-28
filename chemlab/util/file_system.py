@@ -8,7 +8,7 @@ atom_charge_dict = {
     "Se":34,"Br":35,"Kr":36,"Rb":37,"Sr":38,"Y":39,"Zr":40,"Nb":41,"Mo":42,"Tc":43,
     "Ru":44,"Rh":45,"Pd":46,"Ag":47,"Cd":48,"In":49,"Sn":50,"Sb":51,"Te":52,"I":53,"Xe":54
 }
-SPIN_REF = {1:"s",2:"d",3:"t",4:"quartlet",5:"q",6:"sextuplet"}
+SPIN_REF = {1:"singlet",2:"doublet",3:"triplet",4:"quartlet",5:"quintet",6:"sextuplet"}
 
 
 class unit_type:
