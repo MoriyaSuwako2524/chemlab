@@ -741,23 +741,210 @@ class qchem_out_force(qchem_out):
     def __init__(self, filename=""):
         super().__init__(filename)
         self.force = None
+        self.force_e1 = None
+        self.force_e2 = None
+        self.ene = None
 
-    def parse(self):
+    def read_file(self, filename=None, text=None, different_type="analytical", self_check=False):
+        """扩展版 read_file，允许传递解析类型参数"""
+        if filename:
+            self.filename = filename
+        if text:
+            self.text = text
+        else:
+            self.text = open(self.filename, "r").read()
+        self._parse_charge_and_spin()
+        # 调用自己的 parse 方法并传递参数
+        self.parse(different_type=different_type, self_check=self_check)
+
+    def parse(self, different_type="analytical", self_check=False):
+        """
+        Parse self.text to extract forces/gradients and energy.
+        Behavior aligned with read_force_from_file():
+          - different_type: "soc" | "numercial" | "analytical" | "smd" | <custom header>
+          - self_check: if True, infer keyword from 'ideriv' line
+        Side effects:
+          - sets self.force (np.ndarray, shape (3, Natoms) for analytical; or table shape for other types)
+          - sets self.force_e1 / self.force_e2 when different_type == "soc"
+          - sets self.ene if ' Total energy' lines are present
+          - optionally syncs self.molecule from self.filename if available
+        """
+        import numpy as np
+
+        # --- Prepare text lines ---
+        if not getattr(self, "text", None):
+            # If text is empty but filename is known, populate text
+            if getattr(self, "filename", ""):
+                try:
+                    with open(self.filename, "r") as f:
+                        self.text = f.read()
+                except Exception:
+                    self.text = ""
+            else:
+                self.text = ""
         lines = self.text.splitlines()
-        force_block = []
-        reading = False
-        for line in lines:
-            if "Gradient of SCF Energy" in line:
-                reading = True
+
+        # --- Try to sync molecule like read_force_from_file() does ---
+        if getattr(self, "filename", ""):
+            try:
+                mol_structure = qchem_file()
+                mol_structure.molecule.check = True
+                mol_structure.read_from_file(self.filename)
+                self.molecule = mol_structure.molecule
+                self.molecule.check = True
+            except Exception:
+                # keep existing molecule if reading fails
+                pass
+
+        # --- Capture energy if present (use the last occurrence) ---
+        for ln in lines:
+            if " Total energy" in ln and "=" in ln:
+                try:
+                    self.ene = float(ln.split("=")[1])
+                except Exception:
+                    pass
+
+        # --- Decide gradient block keyword(s) ---
+        force_key_word_checked = 0
+        force_key_word = "fhiuadjskdnlashalfwwawldjalksfna"  # sentinel
+        force_key_word_e1 = None
+        force_key_word_e2 = None
+
+        if not force_key_word_checked:
+            if self_check:
+                # infer from 'ideriv' line: ... ideriv <0/1>
+                for ln in lines:
+                    if "ideriv" in ln:
+                        parts = [p for p in ln.split() if p]
+                        try:
+                            idv = int(parts[-1])
+                        except Exception:
+                            idv = None
+                        if idv == 1:
+                            force_key_word = "zheng adiabatic surface gradient"
+                        elif idv == 0:
+                            force_key_word = "FINAL TENSOR RESULT"
+                        force_key_word_checked = 1
+                        break
+            if not force_key_word_checked:
+                if different_type == "soc":
+                    force_key_word = "zheng adiabatic surface gradient"
+                    force_key_word_e1 = "zheng ASG first state"
+                    force_key_word_e2 = "zheng ASG second state"
+                elif different_type == "numercial":
+                    force_key_word = "FINAL TENSOR RESULT"
+                elif different_type == "analytical":
+                    force_key_word = "Gradient of SCF Energy"
+                elif different_type == "smd":
+                    force_key_word = "-- total gradient after adding PCM contribution --"
+                else:
+                    force_key_word = different_type
+                force_key_word_checked = 1
+
+        # --- Scan blocks ---
+        force_check = 0  # 0: none, 1: main, 2: e1, 3: e2
+        force, force_e1, force_e2 = [], [], []
+
+        for ln in lines:
+            # SOC state switches
+            if different_type == "soc" and force_key_word_e1 and force_key_word_e2:
+                if force_key_word_e1 in ln:
+                    force_check = 2
+                    force_e1 = []
+                    continue
+                if force_key_word_e2 in ln:
+                    force_check = 3
+                    force_e2 = []
+                    continue
+
+            # Start of main block
+            if force_key_word in ln:
+                force_check = 1
+                force = []
                 continue
-            if reading:
-                if "Gradient time" in line:
-                    break
-                parts = line.split()
-                if parts:
-                    force_block.append(parts)
-        if force_block:
-            self.force = reshape_force(force_block)
+
+            # SMD (PCM total gradient) table handling
+            if force_key_word == "-- total gradient after adding PCM contribution --":
+                if "Atom" in ln or "----" in ln:
+                    continue
+                if force_check:
+                    if "----" in ln or ln.strip() == "":
+                        force_check = 0
+                        continue
+                    parts = ln.split()
+                    if len(parts) == 4:
+                        # skip atom index, keep x y z
+                        force.append(parts[1:])
+                continue
+
+            # Generic stop conditions for non-SMD
+            if any(stop in ln for stop in ("Gradient time", "#")) or \
+               (force_check and "gradient" in ln.lower() and force_key_word != "Gradient of SCF Energy"):
+                force_check = 0
+                continue
+
+            if force_check in (1, 2, 3):
+                data = [p for p in ln.split() if p]
+                if not data:
+                    continue
+                if force_check == 1:
+                    force.append(data)
+                elif force_check == 2:
+                    force_e1.append(data)
+                elif force_check == 3:
+                    force_e2.append(data)
+
+        # --- Post-process by type (match read_force_from_file) ---
+        def _reshape_scf_block(block_2d):
+            # For "Gradient of SCF Energy"
+            # lines come in 4-line groups: header + X + Y + Z (possibly across columns)
+            while [] in block_2d:
+                block_2d.remove([])
+            check = 0
+            x_force, y_force, z_force = [], [], []
+            for row in block_2d:
+                if check % 4 == 1:
+                    x_force.extend(row[1:])
+                elif check % 4 == 2:
+                    y_force.extend(row[1:])
+                elif check % 4 == 3:
+                    z_force.extend(row[1:])
+                check += 1
+            x = np.array(x_force, dtype=float)
+            y = np.array(y_force, dtype=float)
+            z = np.array(z_force, dtype=float)
+            # shape (3, Natoms)
+            return np.column_stack((x, y, z)).T
+
+        if force_key_word == "zheng adiabatic surface gradient":
+            # SOC: three blocks
+            self.force = reshape_force(force).astype(float)
+            self.force_e1 = reshape_force(force_e1).astype(float)
+            self.force_e2 = reshape_force(force_e2).astype(float)
+
+        elif force_key_word == "FINAL TENSOR RESULT":
+            # Numerical tensor result; drop empty rows and the first two header lines,
+            # then drop the first column (atom index)
+            while [] in force:
+                force.remove([])
+            arr = np.array(force[2:], dtype=float)
+            if arr.ndim == 2 and arr.shape[1] >= 4:
+                arr = arr[:, 1:]  # remove atom index
+            self.force = arr
+
+        elif force_key_word == "Gradient of SCF Energy":
+            self.force = _reshape_scf_block(force)
+
+        elif force_key_word == "-- total gradient after adding PCM contribution --":
+            self.force = np.array(force, dtype=float)
+
+        else:
+            # Custom keyword: try best-effort numeric conversion
+            try:
+                self.force = np.array(force, dtype=float)
+            except Exception:
+                self.force = None
+        return self
 class qchem_out_freq(qchem_out):
     def __init__(self, filename=""):
         super().__init__(filename)
