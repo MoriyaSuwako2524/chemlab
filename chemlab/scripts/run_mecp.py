@@ -5,12 +5,12 @@ import argparse
 import subprocess
 import matplotlib.pyplot as plt
 from IPython.display import clear_output
-from util.mecp import mecp
+from chemlab.util.mecp import mecp
 
 
 QCHEM_ENV_SETUP = """
 module purge
-export QC=/scratch/moriya/software/zexuan_soc
+export QC=/scratch/moriya/software/soc
 export QCAUX=/scratch/zhengpei/q-chem/qcaux
 source $QC/bin/qchem.setup.sh
 export QCSCRATCH=/scratch/$USER
