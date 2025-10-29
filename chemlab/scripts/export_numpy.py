@@ -98,7 +98,10 @@ def main():
         raise ValueError("Reference dipole moment is zero; cannot determine direction alignment.")
 
     aligned_mom = []
-    for mom in transmom:
+    aligned_transition_density = []
+    for i in range(len(transmom)):
+        mom = transmom[i]
+        td = transition_dentsity[i]
         #  cosθ = (a·b)/(|a||b|)
         dot = np.dot(ref_mom, mom)
         mom_norm = np.linalg.norm(mom)
@@ -109,6 +112,9 @@ def main():
 
         if cos_val < 0:
             mom = -mom
+            td = -td
+
+        aligned_transition_density.append(td)
         aligned_mom.append(mom)
 
 
@@ -123,6 +129,7 @@ def main():
     np.save(prefix + "transmom.npy", transmom_aligned)
     np.save(prefix + "dipolemom.npy", dipolemom)
     np.save(prefix + "transition_density.npy", transition_dentsity)
+    np.save(prefix + "aligned_td.npy", aligned_transition_density)
     np.save(prefix + "qm_type.npy", qm_type)
     np.savez(prefix + "split.npz", **split_idx)
 
