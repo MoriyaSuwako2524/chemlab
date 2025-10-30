@@ -1,0 +1,3 @@
+[console_scripts]
+export_numpy = chemlab.scripts.export_numpy:main
+run_mecp = chemlab.scripts.run_mecp:main

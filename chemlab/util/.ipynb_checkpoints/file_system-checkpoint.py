@@ -574,15 +574,15 @@ class qchem_out:
         self.spin = 1
         self.charge = 0
 
-    def read_file(self, filename=None, text=None,read_charge_and_spin=True):
+    def read_file(self, filename=None, text=None):
         if filename:
             self.filename = filename
         if text:
             self.text = text
         else:
             self.text = open(self.filename, "r").read()
-        if read_charge_and_spin:
-            self._parse_charge_and_spin()
+        print(self.text)
+        self._parse_charge_and_spin()
         self.parse()
 
     def parse(self):
@@ -1111,7 +1111,7 @@ class qchem_out_aimd(qchem_out):
                     pass
 
             tmp = qchem_out_geomene()
-            tmp.read_file(text=block,read_charge_and_spin=False)
+            tmp.read_file(text=block)
 
             g = geoms()
             g.index = step_idx

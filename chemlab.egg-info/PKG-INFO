@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: chemlab
-Version: 0.1.0
+Version: 0.1.1
 Summary: Utilities for Q-Chem workflows, ML datasets, and scanning
 Author-email: Zexuan Wei <suwako2524@gmail.com>
 Requires-Python: >=3.8

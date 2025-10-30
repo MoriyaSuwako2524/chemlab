@@ -129,7 +129,6 @@ class single_spin_job(base_job):
         ref.jobs[0].molecule.multistate = self.spin
         file_name = f"{filename[:-4]}.inp"
         ref.generate_inp(f"{prefix}{file_name}")
-        print(f"generate:{prefix}{file_name}")
 
 class qchem_out_aimd_multi(qchem_out_multi):
     """

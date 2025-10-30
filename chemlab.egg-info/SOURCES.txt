@@ -4,11 +4,15 @@ chemlab/__init__.py
 chemlab.egg-info/PKG-INFO
 chemlab.egg-info/SOURCES.txt
 chemlab.egg-info/dependency_links.txt
+chemlab.egg-info/entry_points.txt
 chemlab.egg-info/requires.txt
 chemlab.egg-info/top_level.txt
 chemlab/scripts/__init__.py
+chemlab/scripts/convert_out_to_inp.py
 chemlab/scripts/export_numpy.py
 chemlab/scripts/multi_states.py
+chemlab/scripts/run_mecp.py
+chemlab/scripts/traj_split.py
 chemlab/scripts/1d_scan/1d_scan.py
 chemlab/scripts/1d_scan/__init__.py
 chemlab/scripts/2dscan_test/qchemfile.py
@@ -21,6 +25,7 @@ chemlab/scripts/2dscan_test/bash_script/trans_out_into_inp_col.py
 chemlab/util/__init__.py
 chemlab/util/evaluate.py
 chemlab/util/file_system.py
+chemlab/util/mecp.py
 chemlab/util/ml_data.py
 chemlab/util/modify_inp.py
 chemlab/util/sampling.py
