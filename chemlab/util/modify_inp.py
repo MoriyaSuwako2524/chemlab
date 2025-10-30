@@ -420,6 +420,16 @@ class qchem_out_excite_multi(qchem_out_multi):
         if np_save:
             np.save(f"{prefix}{state_idx}_esp_transition_density.npy", esp_transition_density)
         return esp_transition_density
+    def export_gs_esp_charge(self, prefix="gs", unit="e", state_idx=0,np_save=False):
+        esp_charge = self.export_attr(
+            extractor=lambda st, task: np.array(st.esp_charges, dtype=float)
+            if st.esp_charges is not None else None,
+            shape_func=lambda natoms, nframes: (nframes, natoms),
+            state_idx=state_idx,
+        )
+        if np_save:
+            np.save(f"{prefix}{state_idx}_esp_charge.npy", esp_charge)
+        return esp_charge
     def register_exporter(self, name, func):
         """
         Register a new exporter.
@@ -442,6 +452,7 @@ class qchem_out_excite_multi(qchem_out_multi):
         self.register_exporter("transmom", self.export_transmom)
         self.register_exporter("dipolemom", self.export_dipolemom)
         self.register_exporter("transition_density",self.export_transition_density)
+        self.register_exporter("esp_charge",self.export_gs_esp_charge)
 
     def export_all(self, prefix="", **kwargs):
         """

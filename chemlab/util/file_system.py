@@ -574,7 +574,7 @@ class qchem_out:
         self.spin = 1
         self.charge = 0
 
-    def read_file(self, filename=None, text=None,read_charge_and_spin=True):
+    def read_file(self, filename=None, text=None,read_charge_and_spin=True,read_esp_charge=False):
         if filename:
             self.filename = filename
         if text:
@@ -583,6 +583,8 @@ class qchem_out:
             self.text = open(self.filename, "r").read()
         if read_charge_and_spin:
             self._parse_charge_and_spin()
+        if read_esp_charge:
+            self._parse_esp_charge()
         self.parse()
 
     def parse(self):
@@ -652,12 +654,12 @@ class qchem_out:
             text,
             re.S,
         )
+        
         if not m:
             return None
 
         block = m.group(1).strip()
         charges = []
-
         for ln in block.splitlines():
             parts = re.findall(r"[-+]?\d*\.\d+(?:[Ee][-+]?\d+)?", ln)
             if len(parts) == 1:  # only charge found
@@ -666,7 +668,7 @@ class qchem_out:
                 charges.append(float(parts[-1]))
 
 
-        esp_charges = np.array(charges)
+        esp_charges = np.array(charges[:-1])
         # assign to ground state (state[0] typically ground)
         if len(self.states) > 0:
             self.states[0].esp_charges = esp_charges
@@ -1408,6 +1410,7 @@ class qchem_out_excite(qchem_out):
                 current_state = None  # reset
         if self.read_esp:
             self._parse_excite_esp_blocks(lines)
+            self._parse_esp_charge(lines)
         if self.states:
             self.ene = self.states[-1].total_energy
 

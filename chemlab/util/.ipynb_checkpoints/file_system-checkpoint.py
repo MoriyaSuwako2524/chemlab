@@ -574,15 +574,17 @@ class qchem_out:
         self.spin = 1
         self.charge = 0
 
-    def read_file(self, filename=None, text=None):
+    def read_file(self, filename=None, text=None,read_charge_and_spin=True,read_esp_charge=False):
         if filename:
             self.filename = filename
         if text:
             self.text = text
         else:
             self.text = open(self.filename, "r").read()
-        print(self.text)
-        self._parse_charge_and_spin()
+        if read_charge_and_spin:
+            self._parse_charge_and_spin()
+        if read_esp_charge:
+            self._parse_esp_charge()
         self.parse()
 
     def parse(self):
@@ -628,6 +630,50 @@ class qchem_out:
                 self.spin = spin
                 return charge, spin
         raise ValueError("No '$molecule' section found or missing charge/spin line.")
+
+    def _parse_esp_charge(self, lines):
+        """
+        Parse the ground-state ESP charge block from Q-Chem output.
+
+        Example block:
+            Merz-Kollman ESP Net Atomic Charges
+
+             Atom                 Charge (a.u.)
+          ----------------------------------------
+              1 C                     0.310046
+              2 C                    -0.125879
+              3 C                     0.396755
+              ...
+
+        Returns:
+            np.ndarray of shape (n_atom,)
+        """
+        text = "\n".join(lines)
+        m = re.search(
+            r"Merz-Kollman ESP Net Atomic Charges\s+Atom\s+Charge.+?-{5,}\s+(.+?)(?:\n\s*\n|\Z)",
+            text,
+            re.S,
+        )
+        
+        if not m:
+            return None
+
+        block = m.group(1).strip()
+        charges = []
+        for ln in block.splitlines():
+            parts = re.findall(r"[-+]?\d*\.\d+(?:[Ee][-+]?\d+)?", ln)
+            if len(parts) == 1:  # only charge found
+                charges.append(float(parts[0]))
+            elif len(parts) >= 2:  # atom index and charge
+                charges.append(float(parts[-1]))
+
+
+        esp_charges = np.array(charges[:-1])
+        # assign to ground state (state[0] typically ground)
+        if len(self.states) > 0:
+            self.states[0].esp_charges = esp_charges
+        return esp_charges
+
 
 class qchem_out_opt(qchem_out):
     def __init__(self, filename=""):
@@ -1111,7 +1157,7 @@ class qchem_out_aimd(qchem_out):
                     pass
 
             tmp = qchem_out_geomene()
-            tmp.read_file(text=block)
+            tmp.read_file(text=block,read_charge_and_spin=False)
 
             g = geoms()
             g.index = step_idx
@@ -1363,7 +1409,8 @@ class qchem_out_excite(qchem_out):
                 self._parse_gradient_block(block, current_state)
                 current_state = None  # reset
         if self.read_esp:
-            self._parse_esp_blocks(lines)
+            self._parse_excite_esp_blocks(lines)
+            self._parse_esp_charge(lines)
         if self.states:
             self.ene = self.states[-1].total_energy
 
@@ -1387,7 +1434,7 @@ class qchem_out_excite(qchem_out):
                     if st.state_idx == st_idx:
                         st.gradient = grad.T  # (Natoms, 3)
                         break
-    def _parse_esp_blocks(self, lines):
+    def _parse_excite_esp_blocks(self, lines):
         text = "\n".join(lines)
         # --- ESP charges for excited states ---
         m1 = re.search(r"ESP charges for excited states(.+?)ESP charges for transition densities", text, re.S)
