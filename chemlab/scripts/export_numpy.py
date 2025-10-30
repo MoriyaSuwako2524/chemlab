@@ -7,16 +7,17 @@ from chemlab.util.modify_inp import qchem_out_excite_multi
 This scrirpt export npy files from TDDFT calculation folder
 '''
 
-def main():
+def export_numpy(args):
     # ======== Settings ========
-    path = "./xyz_splits/"         # Directory containing Q-Chem output files
-    prefix = "./full_"             # Output file prefix
-    state_idx = 1                  # Excited state index (e.g. S1)
-    energy_unit = "kcal/mol"       # Energy output unit
-    ex_energy_unit = "ev"
-    distance_unit = "ang"          # Coordinate output unit
-    grad_unit = ("kcal/mol", "ang")  # For gradient conversion
-    force_unit = ("kcal/mol", "ang") # For force conversion
+    path = args. data       # Directory containing Q-Chem output files
+    out_path = args.out
+    prefix = args.prefix            # Output file prefix
+    state_idx = args.state_idx                 # Excited state index (e.g. S1)
+    energy_unit = args.energy_unit       # Energy output unit
+    ex_energy_unit = args.ex_energy_unit
+    distance_unit = arg.distance_unit          # Coordinate output unit
+    grad_unit = args.grad_unit  # For gradient conversion
+    force_unit = args.force_unit # For force conversion
 
     # ======== Split files into train/val/test groups ========
     groups = {"train": [], "val": [], "test": []}
@@ -119,7 +120,7 @@ def main():
 
 
     transmom_aligned = np.array(aligned_mom)
-    prefix = "./full_"
+    prefix = f"{out_path}{prefix}"
     np.save(prefix + "coord.npy", coords)
     np.save(prefix + "gs_energy.npy", gs_energy)
     np.save(prefix + "ex_energy.npy", ex_energy)
@@ -146,6 +147,18 @@ def main():
     print(" transition_density:", transition_dentsity.shape)
     print("   split:", {k: v.shape for k, v in split_idx.items()})
 
-
+def main():
+    parser = argparse.ArgumentParser(description="Export tddft calculation using Q-Chem.")
+    parser.add_argument("--data", required=True,default="./raw_data/" ,help="Path to reference Q-Chem input file.")
+    parser.add_argument("--out", required=True,default="./" ,help="Output directory.")
+    parser.add_argument("--prefix", type=str, default="full_", help="prefix of files")
+    parser.add_argument("--state_idx", type=int, default=1, help="excited state index")
+    parser.add_argument("--energy_unit", type=str, default="kcal/mol", help="Unit of energy")
+    parser.add_argument("--ex_energy_unit", type=str, default="ev", help="Unit of excitation energy")
+    parser.add_argument("--distance_unit", type=str, default="ang", help="Unit of coordinates")
+    parser.add_argument("--grad_unit", type=tuple, default=("kcal/mol", "ang"), help="Unit of gradient")
+    parser.add_argument("--force_unit", type=tuple, default=("kcal/mol", "ang"), help="Unit of force")
+    args = parser.parse_args()
+    export_numpy(args)
 if __name__ == "__main__":
     main()
