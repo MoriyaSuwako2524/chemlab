@@ -8,7 +8,7 @@ from pathlib import Path
 from chemlab.util.modify_inp import single_spin_job
 def export_aimd(args):
     path = args.path
-    files = args.file
+    files = list(args.file)
     for i in range(len(files)):
         files[i] = f"{path}{files[i]}"
     multi = qchem_out_aimd_multi()
