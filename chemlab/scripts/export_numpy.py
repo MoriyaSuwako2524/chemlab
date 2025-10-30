@@ -93,30 +93,58 @@ def export_numpy(args):
     transition_dentsity = np.concatenate(all_transition_density,axis=0)
 
     ref_mom = transmom[0]
-    ref_norm = np.linalg.norm(ref_mom)
+    ref_transition_density = transition_dentsity[0]
 
-    if ref_norm == 0:
-        raise ValueError("Reference dipole moment is zero; cannot determine direction alignment.")
 
-    aligned_mom = []
-    aligned_transition_density = []
-    for i in range(len(transmom)):
-        mom = transmom[i]
-        td = transition_dentsity[i]
-        #  cosθ = (a·b)/(|a||b|)
-        dot = np.dot(ref_mom, mom)
-        mom_norm = np.linalg.norm(mom)
-        if mom_norm == 0:
+    if args.align_ref == "dipole":
+        ref_norm = np.linalg.norm(ref_mom)
+        if ref_norm == 0:
+            raise ValueError("Reference dipole moment is zero; cannot determine direction alignment.")
+        aligned_mom = []
+        aligned_transition_density = []
+        for i in range(len(transmom)):
+            mom = transmom[i]
+            td = transition_dentsity[i]
+            #  cosθ = (a·b)/(|a||b|)
+            dot = np.dot(ref_mom, mom)
+            mom_norm = np.linalg.norm(mom)
+            if mom_norm == 0:
+                aligned_mom.append(mom)
+                continue
+            cos_val = dot / (ref_norm * mom_norm)
+
+            if cos_val < 0:
+                mom = -mom
+                td = -td
+
+            aligned_transition_density.append(td)
             aligned_mom.append(mom)
-            continue
-        cos_val = dot / (ref_norm * mom_norm)
+    elif args.align_ref == "transition_density":
+        ref_norm = np.linalg.norm(ref_transition_density)
+        if ref_norm == 0:
+            raise ValueError("Reference dipole moment is zero; cannot determine direction alignment.")
+        aligned_mom = []
+        aligned_transition_density = []
+        for i in range(len(aligned_transition_density)):
+            mom = transmom[i]
+            td = transition_dentsity[i]
+            #  cosθ = (a·b)/(|a||b|)
+            dot = np.dot(ref_transition_density, td)
+            td_norm = np.linalg.norm(td)
+            if td_norm == 0:
+                aligned_mom.append(mom)
+                continue
+            cos_val = dot / (ref_norm * td)
 
-        if cos_val < 0:
-            mom = -mom
-            td = -td
+            if cos_val < 0:
+                mom = -mom
+                td = -td
 
-        aligned_transition_density.append(td)
-        aligned_mom.append(mom)
+            aligned_transition_density.append(td)
+            aligned_mom.append(mom)
+    else:
+        aligned_mom = transmom
+        aligned_transition_density = transition_dentsity
 
 
     transmom_aligned = np.array(aligned_mom)
@@ -152,6 +180,7 @@ def main():
     parser.add_argument("--data", required=True,default="./raw_data/" ,help="Path to reference Q-Chem input file.")
     parser.add_argument("--out", required=True,default="./" ,help="Output directory.")
     parser.add_argument("--prefix", type=str, default="full_", help="prefix of files")
+    parser.add_argument("--align_ref", type=str, default="transition_density", help="Align vector reference")
     parser.add_argument("--state_idx", type=int, default=1, help="excited state index")
     parser.add_argument("--energy_unit", type=str, default="kcal/mol", help="Unit of energy")
     parser.add_argument("--ex_energy_unit", type=str, default="ev", help="Unit of excitation energy")
