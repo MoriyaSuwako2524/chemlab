@@ -15,7 +15,7 @@ def export_numpy(args):
     state_idx = args.state_idx                 # Excited state index (e.g. S1)
     energy_unit = args.energy_unit       # Energy output unit
     ex_energy_unit = args.ex_energy_unit
-    distance_unit = arg.distance_unit          # Coordinate output unit
+    distance_unit = args.distance_unit          # Coordinate output unit
     grad_unit = args.grad_unit  # For gradient conversion
     force_unit = args.force_unit # For force conversion
 
