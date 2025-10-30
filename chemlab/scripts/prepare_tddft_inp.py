@@ -9,8 +9,10 @@ from chemlab.util.modify_inp import single_spin_job
 def export_aimd(args):
     path = args.path
     files = list(args.file)
+    print(files)
     for i in range(len(files)):
         files[i] = f"{path}{files[i]}"
+
     multi = qchem_out_aimd_multi()
     multi.read_files(files)
     out = f"{path}{args.out}"
