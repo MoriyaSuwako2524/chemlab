@@ -2,7 +2,7 @@
 import os
 import numpy as np
 from chemlab.util.modify_inp import qchem_out_excite_multi
-
+import argparse
 '''
 This scrirpt export npy files from TDDFT calculation folder
 '''
