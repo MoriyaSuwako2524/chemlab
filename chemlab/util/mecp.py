@@ -1,5 +1,5 @@
 import os
-from chemlab.util.file_system import qchem_file,qchem_out_file,molecule,SPIN_REF
+from chemlab.util.file_system import qchem_file,qchem_out_force,molecule,SPIN_REF
 import numpy as np
 
 SPIN_REF = {1:"S",2:"D",3:"T",4:"Q"}
@@ -68,12 +68,12 @@ class mecp(object):
             path = self.ref_path
         else:
             path = self.out_path
-        self.state_1.out = qchem_out_file()
-        self.state_2.out = qchem_out_file()
+        self.state_1.out = qchem_out_force()
+        self.state_2.out = qchem_out_force()
         self.state_1.job_name = "{}{}_job{}.inp.out".format(self.prefix,self.state_1._spin,self.job_num)
         self.state_2.job_name = "{}{}_job{}.inp.out".format(self.prefix,self.state_2._spin,self.job_num)
-        self.state_1.out.read_force_from_file(path+self.state_1.job_name,self_check=False,different_type=self.different_type)
-        self.state_2.out.read_force_from_file(path+self.state_2.job_name,self_check=False,different_type=self.different_type)
+        self.state_1.out.read_file(path+self.state_1.job_name,self_check=False,different_type=self.different_type)
+        self.state_2.out.read_file(path+self.state_2.job_name,self_check=False,different_type=self.different_type)
         self.job_num +=1
         self.state_1.ene_list.append(self.state_1.out.ene)
         self.state_2.ene_list.append(self.state_2.out.ene)
@@ -84,10 +84,10 @@ class mecp(object):
             path = self.ref_path
         else:
             path = self.out_path
-        self.state_1.out = qchem_out_file()
-        self.state_2.out = qchem_out_file()
+        self.state_1.out = qchem_out_force()
+        self.state_2.out = qchem_out_force()
         self.state_1.job_name = "{}{}_job{}.inp.out".format(self.prefix,self.state_1._spin,self.job_num)
-        self.state_1.out.read_force_from_file(path+self.state_1.job_name,self_check=False,different_type=self.different_type)
+        self.state_1.out.read_file(path+self.state_1.job_name,self_check=False,different_type=self.different_type)
         self.job_num +=1
         self.state_1.out.ene = self.state_1.out.final_adiabatic_ene
         self.state_2.out.ene = self.state_1.out.final_adiabatic_ene + self.state_1.out.final_soc_ene
