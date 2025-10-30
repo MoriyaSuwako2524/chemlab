@@ -11,11 +11,11 @@ def export_aimd(args):
     files = args.file.split(",")
     print(files)
     for i in range(len(files)):
-        files[i] = f"{path}{files[i]}"
+        files[i] = f"{path}/{files[i]}"
 
     multi = qchem_out_aimd_multi()
     multi.read_files(files)
-    out = f"{path}{args.out}"
+    out = f"{path}/{args.out}"
     # 转换成 kcal/mol, Angstrom, kcal/mol/Angstrom
     multi.export_numpy(prefix=f"{out}/tmp_",
                        energy_unit=args.energy_unit,
@@ -36,7 +36,7 @@ def main():
     parser = argparse.ArgumentParser(description="Export tddft calculation inputs from md simulation frames")
     parser.add_argument("--path", required=True, help="Path to md output file.")
     parser.add_argument("--file", required=True, help="Md output files.")
-    parser.add_argument("--out",type=str,default="/raw_data/", help="Output directory.")
+    parser.add_argument("--out",type=str,default="raw_data/", help="Output directory.")
     parser.add_argument("--charge", type=int,default=0, help="Charge of the molecule")
     parser.add_argument("--spin", type=int, default=1, help="Spin of the molecule")
     parser.add_argument("--ref", type=str, default="ref.in", help="Reference file")
