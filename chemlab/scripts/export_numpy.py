@@ -125,7 +125,7 @@ def export_numpy(args):
             raise ValueError("Reference dipole moment is zero; cannot determine direction alignment.")
         aligned_mom = []
         aligned_transition_density = []
-        for i in range(len(aligned_transition_density)):
+        for i in range(len(transition_dentsity)):
             mom = transmom[i]
             td = transition_dentsity[i]
             #  cosθ = (a·b)/(|a||b|)
