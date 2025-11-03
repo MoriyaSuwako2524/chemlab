@@ -24,10 +24,11 @@ def export_aimd(args):
     dataset = MLData(prefix=f"{out}/tmp_",files=["coord", "energy", "grad", "type"])
     dataset.save_split(n_train=args.dataset_size,n_val=0,n_test=0,prefix=out)
     dataset.export_xyz_from_split(split_file=f"{out}/split.npz", outdir=f"{out}", prefix_map=None)
+    print(f"Generating inp files, charge={args.charge},spin={args.spin}")
     for xyz_file in Path(f"{out}").glob('*.xyz'):
         tem = single_spin_job()
-        tem.spins = args.charge
-        tem.charge = args.spin
+        tem.charge = args.charge
+        tem.spins = args.spin
         tem.ref_name = f"{path}{args.ref}"
         tem.xyz_name = str(xyz_file)
         tem.generate_outputs(prefix=f"{out}",new_file_name=xyz_file.name)
