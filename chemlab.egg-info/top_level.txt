@@ -1,2 +1,3 @@
+Scripts
 chemlab
 examples

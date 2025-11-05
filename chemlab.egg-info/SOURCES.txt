@@ -7,10 +7,12 @@ chemlab.egg-info/dependency_links.txt
 chemlab.egg-info/entry_points.txt
 chemlab.egg-info/requires.txt
 chemlab.egg-info/top_level.txt
+chemlab.egg-info/.ipynb_checkpoints/dependency_links-checkpoint.txt
 chemlab/scripts/__init__.py
 chemlab/scripts/convert_out_to_inp.py
 chemlab/scripts/export_numpy.py
 chemlab/scripts/multi_states.py
+chemlab/scripts/prepare_tddft_inp.py
 chemlab/scripts/run_mecp.py
 chemlab/scripts/traj_split.py
 chemlab/scripts/1d_scan/1d_scan.py

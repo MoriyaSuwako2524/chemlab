@@ -1,3 +1,4 @@
 [console_scripts]
 export_numpy = chemlab.scripts.export_numpy:main
+prepare_tddft_inp = chemlab.scripts.prepare_tddft_inp:main
 run_mecp = chemlab.scripts.run_mecp:main

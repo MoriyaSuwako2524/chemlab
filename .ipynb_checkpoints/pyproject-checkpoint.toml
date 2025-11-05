@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chemlab"
+version = "0.1.1"
+description = "Utilities for Q-Chem workflows, ML datasets, and scanning"
+authors = [
+    { name="Zexuan Wei", email="suwako2524@gmail.com" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = ["numpy"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[project.scripts]
+run_mecp = "chemlab.scripts.run_mecp:main"
+export_numpy = "chemlab.scripts.export_numpy:main"
+
+
