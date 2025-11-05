@@ -154,6 +154,13 @@ struct vsoc_value{
     double vsoc_z = 0;
 };
 
+struct SVDParts {
+    mat Uc, Vc;
+    uvec core_idx, null_idx;
+    mat proj_Unull, proj_Vnull;
+    mat Ainv, Vd_inv;
+    mat inv_denom;
+};
 
 class spin_adiabatic_state {
    public:
