@@ -2,7 +2,6 @@ import os
 from chemlab.util.file_system import qchem_file,qchem_out_force,molecule,SPIN_REF
 import numpy as np
 
-SPIN_REF = {1:"S",2:"D",3:"T",4:"Q"}
 class mecp(object):
     def __init__(self): #usually spin_1 < spin_2
         self.energy_gap_list = []
@@ -17,7 +16,7 @@ class mecp(object):
         self.state_2.inp = qchem_file()
         self.state_1.spin = 1
         self.state_2.spin = 3
-        self.path = ""
+        self.ref_path = ""
         self.ref_filename = ""
         self.prefix=""
         self.different_type="analytical"
@@ -56,8 +55,8 @@ class mecp(object):
         filename = self.ref_filename
         self.state_1.inp.molecule.check = True
         self.state_2.inp.molecule.check = True
-        self.state_1.inp.read_from_file(path+filename)
-        self.state_2.inp.read_from_file(path+filename)
+        self.state_1.inp.read_from_file(f"{path}/{filename}")
+        self.state_2.inp.read_from_file(f"{path}/{filename}")
         if self.prefix == "":
             self.prefix = filename[:-4]
         self.state_1.inp.molecule.multistate =   self.state_1.spin 
