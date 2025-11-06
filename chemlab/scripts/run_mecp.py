@@ -42,7 +42,7 @@ def wait_for_qchem_outputs(out_files, check_interval=30, log=None):
 
 
 def run_mecp_optimization(args):
-    job_type = args.file
+    job_type = args.jobtype
     if job_type == "mecp":
         test_mecp = mecp()
     elif job_type == "soc":
