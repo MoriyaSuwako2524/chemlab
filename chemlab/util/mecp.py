@@ -161,15 +161,12 @@ class mecp(object):
         self.last_structure = x_k
         self.last_gradient = g_k
     def generate_new_inp(self):
-        if self.out_path == "":
-            path = self.ref_path
-        else:
-            path = self.out_path
+        path = self.out_path
         self.state_1.job_name = "{}{}_job{}.inp".format(self.prefix,self.state_1._spin,self.job_num)
         self.state_2.job_name = "{}{}_job{}.inp".format(self.prefix,self.state_2._spin,self.job_num)
-        out = open(path+self.state_1.job_name,"w")
+        out = open(os.path.join(path, self.state_1.job_name),"w")
         out.write(self.state_1.inp.molecule.return_output_format()+self.state_1.inp.remain_texts)
-        out = open(path+self.state_2.job_name,"w")
+        out = open(os.path.join(path, self.state_1.job_name),"w")
         out.write(self.state_2.inp.molecule.return_output_format()+self.state_2.inp.remain_texts)
 
 
