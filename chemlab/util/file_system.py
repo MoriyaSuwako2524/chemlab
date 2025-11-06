@@ -1071,7 +1071,6 @@ class qchem_out_force(qchem_out):
                 z_grad = np.append(z_grad,np.array(ln.split()[1:],dtype=float))
             j+=1
         force = np.column_stack((x_grad, y_grad, z_grad))
-        print(force)
         return force
 
 
