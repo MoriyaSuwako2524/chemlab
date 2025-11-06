@@ -1,18 +1,20 @@
 import sys
 import numpy as np
+
 Hartree_to_kcal = 627.51
 atom_charge_dict = {
-    "H":1,"He":2,"Li":3,"Be":4,"B":5,"C":6,"N":7,"O":8,"F":9,"Ne":10,"Na":11,"Mg":12,
-    "Al":13,"Si":14,"P":15,"S":16,"Cl":17,"Ar":18,"K":19,"Ca":20,"Sc":21,"Ti":22,"V":23,
-    "Cr":24,"Mn":25,"Fe":26,"Co":27,"Ni":28,"Cu":29,"Zn":30,"Ga":31,"Ge":32,"As":33,
-    "Se":34,"Br":35,"Kr":36,"Rb":37,"Sr":38,"Y":39,"Zr":40,"Nb":41,"Mo":42,"Tc":43,
-    "Ru":44,"Rh":45,"Pd":46,"Ag":47,"Cd":48,"In":49,"Sn":50,"Sb":51,"Te":52,"I":53,"Xe":54
+    "H": 1, "He": 2, "Li": 3, "Be": 4, "B": 5, "C": 6, "N": 7, "O": 8, "F": 9, "Ne": 10, "Na": 11, "Mg": 12,
+    "Al": 13, "Si": 14, "P": 15, "S": 16, "Cl": 17, "Ar": 18, "K": 19, "Ca": 20, "Sc": 21, "Ti": 22, "V": 23,
+    "Cr": 24, "Mn": 25, "Fe": 26, "Co": 27, "Ni": 28, "Cu": 29, "Zn": 30, "Ga": 31, "Ge": 32, "As": 33,
+    "Se": 34, "Br": 35, "Kr": 36, "Rb": 37, "Sr": 38, "Y": 39, "Zr": 40, "Nb": 41, "Mo": 42, "Tc": 43,
+    "Ru": 44, "Rh": 45, "Pd": 46, "Ag": 47, "Cd": 48, "In": 49, "Sn": 50, "Sb": 51, "Te": 52, "I": 53, "Xe": 54
 }
-SPIN_REF = {1:"singlet",2:"doublet",3:"triplet",4:"quartlet",5:"quintet",6:"sextuplet"}
+SPIN_REF = {1: "singlet", 2: "doublet", 3: "triplet", 4: "quartlet", 5: "quintet", 6: "sextuplet"}
 
 
 class unit_type:
     category = None
+
     def __init__(self, value, unit):
         self.value = np.array(value, dtype=float)
         self.unit = unit
@@ -27,24 +29,29 @@ class unit_type:
             self.unit = target
         return value
 
+
 class ENERGY(unit_type):
     category = "energy"
+
     def __init__(self, value, unit="hartree"):
         super().__init__(value, unit)
-        self.DICT = {"hartree": 1, "kcal/mol":627.51,"kcal": 627.51, "ev": 27.2113863, "kj": 2625.5}
+        self.DICT = {"hartree": 1, "kcal/mol": 627.51, "kcal": 627.51, "ev": 27.2113863, "kj": 2625.5}
 
 
 class DISTANCE(unit_type):
     category = "distance"
+
     def __init__(self, value, unit="ang"):
         super().__init__(value, unit)
-        self.DICT = {"ang": 1, "bohr": 1/0.529177, "nm": 10}
+        self.DICT = {"ang": 1, "bohr": 1 / 0.529177, "nm": 10}
+
 
 from itertools import product
 
 
 class MASS(unit_type):
     category = "mass"
+
     def __init__(self, value, unit="amu"):
         super().__init__(value, unit)
         self.DICT = {
@@ -56,6 +63,7 @@ class MASS(unit_type):
 
 class TIME(unit_type):
     category = "time"
+
     def __init__(self, value, unit="fs"):
         super().__init__(value, unit)
         self.DICT = {
@@ -64,7 +72,6 @@ class TIME(unit_type):
             "ns": 1e-6,
             "s": 1e-15
         }
-
 
 
 class complex_unit_type:
@@ -105,19 +112,22 @@ class complex_unit_type:
             results[key] = self.convert_to(target_units)
         return results
 
+
 class CHARGE(unit_type):
     category = "charge"
 
     def __init__(self, value, unit="e"):
         super().__init__(value, unit)
         self.DICT = {
-            "e": 1.0,                 # 1 e = 1 e
+            "e": 1.0,  # 1 e = 1 e
             "C": 1.0 / 1.602176634e-19,  # 1 C = 6.2415e18 e
         }
+
 
 # --- 偶极矩单位 ---
 class DIPOLE(complex_unit_type):
     category = "dipole"
+
     def __init__(self, value, charge_unit="e", distance_unit="bohr"):
         super().__init__(np.array(value, dtype=float), {
             "charge": (charge_unit, 1),
@@ -127,12 +137,14 @@ class DIPOLE(complex_unit_type):
         self.DICT = {
             "Debye": 1.0,  # 作为基准
             "e*bohr": 1.0 / 0.20819434,
-            "e*ang":  1.0 / 0.393430307,
-            "C*m":    1.0 / 3.33564e-30,
+            "e*ang": 1.0 / 0.393430307,
+            "C*m": 1.0 / 3.33564e-30,
         }
+
+
 class FORCE(complex_unit_type):
     def __init__(self, value, energy_unit="hartree", distance_unit="bohr"):
-        super().__init__( -np.array(value, dtype=float), {  # 注意加负号
+        super().__init__(-np.array(value, dtype=float), {  # 注意加负号
             "energy": (energy_unit, 1),
             "distance": (distance_unit, -1)
         })
@@ -140,10 +152,12 @@ class FORCE(complex_unit_type):
 
 class GRADIENT(complex_unit_type):
     def __init__(self, value, energy_unit="hartree", distance_unit="bohr"):
-        super().__init__( np.array(value, dtype=float), {
+        super().__init__(np.array(value, dtype=float), {
             "energy": (energy_unit, 1),
             "distance": (distance_unit, -1)
         })
+
+
 UNIT_REGISTRY = {
     "energy": ENERGY,
     "distance": DISTANCE,
@@ -155,7 +169,8 @@ UNIT_REGISTRY = {
     "gradient": GRADIENT,
 }
 
-class qchem_file(object): #standard qchem inp file class
+
+class qchem_file(object):  # standard qchem inp file class
     def __init__(self):
         self.molecule = molecule()
         self.rem = rem()
@@ -163,6 +178,7 @@ class qchem_file(object): #standard qchem inp file class
         self.opt = opt()
         self.opt2 = opt2()
         self.remain_texts = ""
+
     @property
     def output(self):
         """
@@ -180,25 +196,28 @@ class qchem_file(object): #standard qchem inp file class
         if self.opt2.check:
             sections.append(self.opt2.output)
         return "".join(sections)
+
     def show_molecule(self):
         return self.molecule.show()
+
     def generate_inp(self, new_file_name):
         with open(new_file_name, "w") as f:
             f.write(self.output)
-            
-    def read_from_file(self,filename="",out_text=""):# read standard inp file, require filename that consist of path and suffix. use class.check to determine which part you want to modify
-        if out_text!= "":
+
+    def read_from_file(self, filename="",
+                       out_text=""):  # read standard inp file, require filename that consist of path and suffix. use class.check to determine which part you want to modify
+        if out_text != "":
             file = out_text.split("\n")
         else:
             self.filename = filename
             file = open(filename, "r").read().split("\n")
         file_length = len(file)
         module_start = 0
-        specifix_const= 0
+        specifix_const = 0
         for i in range(file_length):
             if "$end" in file[i]:
                 if module_start == -1:
-                    self.remain_texts += file[i]+"\n\n"
+                    self.remain_texts += file[i] + "\n\n"
                 module_start = 0
 
                 continue
@@ -226,16 +245,16 @@ class qchem_file(object): #standard qchem inp file class
                     self.remain_texts += "\n" + file[i] + "\n"
 
                 continue
-            elif "$" in file[i] :
+            elif "$" in file[i]:
                 module_start = -1
-                self.remain_texts += "\n"+file[i]+"\n"
+                self.remain_texts += "\n" + file[i] + "\n"
                 continue
             elif "@" in file[i]:
-                self.remain_texts += "\n"+file[i]+"\n"
+                self.remain_texts += "\n" + file[i] + "\n"
                 continue
 
             if module_start == -1:
-                self.remain_texts += file[i] +"\n"
+                self.remain_texts += file[i] + "\n"
 
 
             elif module_start == 1:
@@ -246,7 +265,7 @@ class qchem_file(object): #standard qchem inp file class
                     continue
                 if "read" in content:
                     self.molecule.read = True
-                elif len(content) == 2 :
+                elif len(content) == 2:
                     self.molecule.charge = content[0]
                     self.molecule.multistate = content[1]
                 else:
@@ -259,8 +278,8 @@ class qchem_file(object): #standard qchem inp file class
                     content.remove("")
                 if file[i] == "":
                     continue
-                self.rem.texts += text+"\n"
-                setattr(self.rem,content[0].lower(),content[2])
+                self.rem.texts += text + "\n"
+                setattr(self.rem, content[0].lower(), content[2])
 
             elif module_start == 3:
 
@@ -279,13 +298,13 @@ class qchem_file(object): #standard qchem inp file class
                 elif "FIXED" in content:
                     specifix_const = 2
                     continue
-                elif  "ENDFIXED" in content:
+                elif "ENDFIXED" in content:
                     specifix_const = 0
                     continue
                 if specifix_const == 1:
                     self.opt.constraint.stre.append(content)
                 if specifix_const == 2:
-                    self.opt.fix_atom.input_fixed_atoms(content[0],content[-1])
+                    self.opt.fix_atom.input_fixed_atoms(content[0], content[-1])
             elif module_start == 3.5:
                 content = file[i].split(" ")
                 while "" in content:
@@ -298,11 +317,6 @@ class qchem_file(object): #standard qchem inp file class
                     self.opt2.r12mr34.append(content[1:])
 
 
-
-
-
-
-
 class qchem_inp_block:
     def __init__(self):
         self.check = False  # Common attribute
@@ -311,6 +325,7 @@ class qchem_inp_block:
     def output(self):
         return self.return_output_format()
 
+
 class molecule(qchem_inp_block):
     def __init__(self):
         super().__init__()
@@ -318,23 +333,27 @@ class molecule(qchem_inp_block):
         self.multistate = 1
         self.carti = []
         self.read = False
+
     @property
     def natom(self):
         if self.carti is not None and len(self.carti) > 0:
             return len(self.return_atom_type_list())
         else:
             return None
+
     @property
     def xyz(self):
         return self.return_xyz_list()
+
     @property
     def atoms(self):
         return self.return_atom_type_list()
+
     def show(self, show_index=False):
         from ase import Atoms
         atoms = Atoms(symbols=self.atoms, positions=self.xyz)
         view = nv.show_ase(atoms)
-    
+
         if show_index:
             for i, pos in enumerate(self.xyz):
                 # Add label using NGL JavaScript interface
@@ -343,19 +362,23 @@ class molecule(qchem_inp_block):
                     f"{{text: '{i}', position: [{pos[0]}, {pos[1]}, {pos[2]}]}})"
                 )
                 view._js(js)
-    
+
         return view
+
     def return_xyz_list(self):
         carti = np.array(self.carti)
-        return carti[:,1:]
+        return carti[:, 1:]
+
     def return_atom_type_list(self):
         carti = np.array(self.carti)
-        return carti[:,0]
-    def replace_new_xyz(self,xyz):
-        atom_type = np.array(self.carti)[:, 0].reshape(1,-1)
+        return carti[:, 0]
+
+    def replace_new_xyz(self, xyz):
+        atom_type = np.array(self.carti)[:, 0].reshape(1, -1)
         combined = np.vstack([atom_type, xyz])
         self.carti = combined.T
         return combined.T
+
     def return_output_format(self):
         if self.read:
             return "\n$molecule\nread\n$end\n\n"
@@ -373,6 +396,7 @@ class molecule(qchem_inp_block):
                 out += text
             out += "$end\n\n"
             return out
+
     def read_xyz(self, filename):
         with open(filename, "r") as f:
             lines = f.read().splitlines()
@@ -392,20 +416,23 @@ class molecule(qchem_inp_block):
             if len(parts) < 4:
                 continue
             carti.append(parts)
-    
+
         self.carti = carti
 
-    def calc_distance_of_2_atoms(self,i,j):
-        R_atom_1_atom_2 = self.calc_array_from_atom_1_to_atom_2(i,j)
-        return np.dot(R_atom_1_atom_2,R_atom_1_atom_2) **0.5
-    def calc_array_from_atom_1_to_atom_2(self,i,j):
+    def calc_distance_of_2_atoms(self, i, j):
+        R_atom_1_atom_2 = self.calc_array_from_atom_1_to_atom_2(i, j)
+        return np.dot(R_atom_1_atom_2, R_atom_1_atom_2) ** 0.5
+
+    def calc_array_from_atom_1_to_atom_2(self, i, j):
         atom_1_xyz = np.array(self.carti[i][1:]).astype(float)
         atom_2_xyz = np.array(self.carti[j][1:]).astype(float)
-        R_atom_1_atom_2 = atom_1_xyz-atom_2_xyz
+        R_atom_1_atom_2 = atom_1_xyz - atom_2_xyz
         return R_atom_1_atom_2
+
     def transform_atom_type_into_charge(self):
         for i in range(len(self.carti)):
             self.carti[i][0] = atom_charge_dict[self.carti[i][0]]
+
     def calc_angle(self, atom_i, atom_j, atom_k):
         """
         Calculate the bond angle (in degrees) between three atoms: atom_i–atom_j–atom_k.
@@ -457,11 +484,13 @@ class molecule(qchem_inp_block):
         dihedral_angle_radians = np.arctan2(y_component, x_component)
         return np.degrees(dihedral_angle_radians)
 
+
 class rem(qchem_inp_block):
     def __init__(self):
         super().__init__()  # Set self.check = False
         self.texts = ""
-    def modify(self,stuff,new_stuff):
+
+    def modify(self, stuff, new_stuff):
         texts = self.texts.split("\n")
         while "" in texts:
             texts.remove("")
@@ -475,18 +504,18 @@ class rem(qchem_inp_block):
                 if new_stuff == "":
                     continue
                 things = texts[i].split("=")
-                texts[i] = "{}= {}".format(things[0],new_stuff)
+                texts[i] = "{}= {}".format(things[0], new_stuff)
 
-            text += texts[i] +"\n"
+            text += texts[i] + "\n"
 
         self.texts = text
-
 
     def return_output_format(self):
         out = "\n$rem\n"
         out += self.texts
         out += "$end\n\n"
         return out
+
 
 class pcm(qchem_inp_block):
     def __init__(self):
@@ -495,6 +524,8 @@ class pcm(qchem_inp_block):
         self.theory = "IEFPCM"
         self.solvent = ""
         self.solvent_die = 4.0
+
+
 class opt(qchem_inp_block):
     def __init__(self):
         super().__init__()
@@ -511,12 +542,15 @@ class opt(qchem_inp_block):
         out += "ENDCONSTRAINT\n$end\n\n"
         return out
 
+
 class constraint(qchem_inp_block):
     def __init__(self):
         super().__init__()
-        self.stre =[]
-    def modify_stre(self,which_line,j):
+        self.stre = []
+
+    def modify_stre(self, which_line, j):
         self.stre[which_line][3] = str(j)
+
 
 class opt2(qchem_inp_block):
     def __init__(self):
@@ -524,34 +558,38 @@ class opt2(qchem_inp_block):
         self.r12 = []
         self.r12mr34 = []
         self.r12pr34 = []
-        self.opt2_info = {} 
-    def modify_r12(self,which_line,j):
+        self.opt2_info = {}
+
+    def modify_r12(self, which_line, j):
         self.r12[which_line][2] = j
-    def modify_r12mr34(self,which_line,j):
+
+    def modify_r12mr34(self, which_line, j):
         self.r12mr34[which_line][4] = j
+
     def return_output_format(self):
         lines = ["\n$opt2"]
-        
+
         for r12_entry in self.r12:
             lines.append("r12 " + " ".join(str(x) for x in r12_entry))
-        
+
         for r12mr34_entry in self.r12mr34:
             lines.append("r12mr34 " + " ".join(str(x) for x in r12mr34_entry))
-        
+
         for r12pr34_entry in self.r12pr34:
             lines.append("r12pr34 " + " ".join(str(x) for x in r12pr34_entry))
-        
+
         lines.append("$end\n")
         return "\n".join(lines)
-
 
 
 class fix_atom(object):
     def __init__(self):
         self.check = False
         self.fixed_atoms = []
-    def input_fixed_atoms(self,atom,car="xyz"):
-        self.fixed_atoms.append([atom,car])
+
+    def input_fixed_atoms(self, atom, car="xyz"):
+        self.fixed_atoms.append([atom, car])
+
 
 class geoms(molecule):
     def __init__(self):
@@ -560,6 +598,7 @@ class geoms(molecule):
         self.energy = 0
         self.gradient = 0
         self.displacement = 0
+
 
 class qchem_out:
     def __init__(self, filename=""):
@@ -574,7 +613,8 @@ class qchem_out:
         self.spin = 1
         self.charge = 0
 
-    def read_file(self, filename=None, text=None,read_charge_and_spin=True,read_esp_charge=False):
+
+    def read_file(self, filename=None, text=None, read_charge_and_spin=True, read_esp_charge=False):
         if filename:
             self.filename = filename
         if text:
@@ -582,7 +622,7 @@ class qchem_out:
         else:
             self.text = open(self.filename, "r").read()
         if read_charge_and_spin:
-            self._parse_charge_and_spin()
+            self._parse_molecule()
         if read_esp_charge:
             self._parse_esp_charge()
         self.parse()
@@ -620,16 +660,43 @@ class qchem_out:
     @property
     def final_ene(self):
         return self.geoms[-1].energy if self.geoms else None
-    def _parse_charge_and_spin(self):
+
+    import numpy as np
+
+    def _parse_molecule(self):
         lines = self.text.splitlines()
+        self.charge = None
+        self.spin = None
         for i, line in enumerate(lines):
             if line.strip().lower().startswith("$molecule"):
+                # --- Read charge and spin ---
                 next_line = lines[i + 1].strip()
                 charge, spin = map(int, next_line.split()[:2])
-                self.charge  = charge
+                self.charge = charge
                 self.spin = spin
-                return charge, spin
-        raise ValueError("No '$molecule' section found or missing charge/spin line.")
+                self.molecule.charge = charge
+                self.molecule.spin = spin
+
+                # --- Read molecular geometry until $end ---
+                j = i + 2
+                while j < len(lines):
+                    l = lines[j].strip()
+                    if not l or l.lower().startswith("$end"):
+                        break
+                    parts = l.split()
+                    if len(parts) >= 4:
+                        atom_line = parts[0:4]
+                        self.molecule.carti.append(atom_line)
+
+                    j += 1
+                break  # only the first $molecule section is parsed
+
+        if self.charge is None or self.spin is None:
+            raise ValueError("No '$molecule' section found or missing charge/spin line.")
+
+        # Convert to NumPy array for convenience
+        self.molecule.carti = np.array(self.molecule.carti)
+        return self.charge, self.spin, self.molecule.carti
 
     def _parse_esp_charge(self, lines):
         """
@@ -654,7 +721,7 @@ class qchem_out:
             text,
             re.S,
         )
-        
+
         if not m:
             return None
 
@@ -666,7 +733,6 @@ class qchem_out:
                 charges.append(float(parts[0]))
             elif len(parts) >= 2:  # atom index and charge
                 charges.append(float(parts[-1]))
-
 
         esp_charges = np.array(charges[:-1])
         # assign to ground state (state[0] typically ground)
@@ -682,9 +748,9 @@ class qchem_out_opt(qchem_out):
 
     def parse(self):
         out_file = self.text.split("Optimization Cycle:".upper())
-        
+
         for i in range(1, len(out_file)):
-                
+
             geom_texts = out_file[i].split("\n")
             geom = geoms()
             geom.index = i - 1
@@ -723,6 +789,7 @@ class qchem_out_opt(qchem_out):
                 break
         return carti
 
+
 class qchem_out_scan(qchem_out):
     def parse(self):
         lines = self.text.splitlines()
@@ -752,6 +819,7 @@ class qchem_out_scan(qchem_out):
 
         if self.scan_ene_list:
             self.ene = self.scan_ene_list[-1]
+
 
 class qchem_out_soc(qchem_out):
     def parse(self):
@@ -784,6 +852,7 @@ class qchem_out_soc(qchem_out):
     @property
     def final_soc_ene(self):
         return self.opt_esoc_list[-1] if self.opt_esoc_list else None
+
 class qchem_out_force(qchem_out):
     def __init__(self, filename=""):
         super().__init__(filename)
@@ -793,31 +862,19 @@ class qchem_out_force(qchem_out):
         self.ene = None
 
     def read_file(self, filename=None, text=None, different_type="analytical", self_check=False):
-        
+
         if filename:
             self.filename = filename
         if text:
             self.text = text
         else:
             self.text = open(self.filename, "r").read()
-        self._parse_charge_and_spin()
-        
+        self._parse_molecule()
+
         self.parse(different_type=different_type, self_check=self_check)
 
     def parse(self, different_type="analytical", self_check=False):
-        """
-        Parse self.text to extract forces/gradients and energy.
-        Behavior aligned with read_force_from_file():
-          - different_type: "soc" | "numercial" | "analytical" | "smd" | <custom header>
-          - self_check: if True, infer keyword from 'ideriv' line
-        Side effects:
-          - sets self.force (np.ndarray, shape (3, Natoms) for analytical; or table shape for other types)
-          - sets self.force_e1 / self.force_e2 when different_type == "soc"
-          - sets self.ene if ' Total energy' lines are present
-          - optionally syncs self.molecule from self.filename if available
-        """
         import numpy as np
-
         # --- Prepare text lines ---
         if not getattr(self, "text", None):
             # If text is empty but filename is known, populate text
@@ -850,7 +907,9 @@ class qchem_out_force(qchem_out):
                     self.ene = float(ln.split("=")[1])
                 except Exception:
                     pass
-
+        if different_type == "analytical":
+            self.force = self._parse_force_analytical(lines)
+            return self.force
         # --- Decide gradient block keyword(s) ---
         force_key_word_checked = 0
         force_key_word = "fhiuadjskdnlashalfwwawldjalksfna"  # sentinel
@@ -926,7 +985,7 @@ class qchem_out_force(qchem_out):
 
             # Generic stop conditions for non-SMD
             if any(stop in ln for stop in ("Gradient time", "#")) or \
-               (force_check and "gradient" in ln.lower() and force_key_word != "Gradient of SCF Energy"):
+                    (force_check and "gradient" in ln.lower() and force_key_word != "Gradient of SCF Energy"):
                 force_check = 0
                 continue
 
@@ -992,6 +1051,30 @@ class qchem_out_force(qchem_out):
             except Exception:
                 self.force = None
         return self
+    def _parse_force_analytical(self,lines):
+        i = lines.index(' Gradient of SCF Energy')
+        total = self.molecule.natom
+        j = 1
+        x_grad = np.array([])
+        y_grad = np.array([])
+        z_grad = np.array([])
+        while j < (total//6+1)*4 +1 :
+            ln = lines[i+j]
+            if j%4 ==1:
+                j+=1
+                continue
+            elif j % 4 == 2:
+                x_grad = np.append(x_grad,np.array(ln.split()[1:],dtype=float))
+            elif j % 4 == 3:
+                y_grad = np.append(y_grad,np.array(ln.split()[1:],dtype=float))
+            elif j % 4 == 0:
+                z_grad = np.append(z_grad,np.array(ln.split()[1:],dtype=float))
+            j+=1
+        force = np.column_stack((x_grad, y_grad, z_grad))
+        print(force)
+        return force
+
+
 class qchem_out_freq(qchem_out):
     def __init__(self, filename=""):
         super().__init__(filename)
@@ -1014,8 +1097,9 @@ class qchem_out_freq(qchem_out):
         gibbs_energy = self.ene * Hartree_to_kcal + self.enthalpy - (0.273 + 0.025) * self.entropy
         self.gibbs_energy = gibbs_energy
         return gibbs_energy
-def reshape_force(force_block):
 
+
+def reshape_force(force_block):
     x_force, y_force, z_force = [], [], []
     check = 0
     for row in force_block:
@@ -1023,11 +1107,11 @@ def reshape_force(force_block):
             check = 0
             continue
 
-        if check % 3 == 0:   # x 分量行
+        if check % 3 == 0:  # x 分量行
             x_force.extend([float(v) for v in row[1:]])
-        elif check % 3 == 1: # y 分量行
+        elif check % 3 == 1:  # y 分量行
             y_force.extend([float(v) for v in row[1:]])
-        elif check % 3 == 2: # z 分量行
+        elif check % 3 == 2:  # z 分量行
             z_force.extend([float(v) for v in row[1:]])
         check += 1
 
@@ -1045,6 +1129,7 @@ class qchem_out_geomene(qchem_out):
     """
     Minimal parser: only reads Total energy and last Standard Nuclear Orientation geometry
     """
+
     def __init__(self, filename=""):
         super().__init__(filename)
 
@@ -1081,7 +1166,11 @@ class qchem_out_geomene(qchem_out):
             mol.carti = blocks[-1]  # 最后一帧几何
             mol.check = True
             self.molecule = mol
+
+
 import re
+
+
 class qchem_out_aimd(qchem_out):
 
     def __init__(self, filename=""):
@@ -1157,7 +1246,7 @@ class qchem_out_aimd(qchem_out):
                     pass
 
             tmp = qchem_out_geomene()
-            tmp.read_file(text=block,read_charge_and_spin=False)
+            tmp.read_file(text=block, read_charge_and_spin=False)
 
             g = geoms()
             g.index = step_idx
@@ -1196,31 +1285,39 @@ class qchem_out_aimd(qchem_out):
     def get_energies(self):
         return np.array([g.energy for g in self.aimd_geoms if g.energy is not None])
 
+
 class multiple_qchem_jobs(object):
     def __init__(self):
-        self.jobs=[]
+        self.jobs = []
         self.filename = ""
         self.molecule_check = True
         self.rem_check = True
         self.opt_check = False
         self.pcm_check = False
+
     def match_check(self, job):
         if self.molecule_check:
             job.molecule.check = True
-        else: job.molecule.check = False
+        else:
+            job.molecule.check = False
         if self.rem_check:
             job.rem.check = True
-        else: job.rem.check = False
+        else:
+            job.rem.check = False
         if self.opt_check:
             job.opt.check = True
-        else: job.opt.check = False
+        else:
+            job.opt.check = False
         if self.pcm_check:
             job.pcm.check = True
-        else: job.pcm.check = False
+        else:
+            job.pcm.check = False
+
     @property
     def job_nums(self):
         return len(self.jobs)
-    def read_from_file(self,filename):
+
+    def read_from_file(self, filename):
         self.filename = filename
         jobs = open(filename, "r").read().split("@@@")
         for job in jobs:
@@ -1228,16 +1325,21 @@ class multiple_qchem_jobs(object):
             self.match_check(job_file)
             job_file.read_from_file(out_text=job)
             self.jobs.append(job_file)
+
     @property
     def output(self):
         out = ""
         for i in range(self.job_nums):
             job = self.jobs[i]
-            if i == 0: out += f"{job.output}\n"
-            else: out += f"\n@@@\n\n{job.output}\n"
+            if i == 0:
+                out += f"{job.output}\n"
+            else:
+                out += f"\n@@@\n\n{job.output}\n"
         return out
+
     def generate_inp(self, new_file_name):
         with open(new_file_name, "w") as f: f.write(self.output)
+
 
 class qchem_out_multi:
 
@@ -1279,14 +1381,14 @@ class ExcitedState:
         self.state_idx = state_idx
         self.charge = charge
         self.multiplicity = multiplicity
-        self.excitation_energy = None   # eV
-        self.total_energy = None        # Hartree
+        self.excitation_energy = None  # eV
+        self.total_energy = None  # Hartree
         self.osc_strength = None
         self.dipole_mom = None
-        self.trans_mom = None           # (Tx, Ty, Tz)
-        self.trans_mom_norm = None      # |T|
-        self.transitions = []           # list of dict: {"from":..,"to":..,"amplitude":..}
-        self.gradient = None            # (Natom, 3)
+        self.trans_mom = None  # (Tx, Ty, Tz)
+        self.trans_mom_norm = None  # |T|
+        self.transitions = []  # list of dict: {"from":..,"to":..,"amplitude":..}
+        self.gradient = None  # (Natom, 3)
         self.esp_transition_density = None
         self.esp_charges = None
 
@@ -1299,7 +1401,7 @@ class ExcitedState:
 
 
 class qchem_out_excite(qchem_out):
-    def __init__(self, filename="",read_esp=True):
+    def __init__(self, filename="", read_esp=True):
         super().__init__(filename)
         self.states = []  # list of ExcitedState
         self.read_esp = read_esp
@@ -1346,7 +1448,6 @@ class qchem_out_excite(qchem_out):
                 dipole_find = False
                 break
         self.states.append(gs)
-
 
         for i, line in enumerate(lines):
             if line.strip().startswith("Excited state"):
@@ -1434,6 +1535,7 @@ class qchem_out_excite(qchem_out):
                     if st.state_idx == st_idx:
                         st.gradient = grad.T  # (Natoms, 3)
                         break
+
     def _parse_excite_esp_blocks(self, lines):
         text = "\n".join(lines)
         # --- ESP charges for excited states ---
@@ -1467,11 +1569,10 @@ class qchem_out_excite(qchem_out):
                         ln = lines[j]
                         # next header or empty line terminates subblock
                         if re.match(r"^\s*\d+(\s+\d+)+\s*$", ln) or not ln.strip():
-
                             break
 
                         parts = re.findall(r"[-+]?\d*\.\d+(?:[Ee][-+]?\d+)?", ln)
-                        if len(parts) == len(header_nums) :  # includes atom index
+                        if len(parts) == len(header_nums):  # includes atom index
                             block_rows.append([float(x) for x in parts[0:]])
 
                         j += 1
@@ -1480,7 +1581,7 @@ class qchem_out_excite(qchem_out):
                     i = j
                 else:
                     i += 1
-            #print(subblocks)
+            # print(subblocks)
             if not subblocks:
                 return np.zeros((0, 0))
             # concatenate horizontally (same atoms, different states)
@@ -1494,8 +1595,8 @@ class qchem_out_excite(qchem_out):
         for i in range(n_states):
             self.states[i + 1].esp_charges = esp_excited[i]
             self.states[i + 1].esp_transition_density = esp_trans[i]
+
     def summary(self):
         print(f"解析到 {len(self.states)} 个态 (含基态)")
         for st in self.states:
             print(st)
-
