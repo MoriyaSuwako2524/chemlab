@@ -78,27 +78,7 @@ class mecp(object):
         self.state_2.ene_list.append(self.state_2.out.ene)
         self.state_1.gradient_list.append(self.state_1.out.force)
         self.state_2.gradient_list.append(self.state_2.out.force)
-    def read_soc_output(self):
-        if self.out_path == "":
-            path = self.ref_path
-        else:
-            path = self.out_path
-        self.state_1.out = qchem_out_force()
-        self.state_2.out = qchem_out_force()
-        self.state_1.job_name = "{}{}_job{}.inp.out".format(self.prefix,self.state_1._spin,self.job_num)
-        self.state_1.out.read_file(path+self.state_1.job_name,self_check=False,different_type=self.different_type)
-        self.job_num +=1
-        self.state_1.out.ene = self.state_1.out.final_adiabatic_ene
-        self.state_2.out.ene = self.state_1.out.final_adiabatic_ene + self.state_1.out.final_soc_ene
-        self.state_1.ene_list.append(self.state_1.out.final_adiabatic_ene)
-        self.state_2.ene_list.append(self.state_1.out.final_adiabatic_ene + self.state_1.out.final_soc_ene)
 
-        
-        self.state_1.out.force = self.state_1.out.force
-        self.state_2.out.force = -self.state_1.out.force + self.state_1.out.force_e1 +  self.state_1.out.force_e2
-        
-        self.state_1.gradient_list.append(self.state_1.out.force)
-        self.state_2.gradient_list.append(self.state_2.out.force)
         
     def calc_new_gradient(self):
         E1 = self.state_1.out.ene
@@ -191,14 +171,7 @@ class mecp(object):
         out.write(self.state_1.inp.molecule.return_output_format()+self.state_1.inp.remain_texts)
         out = open(path+self.state_2.job_name,"w")
         out.write(self.state_2.inp.molecule.return_output_format()+self.state_2.inp.remain_texts)
-    def generate_new_spc_inp(self):
-        if self.out_path == "":
-            path = self.ref_path
-        else:
-            path = self.out_path
-        self.state_1.job_name = "{}{}_job{}.inp".format(self.prefix,self.state_1._spin,self.job_num)
-        out = open(path+self.state_1.job_name,"w")
-        out.write(self.state_1.inp.molecule.return_output_format()+self.state_1.inp.remain_texts)
+
 
     def check_convergence(self):      
         
@@ -221,49 +194,7 @@ class mecp(object):
         is_converged = sum(converged_flags) >= 2
         print(f"Energy gap: {delta_E:.5e}, Converged? {delta_E < self.energy_tol}; \n Gradient norm: {grad_norm:.5e}, Converged? {grad_norm < self.grad_tol};\n Displacement: {displacement:.5e}, Converged? {displacement < self.disp_tol}. \n")
         return is_converged
-    def check_soc_converge(self):
-        """
-        Check convergence for SOC MECP optimization based on:
-        - Energy change in spin-adiabatic energy (E_adiab)
-        - Gradient norm (total gradient)
-        - Structure displacement
-        """
-        # Current energy
-        current_energy = self.state_1.out.final_adiabatic_ene  # spin-adiabatic energy from output
-        natom = self.state_1.inp.molecule.natom
-        current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
-    
-        # Energy change
-        if hasattr(self, "last_adiabatic_energy"):
-            delta_E = abs(current_energy - self.last_adiabatic_energy)
-        else:
-            delta_E = np.inf
-    
-        # Gradient norm
-        grad_norm = np.linalg.norm(self.parallel_gradient + self.orthogonal_gradient)
-    
-        # Structure displacement
-        if self.last_structure is not None:
-            last_structure = self.last_structure.reshape((3, natom))
-            displacement = np.linalg.norm(current_structure - last_structure)
-        else:
-            displacement = np.inf
-    
-        # Update memory for next step
-        self.last_adiabatic_energy = current_energy
-    
-        # Convergence logic
-        converged_flags = [
-            delta_E < self.energy_tol,
-            grad_norm < self.grad_tol,
-            displacement < self.disp_tol,
-        ]
-        is_converged = sum(converged_flags) >= 2
-    
-        print(f"[SOC] Energy change: {delta_E:.5e}, Converged? {delta_E < self.energy_tol};")
-        print(f"[SOC] Gradient norm: {grad_norm:.5e}, Converged? {grad_norm < self.grad_tol};")
-        print(f"[SOC] Displacement: {displacement:.5e}, Converged? {displacement < self.disp_tol}.\n")
-        return is_converged
+
     def restrain_ene(self, atom_i, atom_j, R0, K=1000.0):
         R_vec = self.state_1.inp.molecule.calc_array_from_atom_1_to_atom_2(atom_i, atom_j)
         Rij = np.linalg.norm(R_vec)
@@ -359,6 +290,84 @@ class mecp(object):
         fig3.tight_layout()
         display(fig3)
         plt.close(fig3)
+
+class mecp_soc(mecp):
+    def __init__(self):
+        super(mecp_soc, self).__init__()
+
+    def generate_new_inp(self):
+        if self.out_path == "":
+            path = self.ref_path
+        else:
+            path = self.out_path
+        self.state_1.job_name = "{}{}_job{}.inp".format(self.prefix,self.state_1._spin,self.job_num)
+        out = open(path+self.state_1.job_name,"w")
+        out.write(self.state_1.inp.molecule.return_output_format()+self.state_1.inp.remain_texts)
+
+    def check_converge(self):
+        """
+        Check convergence for SOC MECP optimization based on:
+        - Energy change in spin-adiabatic energy (E_adiab)
+        - Gradient norm (total gradient)
+        - Structure displacement
+        """
+        # Current energy
+        current_energy = self.state_1.out.final_adiabatic_ene  # spin-adiabatic energy from output
+        natom = self.state_1.inp.molecule.natom
+        current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
+
+        # Energy change
+        if hasattr(self, "last_adiabatic_energy"):
+            delta_E = abs(current_energy - self.last_adiabatic_energy)
+        else:
+            delta_E = np.inf
+
+        # Gradient norm
+        grad_norm = np.linalg.norm(self.parallel_gradient + self.orthogonal_gradient)
+
+        # Structure displacement
+        if self.last_structure is not None:
+            last_structure = self.last_structure.reshape((3, natom))
+            displacement = np.linalg.norm(current_structure - last_structure)
+        else:
+            displacement = np.inf
+
+        # Update memory for next step
+        self.last_adiabatic_energy = current_energy
+
+        # Convergence logic
+        converged_flags = [
+            delta_E < self.energy_tol,
+            grad_norm < self.grad_tol,
+            displacement < self.disp_tol,
+        ]
+        is_converged = sum(converged_flags) >= 2
+
+        print(f"[SOC] Energy change: {delta_E:.5e}, Converged? {delta_E < self.energy_tol};")
+        print(f"[SOC] Gradient norm: {grad_norm:.5e}, Converged? {grad_norm < self.grad_tol};")
+        print(f"[SOC] Displacement: {displacement:.5e}, Converged? {displacement < self.disp_tol}.\n")
+        return is_converged
+
+    def read_output(self):
+        if self.out_path == "":
+            path = self.ref_path
+        else:
+            path = self.out_path
+        self.state_1.out = qchem_out_force()
+        self.state_2.out = qchem_out_force()
+        self.state_1.job_name = "{}{}_job{}.inp.out".format(self.prefix, self.state_1._spin, self.job_num)
+        self.state_1.out.read_file(path + self.state_1.job_name, self_check=False, different_type=self.different_type)
+        self.job_num += 1
+        self.state_1.out.ene = self.state_1.out.final_adiabatic_ene
+        self.state_2.out.ene = self.state_1.out.final_adiabatic_ene + self.state_1.out.final_soc_ene
+        self.state_1.ene_list.append(self.state_1.out.final_adiabatic_ene)
+        self.state_2.ene_list.append(self.state_1.out.final_adiabatic_ene + self.state_1.out.final_soc_ene)
+
+        self.state_1.out.force = self.state_1.out.force
+        self.state_2.out.force = -self.state_1.out.force + self.state_1.out.force_e1 + self.state_1.out.force_e2
+
+        self.state_1.gradient_list.append(self.state_1.out.force)
+        self.state_2.gradient_list.append(self.state_2.out.force)
 
 class mol_state(object):
     def __init__(self):

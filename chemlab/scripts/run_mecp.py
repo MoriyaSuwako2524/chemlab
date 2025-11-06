@@ -5,7 +5,7 @@ import argparse
 import subprocess
 import matplotlib.pyplot as plt
 from IPython.display import clear_output
-from chemlab.util.mecp import mecp
+from chemlab.util.mecp import mecp,mecp_soc
 
 
 QCHEM_ENV_SETUP = """
@@ -42,7 +42,13 @@ def wait_for_qchem_outputs(out_files, check_interval=30, log=None):
 
 
 def run_mecp_optimization(args):
-    test_mecp = mecp()
+    job_type = args.file
+    if job_type == "mecp":
+        test_mecp = mecp()
+    elif job_type == "soc":
+        test_mecp = mecp_soc()
+    else:
+        raise NotImplementedError("Job type %s not implemented,Please use jobtype=mecp or jobtype=soc" % job_type)
     test_mecp.ref_path = os.path.dirname(args.path)
     test_mecp.ref_filename = os.path.basename(args.file)
     test_mecp.out_path = args.out
@@ -56,10 +62,13 @@ def run_mecp_optimization(args):
     test_mecp.state_1.spin = args.spin1
     test_mecp.state_2.spin = args.spin2
     test_mecp.stepsize = args.stepsize
+
+
+
     test_mecp.different_type = "soc"
     test_mecp.converge_limit = args.conv
     test_mecp.read_init_structure()
-    test_mecp.generate_new_spc_inp()
+    test_mecp.generate_new_inp()
     test_mecp.initialize_bfgs()
 
     # prepare plotting
@@ -73,7 +82,7 @@ def run_mecp_optimization(args):
         log.write(msg + "\n")
 
         test_mecp.job_num = step
-        test_mecp.generate_new_spc_inp()
+        test_mecp.generate_new_inp()
 
         # run state 1 and 2 jobs
         processes, out_files = [], []
@@ -91,7 +100,7 @@ def run_mecp_optimization(args):
         wait_for_qchem_outputs(out_files, log=log)
 
         # post-processing
-        test_mecp.read_soc_output()
+        test_mecp.read_output()
         test_mecp.calc_new_gradient()
 
         # energy record
@@ -140,6 +149,7 @@ def main():
     parser.add_argument("--path", required=True, help="Path to reference Q-Chem input file.")
     parser.add_argument("--file", required=True, help="reference Q-Chem input file.")
     parser.add_argument("--out", required=True, help="Output directory.")
+    parser.add_argument("--jobtype", required=True, help="Default mecp(jobtype=mecp) or spin adiabatic state mecp(soc).")
     parser.add_argument("--spin1", type=int, default=1, help="Spin multiplicity of state 1.")
     parser.add_argument("--spin2", type=int, default=3, help="Spin multiplicity of state 2.")
     parser.add_argument("--nthreads", type=int, default=16, help="Total threads for Q-Chem.")
