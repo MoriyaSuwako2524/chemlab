@@ -45,6 +45,7 @@ def run_mecp_optimization(args):
     job_type = args.jobtype
     if job_type == "mecp":
         test_mecp = mecp()
+        test_mecp.different_type = args.gradient
     elif job_type == "soc":
         test_mecp = mecp_soc()
     else:
@@ -150,6 +151,7 @@ def main():
     parser.add_argument("--file", required=True, help="reference Q-Chem input file.")
     parser.add_argument("--out", required=True, help="Output directory.")
     parser.add_argument("--jobtype", required=True, help="Default mecp(jobtype=mecp) or spin adiabatic state mecp(soc).")
+    parser.add_argument("--gradient",type=str, default="analytical",help="Default analytical gradient(gradient=analytical). Spin adiabatic state mecp use(gradient=soc) as default." )
     parser.add_argument("--spin1", type=int, default=1, help="Spin multiplicity of state 1.")
     parser.add_argument("--spin2", type=int, default=3, help="Spin multiplicity of state 2.")
     parser.add_argument("--nthreads", type=int, default=16, help="Total threads for Q-Chem.")

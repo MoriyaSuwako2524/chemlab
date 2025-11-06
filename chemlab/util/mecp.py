@@ -294,7 +294,7 @@ class mecp(object):
 class mecp_soc(mecp):
     def __init__(self):
         super(mecp_soc, self).__init__()
-
+        self.different_type = "soc"
     def generate_new_inp(self):
         if self.out_path == "":
             path = self.ref_path
