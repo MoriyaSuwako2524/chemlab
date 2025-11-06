@@ -71,8 +71,8 @@ class mecp(object):
         self.state_2.out = qchem_out_force()
         self.state_1.job_name = "{}{}_job{}.inp.out".format(self.prefix,self.state_1._spin,self.job_num)
         self.state_2.job_name = "{}{}_job{}.inp.out".format(self.prefix,self.state_2._spin,self.job_num)
-        self.state_1.out.read_file(path+self.state_1.job_name,self_check=False,different_type=self.different_type)
-        self.state_2.out.read_file(path+self.state_2.job_name,self_check=False,different_type=self.different_type)
+        self.state_1.out.read_file(os.path.join(path, self.state_1.job_name),self_check=False,different_type=self.different_type)
+        self.state_2.out.read_file(os.path.join(path, self.state_2.job_name),self_check=False,different_type=self.different_type)
         self.job_num +=1
         self.state_1.ene_list.append(self.state_1.out.ene)
         self.state_2.ene_list.append(self.state_2.out.ene)

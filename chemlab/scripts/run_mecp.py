@@ -90,7 +90,6 @@ def run_mecp_optimization(args):
         for state in [test_mecp.state_1, test_mecp.state_2]:
             inp = os.path.join(test_mecp.out_path, state.job_name)
             out = inp + ".out"
-            print(out)
             out_files.append(out)
             cmd = f"""{QCHEM_ENV_SETUP}\nqchem -nt {args.nthreads // 2} {inp} {out}"""
             p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
