@@ -267,13 +267,8 @@ class spin_adiabatic_state {
     void pseudo_density_explicit_z(OrbitalPair& pair);
     void gradient_implicit_rhs_Ms();
     void gradient_implicit_Ms_xy(OrbitalPair& pair);
-    void gradient_implicit_Ms_xy_a(OrbitalPair& pair);
-    void gradient_implicit_Ms_xy_b(OrbitalPair& pair);
-    void gradient_implicit_Ms_xy_c(OrbitalPair& pair);
-    void gradient_implicit_Ms_xy_d(OrbitalPair& pair);
     void gradient_implicit_Ms_z(OrbitalPair& pair);
     void gradient_implicit_Ms_z_init(OrbitalPair& pair);
-    void gradient_implicit_Ms_z_grad_1a(OrbitalPair& pair,double& phase,mat& tem_g, mat& y1_a, mat& y1_b, mat& y2_a, mat& y2_b );
 
 
    //void pseudo_density_explicit(mat &deriv_explicit_s, mat &deriv_explicit_l);

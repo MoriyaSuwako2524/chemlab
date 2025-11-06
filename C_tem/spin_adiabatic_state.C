@@ -1333,11 +1333,6 @@ vec spin_adiabatic_state::gradient_explicit_Ms()
                pair.explicit_derivatives -= tem_psi1_L_Sinv_dS_psi2_beta_phase;
 
 
-
-
-
-
-
             }
             matrix_print_2d(pair.explicit_derivatives.memptr(), 3, NAtoms, "Zexuan Wei soc gradient_explicit_of pair");
             derivatives += pair.explicit_derivatives;
@@ -1353,6 +1348,7 @@ vec spin_adiabatic_state::gradient_explicit_Ms()
 
 void spin_adiabatic_state::gradient_implicit_rhs_Ms()
 {
+   // build CPKS equation
    S_MO_alpha = C1_alpha.t() * AOS * C2_alpha;
    S_MO_beta  = C1_beta.t() * AOS * C2_beta;
    // first low-spin state
@@ -1917,120 +1913,10 @@ void spin_adiabatic_state::gradient_implicit_Ms_z(OrbitalPair& pair)
    mat L_vsocz   = L_AO.slice(2) * vsoc_values[pair.Ms_idx].vsoc_z;
    cout << " Zexuan Wei implicit z end init"  << endl;
    
-   
-
-
-   mat tem_L_C2va = L_vsocz * tem_C2va;
-   mat tem_L_C2vb = L_vsocz * tem_C2vb;
-   mat tem_C1vaT_L = tem_C1va.t() * L_vsocz;;
-   mat tem_C1vbT_L = tem_C1vb.t() * L_vsocz;
-
-   mat tem_C1vaT_L_C2a = tem_C1vaT_L * pair.block2.C_ori_alpha;
-   mat tem_C1vaT_L_C2b = tem_C1vaT_L * pair.block2.C_ori_beta;
-   mat tem_C1vbT_L_C2a = tem_C1vbT_L * pair.block2.C_ori_alpha;
-   mat tem_C1vbT_L_C2b = tem_C1vbT_L * pair.block2.C_ori_beta;
-   mat tem_C1aT_L_C2va = pair.block1.C_ori_alpha.t() * tem_L_C2va;
-   mat tem_C1aT_L_C2vb = pair.block1.C_ori_alpha.t() * tem_L_C2vb;
-   mat tem_C1bT_L_C2va = pair.block1.C_ori_beta.t() * tem_L_C2va;
-   mat tem_C1bT_L_C2vb = pair.block1.C_ori_beta.t() * tem_L_C2vb;
-
-	// direct deriv of C
-   mat tem_U2omsa_V0a = pair.block2.keep_u * pair.V_a.tail_cols(1);
-   mat tem_U2sa_V0sb = pair.block2.flip_u * Vb_flip_part;
-   mat tem_V2b_V0omsb = pair.block2.V * Vb_remain_part;
-   mat tem_U0aT_U1omsaT = pair.U_a.tail_cols(1).t() * pair.block1.keep_u.t();
-   mat tem_U0sbT_U1saT = Ub_flip_part.t() * pair.block1.flip_u.t();
-   mat tem_U0omsbT_V1bT = Ub_remain_part.t() *pair.block1.V.t();
-   mat tem_C1vaT_L_C2a_U2omsa_V0a = tem_C1vaT_L_C2a * tem_U2omsa_V0a;
-   mat tem_C1vaT_L_C2a_U2omsa_V0a_U0aT_U1omsaT = tem_C1vaT_L_C2a_U2omsa_V0a * tem_U0aT_U1omsaT;
-   y1_a += tem_C1vaT_L_C2a_U2omsa_V0a_U0aT_U1omsaT * pair.phase_alpha * 0.5;
-
-   mat tem_C1vaT_L_C2a_U2sa_V0sb = tem_C1vaT_L_C2a * tem_U2sa_V0sb;
-   mat tem_C1vaT_L_C2a_U2sa_V0sb_U0sbT_U1saT = tem_C1vaT_L_C2a_U2sa_V0sb * tem_U0sbT_U1saT;
-   y1_a -= tem_C1vaT_L_C2a_U2sa_V0sb_U0sbT_U1saT * pair.phase_beta * 0.5;
-
-   mat tem_C1vaT_L_C2b_V2b_V0omsb = tem_C1vaT_L_C2b * tem_V2b_V0omsb;
-   mat tem_C1vaT_L_C2b_V2b_V0omsb_U0sbT_U1saT = tem_C1vaT_L_C2b_V2b_V0omsb * tem_U0sbT_U1saT;
-   y1_a -= tem_C1vaT_L_C2b_V2b_V0omsb_U0sbT_U1saT * pair.phase_beta * 0.5;
-
-   mat tem_C1vbT_L_C2a_U2sa_V0sb = tem_C1vbT_L_C2a * tem_U2sa_V0sb;
-   mat tem_C1vbT_L_C2a_U2sa_V0sb_U0omsbT_V1bT = tem_C1vbT_L_C2a_U2sa_V0sb * tem_U0omsbT_V1bT;
-   y1_b -= tem_C1vbT_L_C2a_U2sa_V0sb_U0omsbT_V1bT * pair.phase_beta * 0.5;
-
-   mat tem_C1vbT_L_C2b_V2b_V0omsb = tem_C1vbT_L_C2b * tem_V2b_V0omsb;
-   mat tem_C1vbT_L_C2b_V2b_V0omsb_U0omsbT_V1bT = tem_C1vbT_L_C2b_V2b_V0omsb * tem_U0omsbT_V1bT;
-   y1_b -= tem_C1vbT_L_C2b_V2b_V0omsb_U0omsbT_V1bT * pair.phase_beta * 0.5;
-
-   mat tem_U2omsa_V0a_U0aT_U1omsaT =  tem_U2omsa_V0a * tem_U0aT_U1omsaT;
-   mat tem_U2omsa_V0a_U0aT_U1omsaT_C1aT_L_C2va = tem_U2omsa_V0a_U0aT_U1omsaT * tem_C1aT_L_C2va;
-   y2_a += tem_U2omsa_V0a_U0aT_U1omsaT_C1aT_L_C2va * pair.phase_alpha * 0.5;
-
-   mat tem_U2sa_V0sb_U0sbT_U1saT = tem_U2sa_V0sb * tem_U0sbT_U1saT;
-   mat tem_U2sa_V0sb_U0sbT_U1saT_C1aT_L_C2va = tem_U2sa_V0sb_U0sbT_U1saT * tem_C1aT_L_C2va;
-   y2_a -= tem_U2sa_V0sb_U0sbT_U1saT_C1aT_L_C2va * pair.phase_beta * 0.5;
-
-   mat tem_U2sa_V0sb_U0omsbT_V1bT = tem_U2sa_V0sb * tem_U0omsbT_V1bT;
-   mat tem_U2sa_V0sb_U0omsbT_V1bT_C1bT_L_C2va = tem_U2sa_V0sb_U0omsbT_V1bT * tem_C1bT_L_C2va;
-   y2_a -= tem_U2sa_V0sb_U0omsbT_V1bT_C1bT_L_C2va * pair.phase_beta * 0.5;
-
-   mat tem_V2b_V0omsb_U0sbT_U1saT = tem_V2b_V0omsb * tem_U0sbT_U1saT;
-   mat tem_V2b_V0omsb_U0sbT_U1saT_C1aT_L_C2vb = tem_V2b_V0omsb_U0sbT_U1saT * tem_C1aT_L_C2vb;
-   y2_b -= tem_V2b_V0omsb_U0sbT_U1saT_C1aT_L_C2vb * pair.phase_beta * 0.5;
-
-   mat tem_V2b_V0omsb_U0omsbT_V1bT = tem_V2b_V0omsb * tem_U0omsbT_V1bT;
-   mat tem_V2b_V0omsb_U0sbT_U1saT_C1bT_L_C2vb = tem_V2b_V0omsb_U0omsbT_V1bT * tem_C1bT_L_C2vb;
-   y2_b -= tem_V2b_V0omsb_U0sbT_U1saT_C1bT_L_C2vb * pair.phase_beta * 0.5;
-   cout << " Zexuan Wei implicit z end of C deriv"  << endl;
 
 
 
 
-   mat tem_en0 = make_E((int)pair.U_a.n_cols, { (int)(pair.U_a.n_cols - 1) });
-
-
-   mat tem_C1aT_L_C2a_U2omsa_V0a = pair.C1aT_L_C2a * tem_U2omsa_V0a;
-   mat tem_U1omsaT_C1aT_L_C2a_U2omsa_V0a = pair.block1.keep_u.t() * tem_C1aT_L_C2a_U2omsa_V0a;
-   mat tem_overU121a = tem_U1omsaT_C1aT_L_C2a_U2omsa_V0a * tem_en0.t();
-
-   mat tem_Gu121a = svd_vjp_term_U(pair.U_a,pair.lambda_a,pair.V_a.t(),tem_overU121a);
-   
-   double tem_phase = 0.5 * pair.phase_alpha;
-   print_mat_size(tem_overU121a,"tem_overU121a");
-   print_mat_size(tem_Gu121a,"tem_Gu121a");
-   gradient_implicit_Ms_z_grad_1a(pair,tem_phase,tem_Gu121a,y1_a,y1_b,y2_a,y2_b);
-
-   tem_en0 = make_E((int)pair.V_a.n_cols, { (int)(pair.V_a.n_cols - 1) });
-   mat tem_U0aT_U1omsaT_C1aT_L_C2a = tem_U0aT_U1omsaT * pair.C1aT_L_C2a;
-   mat tem_U0aT_U1omsaT_C1aT_L_C2a_U2omsa = tem_U0aT_U1omsaT_C1aT_L_C2a * pair.block2.keep_u;
-   mat tem_overV121a = tem_en0 * tem_U1omsaT_C1aT_L_C2a_U2omsa_V0a;
-
-   mat tem_Gv121a = svd_vjp_term_V(pair.U_a,pair.lambda_a,pair.V_a.t(),tem_overV121a.t());
-   print_mat_size(tem_overV121a,"tem_overV121a");
-   print_mat_size(tem_Gv121a,"tem_Gv121a");
-   gradient_implicit_Ms_z_grad_1a(pair,tem_phase,tem_Gv121a,y1_a,y1_b,y2_a,y2_b);
-
-   mat tem_C1aT_L_C2a_U2omsa_V0a_U0aT = tem_C1aT_L_C2a_U2omsa_V0a * pair.U_a.tail_cols(1).t();
-   mat tem_overU13a = tem_C1aT_L_C2a_U2omsa_V0a_U0aT * pair.block1.J.t();
-   mat tem_Gu13a = svd_vjp_term_U(pair.block1.U,pair.block1.lambda,pair.block1.V.t(),tem_overU13a);
-   print_mat_size(tem_overU13a,"tem_overU13a");
-   print_mat_size(tem_Gu13a,"tem_Gu13a");
-   mat tem_S1voab_Gu13a = pair.S1voab * tem_Gu13a;
-   y1_a += tem_S1voab_Gu13a * pair.phase_beta * 0.5;
-
-   mat tem_Gu13a_S1ovab = tem_Gu13a * pair.S1ovab;
-   y1_b += tem_Gu13a_S1ovab.t() * pair.phase_beta * 0.5;
-
-   mat tem_V0a_U0aT_U1omsaT_C1aT_L_C2a =  pair.V_a.tail_cols(1) * tem_C1aT_L_C2a_U2omsa_V0a;
-   mat tem_overU23a = pair.block2.J * tem_V0a_U0aT_U1omsaT_C1aT_L_C2a;
-   mat tem_Gu23a = svd_vjp_term_U(pair.block2.U,pair.block2.lambda,pair.block2.V.t(),tem_overU23a.t());
-
-   mat tem_Gu23a_S2ovab = tem_Gu23a * pair.S2ovab;
-   print_mat_size(tem_overU23a,"tem_overU23a");
-   print_mat_size(tem_Gu23a,"tem_Gu23a");
-   y2_b += tem_Gu23a_S2ovab * pair.phase_beta * 0.5;
-
-   mat tem_S2voab_Gu23a = pair.S2voab * tem_Gu23a;
-   y2_a += tem_S2voab_Gu23a.t() * pair.phase_beta * 0.5;
 
 
 
@@ -2122,127 +2008,6 @@ void spin_adiabatic_state::gradient_implicit_Ms_z_init(OrbitalPair& pair){
 
 
 }
-
-
-
-void spin_adiabatic_state::gradient_implicit_Ms_z_grad_1a(OrbitalPair& pair,double& phase,mat& tem_g, mat& y1_a, mat& y1_b, mat& y2_a, mat& y2_b ){
-   mat tem_S12ooa_U2omsa = pair.S12ooa * pair.block2.keep_u;
-   mat tem_S12ooa_U2omsa_g =  tem_S12ooa_U2omsa * tem_g;
-   mat tem_overU11a = tem_S12ooa_U2omsa_g * pair.block1.J.t();
-
-   mat tem_Gu11a = svd_vjp_term_U(pair.block1.U,pair.block1.lambda,pair.block1.V.t(),tem_overU11a);
-
-   mat tem_Js2_g = pair.block2.J * tem_g;
-   mat tem_Js2_g_U1omsaT = tem_Js2_g * pair.block1.keep_u.t();
-   mat tem_overU21a = tem_Js2_g_U1omsaT * pair.S12ooa;
-
-   mat tem_Gu21a = svd_vjp_term_U(pair.block2.U,pair.block2.lambda,pair.block2.V.t(),tem_overU21a.t());
-
-   mat tem_S1voab_tem_Gu11a = pair.S1voab * tem_Gu11a;
-   y1_a += tem_S1voab_tem_Gu11a * phase;
-
-   mat tem_Gu11a_S1ovab = tem_Gu11a * pair.S1ovab;
-   y1_b += tem_Gu11a_S1ovab * phase;
-
-   mat tem_U2omsa_g = pair.block2.keep_u * tem_g;
-   mat tem_U2omsa_g_U1omsaT = tem_U2omsa_g * pair.block1.keep_u.t() ;
-
-   mat tem_U2omsa_g_U1omsaT_S12ova = tem_U2omsa_g_U1omsaT * pair.S12ova;
-   y2_a += tem_U2omsa_g_U1omsaT_S12ova * phase;
-   mat S12voa_U2omsa_g_U1omsaT = pair.S12voa * tem_U2omsa_g_U1omsaT;
-   y1_a += S12voa_U2omsa_g_U1omsaT * phase;
-
-   mat tem_Gu21a_S2ovab = tem_Gu21a * pair.S2ovab;
-   y2_b += tem_Gu21a_S2ovab * phase;
-
-   mat tem_Gu21a_Gu21a = pair.S2voab * tem_Gu21a;
-   y2_a += tem_Gu21a_S2ovab * phase;
-}
-
-
-
-
-void spin_adiabatic_state::gradient_implicit_Ms_xy_b(OrbitalPair& pair)
-{
-   cout << "gradient_implicit_Ms_xy_b start. This means Ms1 <0 and Ms2>=0" << endl;
-   mat y1_a,y1_b,y2_a,y2_b;
-   mat tem_C1vb,tem_C1va,tem_C2va,tem_C2vb;
-   mat effect_C1_alpha,effect_C1_beta;
-   mat effect_C2_alpha,effect_C2_beta;
-
-   effect_C1_alpha = C1_beta;
-   effect_C1_beta = C1_alpha;
-   effect_C2_alpha = C2_alpha;
-   effect_C2_beta = C2_beta;
-
-   tem_C1va = C1_beta.tail_cols(nvir1_b);
-   tem_C1vb = C1_alpha.tail_cols(nvir1_a);
-   tem_C2va = C2_alpha.tail_cols(nvir2_a);
-   tem_C2vb = C2_beta.tail_cols(nvir2_b);
-
-   y1_a  = zeros<mat>(nvir1_b, nbeta1);
-   y1_b = zeros<mat>(nvir1_a, nalpha1);
-   y2_a = zeros<mat>(nalpha2, nvir2_a); 
-   y2_b  = zeros<mat>(nbeta2,  nvir2_b); 
-}
-
-void spin_adiabatic_state::gradient_implicit_Ms_xy_c(OrbitalPair& pair)
-{
-   //specific function for Ms1>=0 and Ms2<0
-   cout << "gradient_implicit_Ms_xy_c start. This means Ms1 >=0 and Ms2<0" << endl;
-   mat y1_a,y1_b,y2_a,y2_b;
-   mat tem_C1vb,tem_C1va,tem_C2va,tem_C2vb;
-   mat effect_C1_alpha,effect_C1_beta;
-   mat effect_C2_alpha,effect_C2_beta;
-
-   effect_C1_alpha = C1_alpha;
-   effect_C1_beta = C1_beta;
-   effect_C2_alpha = C2_beta;
-   effect_C2_beta = C2_alpha;
-
-   
-   tem_C1va = C1_alpha.tail_cols(nvir1_a);
-   tem_C1vb = C1_beta.tail_cols(nvir1_b);
-   tem_C2va = C2_beta.tail_cols(nvir2_b);
-   tem_C2vb = C2_alpha.tail_cols(nvir2_a);
-
-
-   y1_a = zeros<mat>(nvir1_a, nalpha1);
-   y1_b  = zeros<mat>(nvir1_b, nbeta1);
-   y2_a  = zeros<mat>(nbeta2,  nvir2_b); 
-   y2_b = zeros<mat>(nalpha2, nvir2_a); 
-
-}
-
-void spin_adiabatic_state::gradient_implicit_Ms_xy_d(OrbitalPair& pair)
-{
-   cout << "gradient_implicit_Ms_xy_d start. This means Ms1 <0 and Ms2<0" << endl;
-   mat y1_a,y1_b,y2_a,y2_b;
-   mat tem_C1vb,tem_C1va,tem_C2va,tem_C2vb;
-   mat effect_C1_alpha,effect_C1_beta;
-   mat effect_C2_alpha,effect_C2_beta;
-
-   effect_C1_alpha = C1_beta;
-   effect_C1_beta = C1_alpha;
-   effect_C2_alpha = C2_beta;
-   effect_C2_beta = C2_alpha;
-
-   tem_C1va = C1_beta.tail_cols(nvir1_b);
-   tem_C1vb = C1_alpha.tail_cols(nvir1_a);
-   tem_C2va = C2_beta.tail_cols(nvir2_b);
-   tem_C2vb = C2_alpha.tail_cols(nvir2_a);
-
-   y1_a  = zeros<mat>(nvir1_b, nbeta1);
-   y1_b = zeros<mat>(nvir1_a, nalpha1);
-   y2_a  = zeros<mat>(nbeta2,  nvir2_b); 
-   y2_b = zeros<mat>(nalpha2, nvir2_a); 
-}
-
-
-
-
-
-
 
 
 

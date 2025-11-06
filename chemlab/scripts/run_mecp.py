@@ -137,7 +137,8 @@ def run_mecp_optimization(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Run MECP optimization using Q-Chem.")
-    parser.add_argument("--file", required=True, help="Path to reference Q-Chem input file.")
+    parser.add_argument("--path", required=True, help="Path to reference Q-Chem input file.")
+    parser.add_argument("--file", required=True, help="reference Q-Chem input file.")
     parser.add_argument("--out", required=True, help="Output directory.")
     parser.add_argument("--spin1", type=int, default=1, help="Spin multiplicity of state 1.")
     parser.add_argument("--spin2", type=int, default=3, help="Spin multiplicity of state 2.")
