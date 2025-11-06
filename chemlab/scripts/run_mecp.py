@@ -43,7 +43,7 @@ def wait_for_qchem_outputs(out_files, check_interval=30, log=None):
 
 def run_mecp_optimization(args):
     test_mecp = mecp()
-    test_mecp.ref_path = os.path.dirname(args.file)
+    test_mecp.ref_path = os.path.dirname(args.path)
     test_mecp.ref_filename = os.path.basename(args.file)
     test_mecp.out_path = args.out
     os.makedirs(test_mecp.out_path, exist_ok=True)
