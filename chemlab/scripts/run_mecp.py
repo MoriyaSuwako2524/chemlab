@@ -52,7 +52,7 @@ def run_mecp_optimization(args):
         raise NotImplementedError("Job type %s not implemented,Please use jobtype=mecp or jobtype=soc" % job_type)
     test_mecp.ref_path = os.path.dirname(args.path)
     test_mecp.ref_filename = os.path.basename(args.file)
-    test_mecp.out_path = args.out
+    test_mecp.out_path = os.path.dirname(args.out)
     os.makedirs(test_mecp.out_path, exist_ok=True)
 
     # open log file
@@ -90,6 +90,7 @@ def run_mecp_optimization(args):
         for state in [test_mecp.state_1, test_mecp.state_2]:
             inp = os.path.join(test_mecp.out_path, state.job_name)
             out = inp + ".out"
+            print(out)
             out_files.append(out)
             cmd = f"""{QCHEM_ENV_SETUP}\nqchem -nt {args.nthreads // 2} {inp} {out}"""
             p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
@@ -147,10 +148,10 @@ def run_mecp_optimization(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Run MECP optimization using Q-Chem.")
-    parser.add_argument("--path", required=True, help="Path to reference Q-Chem input file.")
-    parser.add_argument("--file", required=True, help="reference Q-Chem input file.")
-    parser.add_argument("--out", required=True, help="Output directory.")
-    parser.add_argument("--jobtype", required=True, help="Default mecp(jobtype=mecp) or spin adiabatic state mecp(soc).")
+    parser.add_argument("--path", required=True,type=str, help="Path to reference Q-Chem input file.")
+    parser.add_argument("--file", required=True,type=str, help="reference Q-Chem input file.")
+    parser.add_argument("--out", required=True,type=str, help="Output directory.")
+    parser.add_argument("--jobtype", required=True,type=str, help="Default mecp(jobtype=mecp) or spin adiabatic state mecp(soc).")
     parser.add_argument("--gradient",type=str, default="analytical",help="Default analytical gradient(gradient=analytical). Spin adiabatic state mecp use(gradient=soc) as default." )
     parser.add_argument("--spin1", type=int, default=1, help="Spin multiplicity of state 1.")
     parser.add_argument("--spin2", type=int, default=3, help="Spin multiplicity of state 2.")
