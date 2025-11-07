@@ -902,9 +902,11 @@ class qchem_out_force(qchem_out):
 
         # --- Capture energy if present (use the last occurrence) ---
         for ln in lines:
-            if " Total energy" in ln and "=" in ln:
+            if "Total energy =" in ln:
                 try:
-                    self.ene = float(ln.split("=")[1])
+                    
+                    self.ene = float(ln.split("=")[-1])
+                    
                 except Exception:
                     pass
         if different_type == "analytical":

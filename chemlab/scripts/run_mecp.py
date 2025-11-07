@@ -66,12 +66,13 @@ def run_mecp_optimization(args):
 
 
 
-    test_mecp.different_type = "soc"
+    
     test_mecp.converge_limit = args.conv
     test_mecp.read_init_structure()
     test_mecp.generate_new_inp()
     test_mecp.initialize_bfgs()
-
+    #print(test_mecp.out_path)
+    #print(os.path.join(test_mecp.out_path,test_mecp.state_1.job_name))
     # prepare plotting
     plt.ion()
     fig, ax = plt.subplots(figsize=(6, 4))
@@ -84,7 +85,7 @@ def run_mecp_optimization(args):
 
         test_mecp.job_num = step
         test_mecp.generate_new_inp()
-
+	
         # run state 1 and 2 jobs
         processes, out_files = [], []
         for state in [test_mecp.state_1, test_mecp.state_2]:
@@ -92,14 +93,14 @@ def run_mecp_optimization(args):
             out = inp + ".out"
             out_files.append(out)
             cmd = f"""{QCHEM_ENV_SETUP}\nqchem -nt {args.nthreads // 2} {inp} {out}"""
-            p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
-            processes.append(p)
+            #p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
+            #processes.append(p)
 
         for p in processes:
             p.wait()
 
         wait_for_qchem_outputs(out_files, log=log)
-
+	
         # post-processing
         test_mecp.read_output()
         test_mecp.calc_new_gradient()

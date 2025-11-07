@@ -71,9 +71,11 @@ class mecp(object):
         self.state_2.out = qchem_out_force()
         self.state_1.job_name = "{}{}_job{}.inp.out".format(self.prefix,self.state_1._spin,self.job_num)
         self.state_2.job_name = "{}{}_job{}.inp.out".format(self.prefix,self.state_2._spin,self.job_num)
+        print(f"Reading Qchem outpur file:{os.path.join(path,self.state_1.job_name)},{os.path.join(path,self.state_2.job_name)}, gradient_type={self.different_type}")
         self.state_1.out.read_file(os.path.join(path, self.state_1.job_name),self_check=False,different_type=self.different_type)
         self.state_2.out.read_file(os.path.join(path, self.state_2.job_name),self_check=False,different_type=self.different_type)
         self.job_num +=1
+        print(f"state1 ene: {self.state_1.out.ene},state2 ene: {self.state_2.out.ene}")
         self.state_1.ene_list.append(self.state_1.out.ene)
         self.state_2.ene_list.append(self.state_2.out.ene)
         self.state_1.gradient_list.append(self.state_1.out.force)
@@ -166,7 +168,7 @@ class mecp(object):
         self.state_2.job_name = "{}{}_job{}.inp".format(self.prefix,self.state_2._spin,self.job_num)
         out = open(os.path.join(path, self.state_1.job_name),"w")
         out.write(self.state_1.inp.molecule.return_output_format()+self.state_1.inp.remain_texts)
-        out = open(os.path.join(path, self.state_1.job_name),"w")
+        out = open(os.path.join(path, self.state_2.job_name),"w")
         out.write(self.state_2.inp.molecule.return_output_format()+self.state_2.inp.remain_texts)
 
 
@@ -346,14 +348,12 @@ class mecp_soc(mecp):
         return is_converged
 
     def read_output(self):
-        if self.out_path == "":
-            path = self.ref_path
-        else:
-            path = self.out_path
+        path = self.out_path
         self.state_1.out = qchem_out_force()
         self.state_2.out = qchem_out_force()
         self.state_1.job_name = "{}{}_job{}.inp.out".format(self.prefix, self.state_1._spin, self.job_num)
-        self.state_1.out.read_file(path + self.state_1.job_name, self_check=False, different_type=self.different_type)
+        print(f"Reading output file: {path}{self.state_1.job_name}")
+        self.state_1.out.read_file(os.path.join(path,self.state_1.job_name), self_check=False, different_type=self.different_type)
         self.job_num += 1
         self.state_1.out.ene = self.state_1.out.final_adiabatic_ene
         self.state_2.out.ene = self.state_1.out.final_adiabatic_ene + self.state_1.out.final_soc_ene
