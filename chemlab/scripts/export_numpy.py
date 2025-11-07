@@ -176,10 +176,9 @@ def export_numpy(args):
     print(" transition_density:", transition_dentsity.shape)
     print("   split:", {k: v.shape for k, v in split_idx.items()})
 	
-    train_splits = list(args.train_splits)
-    val_splits = int(args.val_splits)
-    test_splits = int(args.test_splits)
-    print(train_splits)
+    train_splits = args.train_splits
+    val_splits = args.val_splits
+    test_splits = args.test_splits
     save_multiple_splits_same_test(coords.shape[0], train_splits, val_splits, test_splits)
 
     return None
@@ -242,6 +241,21 @@ def save_multiple_splits_same_test(n_total,train_sizes, n_val, n_test, prefix=".
             f"✅ Saved {out_file} "
             f"(train={len(idx_train)}, val={len(idx_val)}, test={len(idx_test)})"
         )
+
+import ast, json, re
+
+def smart_parse_list(s):
+    s = s.strip()
+    if s.startswith("["):
+        return ast.literal_eval(s)
+    elif "," in s:
+        return [int(x) for x in re.split(r"[,\s]+", s.strip("[] ")) if x]
+    else:
+        return [int(x) for x in s.split()]
+
+#
+
+
 def main():
     parser = argparse.ArgumentParser(description="Export tddft calculation using Q-Chem.")
     parser.add_argument("--data", required=True,default="./raw_data/" ,help="Path to reference Q-Chem input file.")
@@ -254,7 +268,7 @@ def main():
     parser.add_argument("--distance_unit", type=str, default="ang", help="Unit of coordinates")
     parser.add_argument("--grad_unit", type=tuple, default=("kcal/mol", "ang"), help="Unit of gradient")
     parser.add_argument("--force_unit", type=tuple, default=("kcal/mol", "ang"), help="Unit of force")
-    parser.add_argument("--train_splits", type=int,nargs="+", default="[1000,500,2000]" ,help="To export splits. This should be a list")
+    parser.add_argument("--train_splits", type=smart_parse_list, default="[1000,500,2000]" ,help="To export splits. This should be a list")
     parser.add_argument("--val_splits", type=int, default=400,
                         help="To export val splits. This should be a list")
     parser.add_argument("--test_splits", type=int, default=400,
