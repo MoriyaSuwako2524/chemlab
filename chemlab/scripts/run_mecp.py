@@ -93,8 +93,8 @@ def run_mecp_optimization(args):
             out = inp + ".out"
             out_files.append(out)
             cmd = f"""{QCHEM_ENV_SETUP}\nqchem -nt {args.nthreads // 2} {inp} {out}"""
-            #p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
-            #processes.append(p)
+            p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
+            processes.append(p)
 
         for p in processes:
             p.wait()

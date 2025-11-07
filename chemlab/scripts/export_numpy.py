@@ -179,7 +179,7 @@ def export_numpy(args):
     train_splits = args.train_splits
     val_splits = args.val_splits
     test_splits = args.test_splits
-    save_multiple_splits_same_test(coords.shape[0], train_splits, val_splits, test_splits)
+    save_multiple_splits_same_test(coords.shape[0], train_splits, val_splits, test_splits,prefix=out_path)
 
     return None
 
