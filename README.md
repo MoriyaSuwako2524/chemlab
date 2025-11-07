@@ -1,21 +1,53 @@
 # Chemlab
-This is a private reposity to save my scripts or other code stuff.
+
+This is a private repository for storing my scripts, tools, and other code-related resources.
+
+## How to Use
+
+1. Clone the repository:
+   ```bash
+   git clone <repo_url>
+   cd chemlab
+2. Install in editable mode:
+   ```bash
+    pip install -e .
+3. Once installed, you can access the provided scripts directly.
+Example scripts can be found under:
+   ```bash
+    chemlab/scripts/examples
+
+## Utility Modules
+
+```bash
+file_system
+```
 
 
-### /script/scan_2d
-A script written in 2025.4. The scripts use qchem (can support other input, but 
-I didn't write class for other software right now). It can generate 2d scan files with a reference
-file and scan variables, use bash script to run these jobs in order, and analysis the 2d scan result.
+This module provides tools to **read, write, and analyze Q-Chem input/output files**.
 
-the 2d scan work from optimize the first row in parallel, and then extract the former structure to run the next job in
-same row. You can exchange the col and row in bash to reverse it.
+#### Main Features
 
-To use the script, copy the scan_2d folder and put the reference file that contains moleculer
-structure and standard input details. for qchem, this should include at lease $rem$ and $opt2$
+- **Unit conversion**
+  - Classes for `ENERGY`, `DISTANCE`, `FORCE`, `DIPOLE`, etc.
+  - Supports conversions between Hartree, kcal/mol, eV, Å, bohr, fs, and more.
 
-The detailed tutorial is the notebook in the scan_2d folder.
+- **Q-Chem input handling**
+  - `qchem_file` reads or generates standard `.inp` files.
+  - Includes `$molecule`, `$rem`, `$opt`, `$opt2`, and other sections.
 
-### util
+- **Molecule operations**
+  - Parse and modify geometries.
+  - Compute bond lengths, angles, and dihedrals.
 
-Functions to handle qchem outputs
+- **Q-Chem output parsing**
+  - Classes like:
+    - `qchem_out_opt` – geometry optimization
+    - `qchem_out_scan` – PES scan
+    - `qchem_out_force` – forces and gradients
+    - `qchem_out_excite` – excited-state analysis
+    - `qchem_out_aimd` – AIMD trajectory
+  - Extracts energies, gradients, geometries, ESP charges, etc.
 
+- **Batch & multi-job support**
+  - `multiple_qchem_jobs` for multi-`@@@` inputs.
+  - `qchem_out_multi` for reading and summarizing multiple outputs.
