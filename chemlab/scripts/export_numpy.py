@@ -176,6 +176,72 @@ def export_numpy(args):
     print(" transition_density:", transition_dentsity.shape)
     print("   split:", {k: v.shape for k, v in split_idx.items()})
 
+    train_splits = args.train_splits
+    val_splits = args.val_splits
+    test_splits = args.test_splits
+
+    save_multiple_splits_same_test(coords.shape[0], train_splits, val_splits, test_splits)
+
+    return None
+
+
+def save_multiple_splits_same_test(n_total,train_sizes, n_val, n_test, prefix="./", seed=42):
+    """
+    Generate multiple dataset splits with the same test set.
+    Different train sizes but fixed test indices.
+
+    Parameters
+    ----------
+    n_total: int
+        Total number of samples.
+    train_sizes : list[int]
+        List of training set sizes to generate (e.g., [2000, 1000, 500, 250]).
+    n_val : int
+        Validation set size for all splits.
+    n_test : int
+        Fixed test set size (shared across all splits).
+    prefix : str
+        Output directory or filename prefix (e.g., "./" or "./phbdi_").
+    seed : int
+        Random seed for reproducibility.
+    """
+    rng = np.random.default_rng(seed)
+    all_indices = np.arange(n_total)
+
+    # Step 1: create fixed test set
+    idx_test = rng.choice(all_indices, size=n_test, replace=False)
+    remaining = np.setdiff1d(all_indices, idx_test)
+
+    print(f"Fixed test set selected: {len(idx_test)} samples.")
+
+    # Step 2: loop over multiple train sizes
+    for n_train in train_sizes:
+        # avoid exceeding remaining count
+        if n_train + n_val > len(remaining):
+            print(f"⚠️ Skipping n_train={n_train} (too large for available data)")
+            continue
+
+        # create new RNG for reproducibility per split (optional)
+        rng_split = np.random.default_rng(seed + n_train)
+
+        idx_train = rng_split.choice(remaining, size=n_train, replace=False)
+        idx_val_candidates = np.setdiff1d(remaining, idx_train)
+        idx_val = rng_split.choice(idx_val_candidates, size=n_val, replace=False)
+
+        # Step 3: save split
+        split_dict = {
+            "idx_train": idx_train,
+            "idx_val": idx_val,
+            "idx_test": idx_test,
+        }
+
+        out_file = os.path.join(prefix, f"{n_train}_split.npz")
+        np.savez(out_file, **split_dict)
+
+        print(
+            f"✅ Saved {out_file} "
+            f"(train={len(idx_train)}, val={len(idx_val)}, test={len(idx_test)})"
+        )
 def main():
     parser = argparse.ArgumentParser(description="Export tddft calculation using Q-Chem.")
     parser.add_argument("--data", required=True,default="./raw_data/" ,help="Path to reference Q-Chem input file.")
@@ -188,6 +254,11 @@ def main():
     parser.add_argument("--distance_unit", type=str, default="ang", help="Unit of coordinates")
     parser.add_argument("--grad_unit", type=tuple, default=("kcal/mol", "ang"), help="Unit of gradient")
     parser.add_argument("--force_unit", type=tuple, default=("kcal/mol", "ang"), help="Unit of force")
+    parser.add_argument("--train_splits", type=list, default=[1000,500,2000] ,help="To export splits. This should be a list")
+    parser.add_argument("--val_splits", type=int, default=400,
+                        help="To export val splits. This should be a list")
+    parser.add_argument("--test_splits", type=int, default=400,
+                        help="To export test splits. This should be a list")
     args = parser.parse_args()
     export_numpy(args)
 if __name__ == "__main__":
