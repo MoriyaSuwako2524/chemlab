@@ -237,29 +237,46 @@ vector<vector<int>> generate_combinations(int start, int end, int k) {
 
 
 
+mat make_E_a(int n_alpha, int n_beta, const vector<int>& flip_idxs) {
+    vector<char> is_flip(n_alpha, 0);
+    for (int idx : flip_idxs)
+        if (idx >= 0 && idx < n_alpha)
+            is_flip[idx] = 1;
 
-static mat make_E(int n, const vector<int>& idxs) {
-    mat E(n, static_cast<int>(idxs.size()), fill::zeros);
-    for (int j = 0; j < (int)idxs.size(); ++j) {
-        E(idxs[j], j) = 1.0;
-    }
-    return E;
+    int n_unflipped = 0;
+    for (int i = 0; i < n_alpha; ++i)
+        if (!is_flip[i]) ++n_unflipped;
+
+    mat J_alpha(n_alpha, n_unflipped, fill::zeros);
+    int col = 0;
+    for (int i = 0; i < n_alpha; ++i)
+        if (!is_flip[i])
+            J_alpha(i, col++) = 1.0;
+
+
+    mat E_alpha_full(n_alpha + n_beta, n_unflipped, fill::zeros);
+    E_alpha_full.submat(0, 0, n_alpha - 1, n_unflipped - 1) = J_alpha;
+    return E_alpha_full;
 }
 
+mat make_E_b(int n_alpha, int n_beta, const vector<int>& flip_idxs) {
 
-static mat make_J(int n, const vector<int>& remove_idxs) {
-    vector<char> is_remove(n, 0);
-    for (int t : remove_idxs) is_remove[t] = 1;
-
-    int keep_cnt = 0;
-    for (int j = 0; j < n; ++j) if (!is_remove[j]) ++keep_cnt;
-
-    mat J(n, keep_cnt, fill::zeros);
-    int col = 0;
-    for (int j = 0; j < n; ++j) if (!is_remove[j]) {
-        J(j, col++) = 1.0;
+    mat E_alpha(n_alpha, static_cast<int>(flip_idxs.size()), fill::zeros);
+    for (int j = 0; j < (int)flip_idxs.size(); ++j) {
+        int idx = flip_idxs[j];
+        if (idx >= 0 && idx < n_alpha)
+            E_alpha(idx, j) = 1.0;
     }
-    return J;
+
+    int nflip = static_cast<int>(flip_idxs.size());
+    mat E_beta_full(n_alpha + n_beta, nflip + n_beta, fill::zeros);
+    if (nflip > 0)
+        E_beta_full.submat(0, 0, n_alpha - 1, nflip - 1) = E_alpha;
+    if (n_beta > 0)
+        E_beta_full.submat(n_alpha, nflip,
+                           n_alpha + n_beta - 1, nflip + n_beta - 1)
+            = eye(n_beta, n_beta);
+    return E_beta_full;
 }
 
 
@@ -288,32 +305,23 @@ void spin_adiabatic_state::build_spin_blocks_for_state(
             const mat& V0 = ortho.V;   // (n_ori_beta,  nbeta)
             block.U = ortho.U;
             block.V = ortho.V;
-            block.flips = flips;
-            vector<int> flips_asc = flips;
-            sort(flips_asc.begin(), flips_asc.end());          
-            vector<int> flips_E = flips;                       
-
-            mat E_u = make_E(static_cast<int>(U0.n_cols), flips_E);     // nalpha x nflip
-            mat J_u = make_J(static_cast<int>(U0.n_cols), flips_asc);    // nalpha x (nalpha - nflip)
 
 
-            mat U_keep = U0 * J_u;       // (n_ori_alpha, nalpha - nflip)
-            mat U_flip = U0 * E_u;       // (n_ori_alpha, nflip)
+
+            mat E_a = make_E_a(static_cast<int>(U0.n_cols),
+                               static_cast<int>(V0.n_cols),
+                               flips);
+            mat E_b = make_E_b(static_cast<int>(U0.n_cols),
+                               static_cast<int>(V0.n_cols),
+                               flips);
+
+            block.E_a = E_a;
+            block.E_b = E_b;
+            mat C_all = join_rows(ortho.C_alpha, ortho.C_beta);
+            block.C_alpha = C_all * E_a;
+            block.C_beta  = C_all * E_b;
 
 
-            block.E = E_u;
-            block.J = J_u;
-
-            block.keep_u = U_keep;
-            block.flip_u = U_flip;
-
-            vector<int> flips_desc = flips_E;
-            sort(flips_desc.begin(), flips_desc.end(), greater<int>());
-            for (int idx : flips_desc) {
-                block.idxs.push_back(idx);
-                block.C_beta.insert_cols(block.C_beta.n_cols, block.C_alpha.col(idx));
-                block.C_alpha.shed_col(idx);
-            }
 
             Ms_blocks[Ms].push_back(block);
         }
@@ -336,14 +344,16 @@ void spin_adiabatic_state::build_spin_blocks_for_state(
             MOpair flipped;
             flipped.C_alpha = orig.C_beta;
             flipped.C_beta  = orig.C_alpha;
-            flipped.C_ori_alpha = orig.C_ori_beta;
-            flipped.C_ori_beta  = orig.C_ori_alpha;
+            flipped.E_a = orig.E_b;
+            flipped.E_b = orig.E_a;
+            flipped.effect_C_o_alpha = orig.effect_C_o_beta;
+            flipped.effect_C_o_beta = orig.effect_C_o_alpha;
+            flipped.effect_C_v_alpha = orig.effect_C_v_beta;
+            flipped.effect_C_v_beta = orig.effect_C_v_alpha;
             flipped.lambda = orig.lambda;
             flipped.V = orig.U;
             flipped.U = orig.V;
-            flipped.keep_v = orig.keep_u;
-            flipped.flip_v = orig.flip_u;
-	         flipped.idxs = orig.idxs;
+
             Ms_blocks[Ms].push_back(flipped);
         }
     }
@@ -359,11 +369,17 @@ int spin_adiabatic_state::state_phase(const int n_1, const int n_2, const vector
 }
 
 vec spin_adiabatic_state::vsoc_vector_modular() {
+   /*
+   Variable check reference
 
+    */
    mat U1,V1;
    mat U2,V2;
    vec lambda1,lambda2;
-
+   nvir1_a = NOrb - nalpha1;
+   nvir1_b = NOrb - nbeta1;
+   nvir2_a = NOrb - nalpha2;
+   nvir2_b = NOrb - nbeta2;
    double cf = ConvFac(HARTREES_TO_WAVENUMBERS);
    S1 = 0.5 * (nalpha1 - nbeta1);
    S2 = 0.5 * (nalpha2 - nbeta2);
@@ -374,10 +390,16 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
    vec vsoc = zeros<vec>(Ms_dimension);
    vsoc_pairs.resize(Ms_dimension);
    vsoc_values.resize(Ms_dimension);
+
+   // split occupied&virtual orbitals
    mat C1_o_alpha = C1_alpha.head_cols(nalpha1);
    mat C1_o_beta = C1_beta.head_cols(nbeta1);
    mat C2_o_alpha = C2_alpha.head_cols(nalpha2);
    mat C2_o_beta = C2_beta.head_cols(nbeta2);
+   mat C1_v_alpha = C1_alpha.tail_cols(nvir1_a);
+   mat C1_v_beta = C1_beta.tail_cols(nvir1_b);
+   mat C2_v_alpha = C2_alpha.tail_cols(nvir2_a);
+   mat C2_v_beta = C2_beta.tail_cols(nvir2_b);
 
    // construct biorthonal alpha-beta orbital for state 1 and state 2
    mat S1_oo = C1_o_alpha.t()  * AOS * C1_o_beta;
@@ -407,14 +429,18 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
    S1_orthonal.C_beta = C1_o_beta * V1;
    S1_orthonal.U = U1;
    S1_orthonal.V = V1;
-   S1_orthonal.C_ori_alpha = C1_o_alpha;
-   S1_orthonal.C_ori_beta = C1_o_beta;
+   S1_orthonal.effect_C_o_alpha = C1_o_alpha;
+   S1_orthonal.effect_C_o_beta = C1_o_beta;
+   S1_orthonal.effect_C_v_alpha = C1_v_alpha;
+   S1_orthonal.effect_C_v_beta = C1_v_beta;
    S1_orthonal.lambda = lambda1;
 
    S2_orthonal.C_alpha = C2_o_alpha * U2;
    S2_orthonal.C_beta = C2_o_beta * V2;
-   S2_orthonal.C_ori_alpha = C2_o_alpha;
-   S2_orthonal.C_ori_beta = C2_o_beta;
+   S2_orthonal.effect_C_o_alpha = C2_o_alpha;
+   S2_orthonal.effect_C_o_beta = C2_o_beta;
+   S2_orthonal.effect_C_v_alpha = C2_v_alpha;
+   S2_orthonal.effect_C_v_beta = C2_v_beta;
    S2_orthonal.U = U2;
    S2_orthonal.V = V2;
    S2_orthonal.lambda = lambda2;
@@ -1548,6 +1574,8 @@ mat sigma_U_as_operator(const mat& U, const vec& d, const mat& V, double tol = 1
     return M;
 }
 
+
+
 mat sigma_V_as_operator(const mat& U, const vec& d, const mat& V, double tol = 1e-12) {
     const uword m = U.n_rows, n = V.n_rows, r = d.n_elem;
 
@@ -1618,6 +1646,148 @@ mat sigma_V_as_operator(const mat& U, const vec& d, const mat& V, double tol = 1
     return M;
 }
 
+
+void spin_adiabatic_state::sigma_overlap(MOpair& block) {
+   /*
+   * size of sigma_aa: (n_ao(mu) * r , n_vir_a(a) * n_occ_a(i))
+   *sigma_ab: (n_ao(mu) * r , n_vir_b(b) * n_occ_b(j))
+   *sigma_ba: (n_ao(mu) * r , n_vir_a(a) * n_occ_a(i))
+   *sigma_bb: (n_ao(mu) * r , n_vir_b(b) * n_occ_b(j))
+    */
+   mat sigma_aa(block.n_ao * block.n_svd, block.n_vir_a * block.n_occ_a, fill::zeros);
+   mat sigma_ab(block.n_ao * block.n_svd, block.n_vir_b * block.n_occ_b, fill::zeros);
+   mat sigma_ba(block.n_ao * block.n_svd, block.n_vir_a * block.n_occ_a, fill::zeros);
+   mat sigma_bb(block.n_ao * block.n_svd, block.n_vir_b * block.n_occ_b, fill::zeros);
+   mat s_vo_ab = block.effect_C_v_alpha.t() * AOS * block.effect_C_o_beta;
+   mat s_ov_ab = block.effect_C_o_alpha.t() * AOS * block.effect_C_v_beta;
+   block.sigma_u = sigma_U_as_operator(block.U,block.lambda,block.V);
+   block.sigma_v = sigma_V_as_operator(block.U,block.lambda,block.V);
+
+       //最怀念einsum的一集
+    for (size_t mu = 0; mu < n_ao; ++mu) {
+        for (size_t l = 0; l < r; ++l) {
+            const size_t row = mu + l * n_ao;
+
+            const mat& SU_block = block.sigma_u.rows(l * n_occ_a, (l + 1) * n_occ_a - 1);
+            const mat& SV_block = block.sigma_v.rows(l * n_occ_b, (l + 1) * n_occ_b - 1);
+
+            // ---------- αα ----------
+            for (size_t a = 0; a < n_vir_a; ++a)
+                for (size_t i = 0; i < n_occ_a; ++i) {
+                    double val = block.effect_C_v_alpha(mu, a) * block.U(i, l);
+                    for (size_t ip = 0; ip < n_occ_a; ++ip) {
+                        double Coi = block.effect_C_o_alpha(mu, ip);
+                        if (Coi == 0.0) continue;
+                        const double* SUrow = SU_block.row(ip).memptr();
+                        for (size_t j = 0; j < n_occ_b; ++j) {
+                            double su = SUrow[i + j * n_occ_a];
+                            if (su == 0.0) continue;
+                            val += Coi * su * s_vo_ab(a, j);
+                        }
+                    }
+                    sigma_aa(row, a + i * n_vir_a) = val;
+                }
+
+            // ---------- αβ ----------
+            for (size_t b = 0; b < n_vir_b; ++b)
+                for (size_t j = 0; j < n_occ_b; ++j) {
+                    double val = 0.0;
+                    for (size_t i = 0; i < n_occ_a; ++i) {
+                        double Coi = block.effect_C_o_alpha(mu, i);
+                        if (Coi == 0.0) continue;
+                        const double* SUrow = SU_block.row(i).memptr();
+                        for (size_t ip = 0; ip < n_occ_a; ++ip) {
+                            double su = SUrow[ip + j * n_occ_a];
+                            if (su == 0.0) continue;
+                            val += Coi * su * s_ov_ab(ip, b);
+                        }
+                    }
+                    sigma_ab(row, b + j * n_vir_b) = val;
+                }
+
+            // ---------- βα ----------
+            for (size_t a = 0; a < n_vir_a; ++a)
+                for (size_t i = 0; i < n_occ_a; ++i) {
+                    double val = 0.0;
+                    for (size_t j = 0; j < n_occ_b; ++j) {
+                        double Coj = block.effect_C_o_beta(mu, j);
+                        if (Coj == 0.0) continue;
+                        const double* SVrow = SV_block.row(j).memptr();
+                        for (size_t jp = 0; jp < n_occ_b; ++jp) {
+                            double sv = SVrow[i + jp * n_occ_a];
+                            if (sv == 0.0) continue;
+                            val += Coj * sv * s_vo_ab(a, jp);
+                        }
+                    }
+                    sigma_ba(row, a + i * n_vir_a) = val;
+                }
+
+            // ---------- ββ ----------
+            for (size_t b = 0; b < n_vir_b; ++b)
+                for (size_t j = 0; j < n_occ_b; ++j) {
+                    double val = block.effect_C_v_beta(mu, b) * block.V(j, l);
+                    for (size_t jp = 0; jp < n_occ_b; ++jp) {
+                        double Coj = block.effect_C_o_beta(mu, jp);
+                        if (Coj == 0.0) continue;
+                        const double* SVrow = SV_block.row(jp).memptr();
+                        for (size_t i = 0; i < n_occ_a; ++i) {
+                            double sv = SVrow[i + j * n_occ_a];
+                            if (sv == 0.0) continue;
+                            val += Coj * sv * s_ov_ab(i, b);
+                        }
+                    }
+                    sigma_bb(row, b + j * n_vir_b) = val;
+                }
+        }
+    }
+    block.sigma_aa = sigma_aa;
+    block.sigma_ba = sigma_ba;
+    block.sigma_ab = sigma_ab;
+    block.sigma_bb = sigma_bb;
+    return;
+}
+
+
+void spin_adiabatic_state::pi_overlap(OrbitalPair& pair) {
+    sigma_overlap(pair.block1);
+    sigma_overlap(pair.block2);
+
+    mat pi_aa_1(pair.block1.n_occ_a * pair.block2.n_occ_a, pair.block1.n_vir_a * pair.block1.n_occ_a, fill::zeros);
+    mat pi_ab_1(pair.block1.n_occ_a * pair.block2.n_occ_a, pair.block1.n_vir_b * pair.block1.n_occ_b, fill::zeros);
+    mat pi_aa_2(pair.block1.n_occ_a * pair.block2.n_occ_a, pair.block2.n_vir_a * pair.block2.n_occ_a, fill::zeros);
+    mat pi_ab_2(pair.block1.n_occ_a * pair.block2.n_occ_a, pair.block2.n_vir_b * pair.block2.n_occ_b, fill::zeros);
+
+    mat pi_ba_1(pair.block1.n_occ_b * pair.block2.n_occ_b, pair.block1.n_vir_a * pair.block1.n_occ_a, fill::zeros);
+    mat pi_bb_1(pair.block1.n_occ_b * pair.block2.n_occ_b, pair.block1.n_vir_b * pair.block1.n_occ_b, fill::zeros);
+    mat pi_ba_2(pair.block1.n_occ_b * pair.block2.n_occ_b, pair.block2.n_vir_a * pair.block2.n_occ_a, fill::zeros);
+    mat pi_bb_1(pair.block1.n_occ_b * pair.block2.n_occ_b, pair.block2.n_vir_b * pair.block2.n_occ_b, fill::zeros);
+
+
+
+    for (size_t i = 0; i < pair.block1.n_occ_a; ++i) {
+        for (size_t j = 0; j < pair.block2.n_occ_a; ++j) {
+
+        }
+    }
+
+    for (size_t i = 0; i < pair.block1.n_occ_b; ++i) {
+        for (size_t j = 0; j < pair.block2.n_occ_b; ++j) {
+
+        }
+    }
+
+    pair.pi_aa_1 = pi_aa_1;
+    pair.pi_ab_1 = pi_ab_1;
+    pair.pi_aa_2 = pi_aa_2;
+    pair.pi_ab_2 = pi_ab_2;
+    pair.pi_ba_1 = pi_ba_1;
+    pair.pi_bb_1 = pi_bb_1;
+    pair.pi_ba_2 = pi_ba_2;
+    pair.pi_bb_2 = pi_bb_2;
+
+
+
+}
 
 void spin_adiabatic_state::gradient_implicit_Ms_xy(OrbitalPair& pair)
 {
@@ -1957,6 +2127,7 @@ void spin_adiabatic_state::gradient_implicit_Ms_z(OrbitalPair& pair)
 }
 
 void spin_adiabatic_state::gradient_implicit_Ms_z_init(OrbitalPair& pair){
+   /*
    pair.C1vb = C1_beta.tail_cols(nvir1_b);
    pair.C1va = C1_alpha.tail_cols(nvir1_a);
    pair.C2va = C2_alpha.tail_cols(nvir2_a);
@@ -2005,8 +2176,7 @@ void spin_adiabatic_state::gradient_implicit_Ms_z_init(OrbitalPair& pair){
    pair.C1bT_L_C2b = tem_C1bT_L * pair.block2.C_ori_beta;
    pair.C1aT_L_C2b = tem_C1aT_L * pair.block2.C_ori_beta;
    pair.C1bT_L_C2a = tem_C1bT_L * pair.block2.C_ori_alpha;
-
-
+   */
 }
 
 

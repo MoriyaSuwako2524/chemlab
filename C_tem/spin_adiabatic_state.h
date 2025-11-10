@@ -64,16 +64,24 @@ struct MOpair {
     mat U;
     mat V;
     vec lambda;
-    mat C_ori_alpha;
-    mat C_ori_beta;
-    mat keep_u;
-    mat flip_u;
-    mat keep_v;
-    mat flip_v;
-    mat E;
-    mat J;
-    vector<size_t> idxs;
-    vector<int> flips;
+    effect_C_o_alpha;
+    effect_C_o_beta;
+    effect_C_v_alpha;
+    effect_C_v_beta;
+    mat E_a;
+    mat E_b;
+
+
+    size_t n_ao() const { return effect_C_o_alpha.n_rows; }
+    size_t n_occ_a() const { return effect_C_o_alpha.n_cols; }
+    size_t n_occ_b() const { return effect_C_o_beta.n_cols; }
+    size_t n_vir_a() const { return effect_C_v_alpha.n_cols; }
+    size_t n_vir_b() const { return effect_C_v_beta.n_cols; }
+    size_t n_svd()   const { return lambda.n_elem; }
+
+    // gradient
+    mat sigma_u, sigma_v;
+    mat sigma_aa, sigma_bb, sigma_ab, sigma_ba;
 };
 
 struct OrbitalPair {
@@ -102,14 +110,6 @@ struct OrbitalPair {
     mat U_b;
     mat V_a;
     mat V_b;
-    vec sheded_U_a;
-    vec sheded_U_b;
-    vec sheded_V_a;
-    vec sheded_V_b;
-    vec ex_U_a;
-    vec ex_U_b;
-    vec ex_V_a;
-    vec ex_V_b;
     vec lambda_a;
     vec lambda_b;
     int slater_phase1; // slater determinant phase factor
@@ -139,7 +139,8 @@ struct OrbitalPair {
     mat S12voa,S12ova,S12vob,S12ovb;
     mat C1aT_L_C2a,C1bT_L_C2b,C1aT_L_C2b,C1bT_L_C2a;
 
-
+    mat pi_aa_1;pi_bb_1,pi_ab_1,pi_ba_1;
+    mat pi_aa_2;pi_bb_2,pi_ab_2,pi_ba_2;
 
     vec explicit_derivatives;
     vec implicit_derivatives_1;
@@ -161,6 +162,10 @@ struct SVDParts {
     mat Ainv, Vd_inv;
     mat inv_denom;
 };
+
+
+
+
 
 class spin_adiabatic_state {
    public:
@@ -280,9 +285,6 @@ class spin_adiabatic_state {
    vec gradient_implicit_rhf(scf* myscf, const mat& y_vo, const mat& C);
    vec gradient_implicit_uhf(scf* myscf, const mat& y_ov_alpha, const mat& y_ov_beta, const mat& Ca, const mat& Cb);
    vec gradient_implicit_rohf(scf* myscf, const mat& y_ov_alpha, const mat& y_ov_beta, const mat& C);
-   inline mat svd_vjp_term_U(const mat& U,const vec& S_vals,const mat& Vt,const mat& gU,double eps = 1e-12,double tikhonov = 0.0);
-   inline mat svd_vjp_term_S(const mat& U,const vec& S_vals,const mat& Vt,const vec& gS_vals);
-   inline mat svd_vjp_term_V(const mat& U,const vec& S_vals,const mat& Vt,const mat& gV,double eps = 1e-12,double tikhonov = 0.0);
 
    //mat zvector_form_rhs_s(const mat& s_mo_oo, const size_t o, int type);
    //mat zvector_form_rhs_t(const mat& s_mo_oo, const size_t o, int type);
