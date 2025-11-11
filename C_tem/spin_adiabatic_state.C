@@ -314,7 +314,8 @@ void spin_adiabatic_state::build_spin_blocks_for_state(
             mat E_b = make_E_b(static_cast<int>(U0.n_cols),
                                static_cast<int>(V0.n_cols),
                                flips);
-
+            matrix_print_2d(E_a.memptr(),E_a.n_rows, E_a.n_cols,"E_a:");
+            matrix_print_2d(E_b.memptr(),E_b.n_rows, E_b.n_cols,"E_b:");
             block.E_a = E_a;
             block.E_b = E_b;
             mat C_all = join_rows(ortho.C_alpha, ortho.C_beta);
@@ -1858,6 +1859,35 @@ void spin_adiabatic_state::k_matrix(OrbitalPair& pair)
     mat k_b_1(b1.n_vir_b , b1.n_occ_b, fill::zeros);
     mat k_b_2(b2.n_vir_b , b2.n_occ_b, fill::zeros);
 
+    vec lambda_b_inv = pair.lambda_b;
+    for (size_t i = 0; i < lambda_b_inv.n_elem; ++i) {
+        lambda_b_inv[i] = 1/pair.lambda_b[i];
+    }
+
+    mat tem_du = diagmat(lambda_b_inv) * pair.U_b.t();
+    mat Sooinvb = pair.V_b * tem_du;
+
+    vec lambda_a_inv = pair.lambda_a;
+    for (size_t i = 0; i < lambda_a_inv.n_elem; ++i) {
+        lambda_a_inv[i] = 1/pair.lambda_a[i];
+    }
+
+    tem_du = diagmat(lambda_a_inv) * pair.U_a.t();
+    mat Sooinva = pair.V_a * tem_du;
+
+    mat L_vsocxy   = L_AO.slice(0)+L_AO.slice(1);
+    mat tem_L_psi2 = L_vsocxy * pair.psi2;
+    mat tem_psi1_L = pair.psi1.t() * L_vsocxy;
+    mat tem_C1bT_L_psi2
+
+
+    for (size_t a = 0; a < b1.n_vir_a; ++a) {
+        for (size_t i = 0; i < b1.n_occ_a; ++i) {
+            size_t row_idx = a * b1.n_occ_a + i;
+
+
+        }
+    }
 
 
 

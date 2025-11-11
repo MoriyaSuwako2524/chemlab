@@ -126,14 +126,7 @@ struct OrbitalPair {
     mat deriv_explicit_lz;
     mat deriv_explicit_s;
     mat y1_a,y1_b,y2_a,y2_b;
-    mat C1vb,C1va,C2va,C2vb;
-    mat C1vaT_L_C2a,C1vaT_L_C2b,C1vbT_L_C2a,C1vbT_L_C2b;
-    mat C1aT_L_C2va,C1aT_L_C2vb,C1bT_L_C2va,C1bT_L_C2vb;
 
-    mat S1voab,S1ovab,S2voab,S2ovab;
-    mat S12ooa,S12oob;
-    mat S12voa,S12ova,S12vob,S12ovb;
-    mat C1aT_L_C2a,C1bT_L_C2b,C1aT_L_C2b,C1bT_L_C2a;
 
     mat pi_aa_1,pi_bb_1,pi_ab_1,pi_ba_1;
     mat pi_aa_2,pi_bb_2,pi_ab_2,pi_ba_2;
@@ -273,6 +266,7 @@ class spin_adiabatic_state {
 
     void sigma_overlap(MOpair& block);
     void pi_matrix(OrbitalPair& pair);
+    void k_matrix(OrbitalPair& pair);
 
    //void pseudo_density_explicit(mat &deriv_explicit_s, mat &deriv_explicit_l);
    void pseudo_density_explicit(mat &deriv_explicit_s, vector<mat> &deriv_explicit_l);
