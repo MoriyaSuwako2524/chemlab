@@ -94,6 +94,9 @@ def run_mecp_optimization(args):
             out_files.append(out)
             cmd = f"""{QCHEM_ENV_SETUP}\nqchem -nt {args.nthreads // 2} {inp} {out}"""
             p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
+
+s
+q
             processes.append(p)
 
         for p in processes:
@@ -106,8 +109,8 @@ def run_mecp_optimization(args):
         test_mecp.calc_new_gradient()
 
         # energy record
-        e1 = getattr(test_mecp.state_1, "energy", None)
-        e2 = getattr(test_mecp.state_2, "energy", None)
+        e1 = getattr(test_mecp.state_1, "ene", None)
+        e2 = getattr(test_mecp.state_2, "ene", None)
         if e1 is not None and e2 is not None:
             energies.append((e1, e2))
             diffs.append(abs(e1 - e2))
