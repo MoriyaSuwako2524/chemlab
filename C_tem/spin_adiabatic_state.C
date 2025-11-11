@@ -344,7 +344,7 @@ void spin_adiabatic_state::build_spin_blocks_for_state(
             flipped.C_beta  = orig.C_alpha;
             flipped.E_a = orig.E_b;
             flipped.E_b = orig.E_a;
-            flipped.flips = flips;
+            flipped.flips = orig.flips;
             flipped.effect_C_o_alpha = orig.effect_C_o_beta;
             flipped.effect_C_o_beta = orig.effect_C_o_alpha;
             flipped.effect_C_v_alpha = orig.effect_C_v_beta;
@@ -1618,12 +1618,12 @@ void spin_adiabatic_state::sigma_overlap(MOpair& block) {
    *sigma_ba: (n_ao(mu) * r , n_vir_a(a) * n_occ_a(i))
    *sigma_bb: (n_ao(mu) * r , n_vir_b(b) * n_occ_b(j))
     */
-    block.n_svd = block.n_svd();
-    block.n_ao = block.n_ao();
-    block.n_occ_a = block.n_occ_a();
-    block.n_occ_b = block.n_occ_b();
-    block.n_vir_b = block.n_vir_b();
-    block.n_vir_a = block.n_vir_a();
+    block.n_svd = block.lambda.n_elem;
+    block.n_ao = block.effect_C_o_alpha.n_rows;
+    block.n_occ_a = block.effect_C_o_alpha.n_cols;
+    block.n_occ_b = block.effect_C_o_beta.n_cols;
+    block.n_vir_b = block.effect_C_v_beta.n_cols;
+    block.n_vir_a = block.effect_C_v_alpha.n_cols;
    mat sigma_aa(block.n_ao * block.n_svd, block.n_vir_a * block.n_occ_a, fill::zeros);
    mat sigma_ab(block.n_ao * block.n_svd, block.n_vir_b * block.n_occ_b, fill::zeros);
    mat sigma_ba(block.n_ao * block.n_svd, block.n_vir_a * block.n_occ_a, fill::zeros);
@@ -1634,79 +1634,75 @@ void spin_adiabatic_state::sigma_overlap(MOpair& block) {
    block.sigma_v = sigma_V_as_operator(block.U,block.lambda,block.V);
 
        //最怀念einsum的一集
-    for (size_t mu = 0; mu < n_ao; ++mu) {
-        for (size_t l = 0; l < r; ++l) {
-            const size_t row = mu + l * n_ao;
+    for (size_t mu = 0; mu < block.n_ao; ++mu) {
+        for (size_t l = 0; l < block.n_svd; ++l) {
+            const size_t row = mu + l * block.n_ao;
 
-            const mat& SU_block = block.sigma_u.rows(l * n_occ_a, (l + 1) * n_occ_a - 1);
-            const mat& SV_block = block.sigma_v.rows(l * n_occ_b, (l + 1) * n_occ_b - 1);
+            const mat& SU_block = block.sigma_u.rows(l * block.n_occ_a, (l + 1) * block.n_occ_a - 1);
+            const mat& SV_block = block.sigma_v.rows(l * block.n_occ_b, (l + 1) * block.n_occ_b - 1);
 
             // ---------- αα ----------
-            for (size_t a = 0; a < n_vir_a; ++a)
-                for (size_t i = 0; i < n_occ_a; ++i) {
+            for (size_t a = 0; a < block.n_vir_a; ++a)
+                for (size_t i = 0; i < block.n_occ_a; ++i) {
                     double val = block.effect_C_v_alpha(mu, a) * block.U(i, l);
-                    for (size_t ip = 0; ip < n_occ_a; ++ip) {
+                    for (size_t ip = 0; ip < block.n_occ_a; ++ip) {
                         double Coi = block.effect_C_o_alpha(mu, ip);
                         if (Coi == 0.0) continue;
-                        const double* SUrow = SU_block.row(ip).memptr();
-                        for (size_t j = 0; j < n_occ_b; ++j) {
-                            double su = SUrow[i + j * n_occ_a];
+                        for (size_t j = 0; j < block.n_occ_b; ++j) {
+                            double su = SU_block[ip,i + j * block.n_occ_a];
                             if (su == 0.0) continue;
                             val += Coi * su * s_vo_ab(a, j);
                         }
                     }
-                    sigma_aa(row, a + i * n_vir_a) = val;
+                    sigma_aa(row, a + i * block.n_vir_a) = val;
                 }
 
             // ---------- αβ ----------
-            for (size_t b = 0; b < n_vir_b; ++b)
-                for (size_t j = 0; j < n_occ_b; ++j) {
+            for (size_t b = 0; b < block.n_vir_b; ++b)
+                for (size_t j = 0; j < block.n_occ_b; ++j) {
                     double val = 0.0;
-                    for (size_t i = 0; i < n_occ_a; ++i) {
+                    for (size_t i = 0; i < block.n_occ_a; ++i) {
                         double Coi = block.effect_C_o_alpha(mu, i);
                         if (Coi == 0.0) continue;
-                        const double* SUrow = SU_block.row(i).memptr();
-                        for (size_t ip = 0; ip < n_occ_a; ++ip) {
-                            double su = SUrow[ip + j * n_occ_a];
+                        for (size_t ip = 0; ip < block.n_occ_a; ++ip) {
+                            double su = SU_block[i,ip + j * block.n_occ_a];
                             if (su == 0.0) continue;
                             val += Coi * su * s_ov_ab(ip, b);
                         }
                     }
-                    sigma_ab(row, b + j * n_vir_b) = val;
+                    sigma_ab(row, b + j * block.n_vir_b) = val;
                 }
 
             // ---------- βα ----------
-            for (size_t a = 0; a < n_vir_a; ++a)
-                for (size_t i = 0; i < n_occ_a; ++i) {
+            for (size_t a = 0; a < block.n_vir_a; ++a)
+                for (size_t i = 0; i < block.n_occ_a; ++i) {
                     double val = 0.0;
-                    for (size_t j = 0; j < n_occ_b; ++j) {
+                    for (size_t j = 0; j < block.n_occ_b; ++j) {
                         double Coj = block.effect_C_o_beta(mu, j);
                         if (Coj == 0.0) continue;
-                        const double* SVrow = SV_block.row(j).memptr();
-                        for (size_t jp = 0; jp < n_occ_b; ++jp) {
-                            double sv = SVrow[i + jp * n_occ_a];
+                        for (size_t jp = 0; jp < block.n_occ_b; ++jp) {
+                            double sv = SV_block[j,i + jp * block.n_occ_a];
                             if (sv == 0.0) continue;
                             val += Coj * sv * s_vo_ab(a, jp);
                         }
                     }
-                    sigma_ba(row, a + i * n_vir_a) = val;
+                    sigma_ba(row, a + i * block.n_vir_a) = val;
                 }
 
             // ---------- ββ ----------
-            for (size_t b = 0; b < n_vir_b; ++b)
-                for (size_t j = 0; j < n_occ_b; ++j) {
+            for (size_t b = 0; b < block.n_vir_b; ++b)
+                for (size_t j = 0; j < block.n_occ_b; ++j) {
                     double val = block.effect_C_v_beta(mu, b) * block.V(j, l);
-                    for (size_t jp = 0; jp < n_occ_b; ++jp) {
+                    for (size_t jp = 0; jp < block.n_occ_b; ++jp) {
                         double Coj = block.effect_C_o_beta(mu, jp);
                         if (Coj == 0.0) continue;
-                        const double* SVrow = SV_block.row(jp).memptr();
-                        for (size_t i = 0; i < n_occ_a; ++i) {
-                            double sv = SVrow[i + j * n_occ_a];
+                        for (size_t i = 0; i < block.n_occ_a; ++i) {
+                            double sv = SV_block[jp,i + j * block.n_occ_a];
                             if (sv == 0.0) continue;
                             val += Coj * sv * s_ov_ab(i, b);
                         }
                     }
-                    sigma_bb(row, b + j * n_vir_b) = val;
+                    sigma_bb(row, b + j * block.n_vir_b) = val;
                 }
         }
     }
@@ -1718,14 +1714,14 @@ void spin_adiabatic_state::sigma_overlap(MOpair& block) {
 }
 
 
-void spin_adiabatic_state::pi_overlap(OrbitalPair& pair) {
+void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
 
 
     sigma_overlap(pair.block1);
     sigma_overlap(pair.block2);
 
-    auto& b1 = pair.block1;
-    auto& b2 = pair.block2;
+    MOpair b1 = pair.block1;
+    MOpair b2 = pair.block2;
 
     mat pi_aa_1(b1.n_occ_a * b2.n_occ_a, b1.n_vir_a * b1.n_occ_a, fill::zeros);
     mat pi_ab_1(b1.n_occ_a * b2.n_occ_a, b1.n_vir_b * b1.n_occ_b, fill::zeros);
@@ -1852,228 +1848,28 @@ void spin_adiabatic_state::pi_overlap(OrbitalPair& pair) {
     pair.pi_bb_2 = pi_bb_2;
 }
 
+void spin_adiabatic_state::k_matrix(OrbitalPair& pair)
+{
+    pi_matrix(pair);
+    MOpair b1 = pair.block1;
+    MOpair b2 = pair.block2;
+    mat k_a_1(b1.n_vir_a , b1.n_occ_a, fill::zeros);
+    mat k_a_2(b2.n_vir_a , b2.n_occ_a, fill::zeros);
+    mat k_b_1(b1.n_vir_b , b1.n_occ_b, fill::zeros);
+    mat k_b_2(b2.n_vir_b , b2.n_occ_b, fill::zeros);
+
+
+
+
+    return;
+}
+
 
 
 void spin_adiabatic_state::gradient_implicit_Ms_xy(OrbitalPair& pair)
 {
-   //Here we divide the lagrange function into 4 parts according to their occupied orbitals:
-   // 1. state1, alpha. (y1_vo_alpha)
-   // 2. state1, beta. (y1_vo_beta)
-   // 3. state2, alpha. (y2_ov_alpha)
-   // 4. state2, beta. (y2_ov_beta)
-   // since Vsoc_x/y = (C1b V1b U0b)^T L (C2a U2a V0a), V1b from C1aSC1b, U0b from C1bSC2b, U2a from C2aSC2b, V0a from C1aSC2a
-   // for y1_vo alpha, it comes from deriv of  V1b, V0a and deriv of singlar value.
-   // for y1_vo beta, it comes from deriv of C1b,V1b,U0b and deriv of singlar value.
-   // for y2_ov_alpha, it comes from deriv of C2a,U2a,V0a and deriv of singlar value.
-   // for y2_ov_beta, it comes from deriv of U0v, U2a and deriv of singlar value.
+    pi_matrix(pair);
 
-   mat effect_C1_alpha,effect_C1_beta;
-   mat effect_C2_alpha,effect_C2_beta;
-   mat y1_a,y1_b,y2_a,y2_b;
-   mat tem_C1vb,tem_C1va,tem_C2va,tem_C2vb;
-
-   if (pair.Ms1 < 0){
-     effect_C1_alpha = C1_beta;
-     effect_C1_beta = C1_alpha;
-   y1_b = zeros<mat>(nvir1_a, nalpha1);
-   y1_a  = zeros<mat>(nvir1_b, nbeta1);
-   tem_C1va = C1_beta.tail_cols(nvir1_b);
-   tem_C1vb = C1_alpha.tail_cols(nvir1_a);
-    }
-   else{
-     effect_C1_alpha = C1_alpha;
-     effect_C1_beta = C1_beta;
-   y1_a = zeros<mat>(nvir1_a, nalpha1);
-   y1_b  = zeros<mat>(nvir1_b, nbeta1);
-   tem_C1vb = C1_beta.tail_cols(nvir1_b);
-   tem_C1va = C1_alpha.tail_cols(nvir1_a);
-      }
-   if (pair.Ms2 < 0){
-     effect_C2_alpha = C2_beta;
-     effect_C2_beta = C2_alpha;
-   y2_b = zeros<mat>(nalpha2, nvir2_a); // (D+S)*V
-   y2_a  = zeros<mat>(nbeta2,  nvir2_b); // D*(S+V)
-   tem_C2vb = C2_alpha.tail_cols(nvir2_a);
-   tem_C2va = C2_beta.tail_cols(nvir2_b);
-   }
-  	else{
-     effect_C2_alpha = C2_alpha;
-     effect_C2_beta = C2_beta;
-   y2_a = zeros<mat>(nalpha2, nvir2_a); // (D+S)*V
-   y2_b  = zeros<mat>(nbeta2,  nvir2_b); // D*(S+V)
-   tem_C2va = C2_alpha.tail_cols(nvir2_a);
-   tem_C2vb = C2_beta.tail_cols(nvir2_b);
-     }
-
-   /*
-   mat L_AO_Vsoc_xy = zeros<mat>(NBas, NBas);
-
-   L_AO_Vsoc_xy += L_AO.slice(0) *  vsoc_values[pair.Ms_idx].vsoc_x;
-   L_AO_Vsoc_xy += L_AO.slice(1) *  vsoc_values[pair.Ms_idx].vsoc_y;
-   
-   mat tem_psi2_phase = pair.psi2 * pair.phase;
-
-   mat tem_psi1T_L = pair.psi1.t() * L_AO_Vsoc_xy;
-   mat tem_L_psi2_phase = L_AO_Vsoc_xy * tem_psi2_phase;
-
-   mat tem_V1b_U0b = pair.block1.V * pair.U_b.tail_cols(1);
-   mat tem_U2a_V0a = pair.block2.U * pair.V_a.tail_cols(1);
-
-   mat tem_C1vbT_L_psi2_phase = tem_C1vb.t() * tem_L_psi2_phase;
-   mat tem_C1vbT_L_psi2_phase_V1b_U0bT = tem_C1vbT_L_psi2_phase * tem_V1b_U0b.t();
-
-   y1_b += tem_C1vbT_L_psi2_phase_V1b_U0bT;
-
-   mat tem_U2a_V0a_psi1T_L = tem_U2a_V0a * tem_psi1T_L;
-   mat tem_U2a_V0a_psi1T_L_C2va = tem_U2a_V0a_psi1T_L * tem_C2va;
-
-   y2_a += tem_U2a_V0a_psi1T_L_C2va * pair.phase;
-
-
-
-
-   vec lambda_b_inv = pair.lambda_b;
-   for (size_t i = 0; i < lambda_b_inv.n_elem; ++i) {
-      lambda_b_inv[i] = 1/pair.lambda_b[i];
-   }
-
-   mat tem_du = diagmat(lambda_b_inv) * pair.U_b.t();
-   mat tem_s_oo_inv_b = pair.V_b * tem_du;
-
-
-   vec lambda_a_inv = pair.lambda_a;
-   for (size_t i = 0; i < lambda_a_inv.n_elem; ++i) {
-      lambda_a_inv[i] = 1/pair.lambda_a[i];
-   }
-
-   tem_du = diagmat(lambda_a_inv) * pair.U_a.t();
-   mat tem_s_oo_inv_a = pair.V_a * tem_du;
-
-
-   mat tem_Sooinvb_C1bV1bT = tem_s_oo_inv_b * pair.block1.C_beta.t();
-   mat tem_Sooinvb_C1bV1bT_L_psi2_phase = tem_Sooinvb_C1bV1bT * tem_L_psi2_phase;
-
-   mat tem_C1vbT_S = tem_C1vb.t() * AOS;
-   mat tem_C1vbT_S_C2b_V2b = tem_C1vbT_S * pair.block2.C_beta;
-   mat tem_C1vbT_S_C2b_V2b_Sooinvb_C1bV1bT_L_psi2_phase = tem_C1vbT_S_C2b_V2b * tem_Sooinvb_C1bV1bT_L_psi2_phase;
-   mat tem_C1vbT_S_C2b_V2b_Sooinvb_C1bV1bT_L_psi2_phase_V1bU0bT = tem_C1vbT_S_C2b_V2b_Sooinvb_C1bV1bT_L_psi2_phase * tem_V1b_U0b.t();
-   //要是注释能写markdown就好了
-
-   y1_b -= tem_C1vbT_S_C2b_V2b_Sooinvb_C1bV1bT_L_psi2_phase_V1bU0bT; // deriv C1bT in deriv of U0b
-
-
-   mat tem_S_C2vb = AOS * tem_C2vb;
-   mat tem_V2b_Sooinvb_C1bV1bT_L_psi2_phase = pair.block2.V * tem_Sooinvb_C1bV1bT_L_psi2_phase;
-   mat tem_V2b_Sooinvb_C1bV1bT_L_psi2_phase_psi1T = tem_V2b_Sooinvb_C1bV1bT_L_psi2_phase * pair.psi1.t();
-   mat tem_V2b_Sooinvb_C1bV1bT_L_psi2_phase_psi1T_S_C2vb = tem_V2b_Sooinvb_C1bV1bT_L_psi2_phase_psi1T * tem_S_C2vb;
-
-   y2_b -= tem_V2b_Sooinvb_C1bV1bT_L_psi2_phase_psi1T_S_C2vb; // deriv C2b in deriv of U0b
-   
-   mat tem_psi1T_L_C2aU2a =  tem_psi1T_L * pair.block2.C_alpha;
-   mat tem_psi1T_L_C2aU2a_Sooinva = tem_psi1T_L_C2aU2a * tem_s_oo_inv_a;
-
-   mat tem_C1vaT_S = tem_C1va.t() * AOS;
-   mat tem_C1vaT_S_psi2_phase = tem_C1vaT_S * tem_psi2_phase;
-   mat tem_C1vaT_S_psi2_phase_psi1T_L_C2aU2a_Sooinva = tem_C1vaT_S_psi2_phase * tem_psi1T_L_C2aU2a_Sooinva;
-   mat tem_C1vaT_S_psi2_phase_psi1T_L_C2aU2a_Sooinva_U1aT = tem_C1vaT_S_psi2_phase_psi1T_L_C2aU2a_Sooinva * pair.block1.U.t();
-   y1_a -= tem_C1vaT_S_psi2_phase_psi1T_L_C2aU2a_Sooinva_U1aT;// deriv C1aT in deriv of V0a
-
-   mat tem_S_C2va = AOS * tem_C2va;
-   mat tem_U2aV0a_psi1T_L_C2aU2a_Sooinva = tem_U2a_V0a * tem_psi1T_L_C2aU2a_Sooinva;
-   mat tem_U2aV0a_psi1T_L_C2aU2a_Sooinva_C1aU1aT = tem_U2aV0a_psi1T_L_C2aU2a_Sooinva * pair.block1.C_alpha.t();
-   mat tem_U2aV0a_psi1T_L_C2aU2a_Sooinva_C1aU1aT_S_C2va = tem_U2aV0a_psi1T_L_C2aU2a_Sooinva_C1aU1aT * tem_S_C2va;
-   y2_a -= tem_U2aV0a_psi1T_L_C2aU2a_Sooinva_C1aU1aT_S_C2va * pair.phase;// deriv C2a in deriv of V0a
-
-
-   double v_soc_square = pair.v_soc_x * vsoc_values[pair.Ms_idx].vsoc_x + pair.v_soc_y * vsoc_values[pair.Ms_idx].vsoc_y;
-
-   mat tem_C1vaT_S_C2aU2a = tem_C1vaT_S * pair.block2.C_alpha;
-   mat tem_C1vaT_S_C2aU2a_Sooinva = tem_C1vaT_S_C2aU2a * tem_s_oo_inv_a;
-   mat tem_C1vaT_S_C2aU2a_Sooinva_U1aT = tem_C1vaT_S_C2aU2a_Sooinva * pair.block1.U.t();
-
-   y1_a += tem_C1vaT_S_C2aU2a_Sooinva_U1aT * v_soc_square; // deriv of singlar value
-
-   mat tem_U2a_Sooinva = pair.block2.U * tem_s_oo_inv_a;
-
-
-   mat tem_U2a_Sooinva_C1aU1aT = tem_U2a_Sooinva * pair.block1.C_alpha.t();
-
-   mat tem_U2a_Sooinva_C1aU1aT_S_C2va = tem_U2a_Sooinva_C1aU1aT * tem_S_C2va;
-
-   y2_a += tem_U2a_Sooinva_C1aU1aT_S_C2va * v_soc_square; // deriv of singlar value
-
-
-   mat tem_C1vbT_S_C2bV2b = tem_C1vbT_S * pair.block2.C_beta;
-   mat tem_C1vbT_S_C2bV2b_Sooinvb = tem_C1vbT_S_C2bV2b * tem_s_oo_inv_b;
-   mat tem_C1vbT_S_C2bV2b_Sooinvb_V1bT = tem_C1vbT_S_C2bV2b_Sooinvb * pair.block1.V.t();
-
-   y1_b += tem_C1vbT_S_C2bV2b_Sooinvb_V1bT * v_soc_square; // deriv of singlar value
-
-   mat tem_V2b_Sooinvb = pair.block2.V * tem_s_oo_inv_b;
-   mat tem_V2b_Sooinvb_C1bV1bT = tem_V2b_Sooinvb * pair.block1.C_beta.t();
-   mat tem_V2b_Sooinvb_C1bV1bT_S_C2vb = tem_V2b_Sooinvb_C1bV1bT * tem_S_C2vb;
-
-
-   y2_b += tem_V2b_Sooinvb_C1bV1bT_S_C2vb * v_soc_square; // deriv of singlar value
-
-   
-	if (pair.Ms1 >=0) {
-   for (int idx : pair.block1.idxs){
-     pair.y1_vo_alpha.insert_rows(idx-1, pair.y1_vo_beta.row(idx));
-   }
-
-
-   y1_vo_alpha += pair.y1_vo_alpha;
-   y1_vo_beta  += pair.y1_vo_beta.head_rows(pair.nbeta1);
-   }
-    else {
-   for (int idx : pair.block1.idxs){
-     pair.y1_vo_beta.insert_rows(idx-1, pair.y1_vo_alpha.row(idx));
-   }
-   y1_vo_alpha += pair.y1_vo_beta;
-   y1_vo_beta  += pair.y1_vo_alpha.head_rows(pair.nalpha1);
-    }
-    if (pair.Ms2 >=0) {
-   for (int idx : pair.block2.idxs){
-     pair.y2_ov_alpha.insert_rows(idx-1, pair.y2_ov_beta.row(idx));
-   }
-
-    y2_ov_beta  += pair.y2_ov_beta.head_rows(pair.nbeta2);
-   y2_ov_alpha += pair.y2_ov_alpha;
-    }
-	else {
-   for (int idx : pair.block2.idxs){
-     pair.y2_ov_beta.insert_rows(idx-1, pair.y2_ov_alpha.row(idx));
-   }
-    	y2_ov_beta  += pair.y2_ov_alpha.head_rows(pair.nalpha2);
-        y2_ov_alpha += pair.y2_ov_beta;
-    }
-   */
-	if (pair.Ms1 >=0) {
-   y1_vo_alpha += y1_a;
-   y1_vo_beta  += y1_b;
-   }
-    else {
-   y1_vo_alpha += y1_b;
-   y1_vo_beta  += y1_a;
-    }
-    if (pair.Ms2 >=0) {
-
-    y2_ov_beta  += y2_b;
-   y2_ov_alpha += y2_a;
-    }
-	else {
-    y2_ov_beta  += y2_a;
-   y2_ov_alpha += y2_b;
-    }
-
-
-   cout << " low_spin state y1_vo_alpha norm = " << norm(y1_vo_alpha, "fro") << endl;
-
-   cout << " low_spin state y1_vo_beta norm = " << norm(y1_vo_beta, "fro") << endl;
-
-   cout << " low_spin state y2_ov_alpha norm = " << norm(y2_ov_alpha, "fro") << endl;
-   cout << " low_spin state y2_ov_beta norm = " << norm(y2_ov_beta, "fro") << endl;
 
 
 
@@ -2083,6 +1879,7 @@ void spin_adiabatic_state::gradient_implicit_Ms_xy(OrbitalPair& pair)
 
 void spin_adiabatic_state::gradient_implicit_Ms_z(OrbitalPair& pair)
 {
+    /*
    cout << "gradient_implicit_Ms_z start. This means Ms1 >=0 and Ms2>=0" << endl;
    //init
    mat effect_C1_alpha,effect_C1_beta;
@@ -2187,7 +1984,7 @@ void spin_adiabatic_state::gradient_implicit_Ms_z(OrbitalPair& pair)
 
    
 
-
+    */
    return;
 }
 

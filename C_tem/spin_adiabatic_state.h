@@ -71,13 +71,7 @@ struct MOpair {
     mat E_a;
     mat E_b;
 
-    vec flips;
-    size_t n_ao() const { return effect_C_o_alpha.n_rows; }
-    size_t n_occ_a() const { return effect_C_o_alpha.n_cols; }
-    size_t n_occ_b() const { return effect_C_o_beta.n_cols; }
-    size_t n_vir_a() const { return effect_C_v_alpha.n_cols; }
-    size_t n_vir_b() const { return effect_C_v_beta.n_cols; }
-    size_t n_svd()   const { return lambda.n_elem; }
+    vector<int> flips;
 
     size_t n_svd,n_ao,n_occ_a,n_occ_b,n_vir_a,n_vir_b;
 
@@ -277,6 +271,8 @@ class spin_adiabatic_state {
     void gradient_implicit_Ms_z(OrbitalPair& pair);
     void gradient_implicit_Ms_z_init(OrbitalPair& pair);
 
+    void sigma_overlap(MOpair& block);
+    void pi_matrix(OrbitalPair& pair);
 
    //void pseudo_density_explicit(mat &deriv_explicit_s, mat &deriv_explicit_l);
    void pseudo_density_explicit(mat &deriv_explicit_s, vector<mat> &deriv_explicit_l);
