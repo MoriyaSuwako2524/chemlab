@@ -64,10 +64,10 @@ struct MOpair {
     mat U;
     mat V;
     vec lambda;
-    effect_C_o_alpha;
-    effect_C_o_beta;
-    effect_C_v_alpha;
-    effect_C_v_beta;
+    mat effect_C_o_alpha;
+    mat effect_C_o_beta;
+    mat effect_C_v_alpha;
+    mat effect_C_v_beta;
     mat E_a;
     mat E_b;
 
@@ -139,8 +139,8 @@ struct OrbitalPair {
     mat S12voa,S12ova,S12vob,S12ovb;
     mat C1aT_L_C2a,C1bT_L_C2b,C1aT_L_C2b,C1bT_L_C2a;
 
-    mat pi_aa_1;pi_bb_1,pi_ab_1,pi_ba_1;
-    mat pi_aa_2;pi_bb_2,pi_ab_2,pi_ba_2;
+    mat pi_aa_1,pi_bb_1,pi_ab_1,pi_ba_1;
+    mat pi_aa_2,pi_bb_2,pi_ab_2,pi_ba_2;
 
     vec explicit_derivatives;
     vec implicit_derivatives_1;
