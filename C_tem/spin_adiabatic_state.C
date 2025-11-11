@@ -305,7 +305,7 @@ void spin_adiabatic_state::build_spin_blocks_for_state(
             const mat& V0 = ortho.V;   // (n_ori_beta,  nbeta)
             block.U = ortho.U;
             block.V = ortho.V;
-
+            block.flips = flips;
 
 
             mat E_a = make_E_a(static_cast<int>(U0.n_cols),
@@ -344,6 +344,7 @@ void spin_adiabatic_state::build_spin_blocks_for_state(
             flipped.C_beta  = orig.C_alpha;
             flipped.E_a = orig.E_b;
             flipped.E_b = orig.E_a;
+            flipped.flips = flips;
             flipped.effect_C_o_alpha = orig.effect_C_o_beta;
             flipped.effect_C_o_beta = orig.effect_C_o_alpha;
             flipped.effect_C_v_alpha = orig.effect_C_v_beta;
@@ -506,18 +507,6 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
                   pair.slater_phase1 = state_phase(nalpha1,nbeta1,pair.block1.flips);
 		  pair.slater_phase2 = state_phase(nalpha2,nbeta2,pair.block2.flips);
 		  pair.phase *= pair.slater_phase1 * pair.slater_phase2;
-		  std::cout << "Phase check: Block1 flips={";
-		      for (size_t i = 0; i < pair.block1.flips.size(); ++i) {
-    		          std::cout << pair.block1.flips[i];
-    			  if (i + 1 < pair.block1.flips.size()) std::cout << ",";
-		      }
-		      std::cout << "} -> phase=" << pair.slater_phase1;
-		      std::cout << "; Block2 flips={";
-		      for (size_t i = 0; i < pair.block2.flips.size(); ++i) {
-    			  std::cout << pair.block2.flips[i];
-    			  if (i + 1 < pair.block2.flips.size()) std::cout << ",";
-		      }
-			  std::cout << "} -> phase=" << pair.slater_phase2 << std::endl;
                   pair.psi1 = b1.C_beta * Ub.tail_cols(1);
                   pair.psi2 = b2.C_alpha * Va.tail_cols(1);
 
@@ -559,18 +548,6 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
                   pair.slater_phase1 = state_phase(nalpha1,nbeta1,pair.block1.flips);
                   pair.slater_phase2 = state_phase(nalpha2,nbeta2,pair.block2.flips);
                   pair.phase *= pair.slater_phase1 * pair.slater_phase2;
-                  std::cout << "Phase check: Block1 flips={";
-                      for (size_t i = 0; i < pair.block1.flips.size(); ++i) {
-                          std::cout << pair.block1.flips[i];
-                          if (i + 1 < pair.block1.flips.size()) std::cout << ",";
-                      }
-                      std::cout << "} -> phase=" << pair.slater_phase1;
-                      std::cout << "; Block2 flips={";
-                      for (size_t i = 0; i < pair.block2.flips.size(); ++i) {
-                          std::cout << pair.block2.flips[i];
-                          if (i + 1 < pair.block2.flips.size()) std::cout << ",";
-                      }
-                          std::cout << "} -> phase=" << pair.slater_phase2 << std::endl;
 
                   pair.psi1 = b1.C_alpha * Ua.tail_cols(1);
                   pair.psi2 = b2.C_beta * Vb.tail_cols(1);
@@ -619,19 +596,8 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
                   pair.slater_phase1 = state_phase(nalpha1,nbeta1,pair.block1.flips);
                   pair.slater_phase2 = state_phase(nalpha2,nbeta2,pair.block2.flips);
                   pair.phase_alpha *= pair.slater_phase1 * pair.slater_phase2;
-		  pair.phase_beta *= pair.slater_phase1 * pair.slater_phase2;
-                  std::cout << "Phase check: Block1 flips={";
-                      for (size_t i = 0; i < pair.block1.flips.size(); ++i) {
-                          std::cout << pair.block1.flips[i];
-                          if (i + 1 < pair.block1.flips.size()) std::cout << ",";
-                      }
-                      std::cout << "} -> phase=" << pair.slater_phase1;
-                      std::cout << "; Block2 flips={";
-                      for (size_t i = 0; i < pair.block2.flips.size(); ++i) {
-                          std::cout << pair.block2.flips[i];
-                          if (i + 1 < pair.block2.flips.size()) std::cout << ",";
-                      }
-                          std::cout << "} -> phase=" << pair.slater_phase2 << std::endl;
+                   pair.phase_beta *= pair.slater_phase1 * pair.slater_phase2;
+
  
                   pair.psi1_alpha = b1.C_alpha * Ua.tail_cols(1);
                   pair.psi2_alpha = b2.C_alpha * Va.tail_cols(1);
@@ -1652,6 +1618,12 @@ void spin_adiabatic_state::sigma_overlap(MOpair& block) {
    *sigma_ba: (n_ao(mu) * r , n_vir_a(a) * n_occ_a(i))
    *sigma_bb: (n_ao(mu) * r , n_vir_b(b) * n_occ_b(j))
     */
+    block.n_svd = block.n_svd();
+    block.n_ao = block.n_ao();
+    block.n_occ_a = block.n_occ_a();
+    block.n_occ_b = block.n_occ_b();
+    block.n_vir_b = block.n_vir_b();
+    block.n_vir_a = block.n_vir_a();
    mat sigma_aa(block.n_ao * block.n_svd, block.n_vir_a * block.n_occ_a, fill::zeros);
    mat sigma_ab(block.n_ao * block.n_svd, block.n_vir_b * block.n_occ_b, fill::zeros);
    mat sigma_ba(block.n_ao * block.n_svd, block.n_vir_a * block.n_occ_a, fill::zeros);
