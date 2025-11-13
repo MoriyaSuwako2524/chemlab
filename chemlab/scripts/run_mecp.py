@@ -139,8 +139,8 @@ def run_mecp_optimization(args):
         print(msg)
         log.write(msg + "\n")
 
-    plt.ioff()
-    plt.savefig(os.path.join(test_mecp.out_path, "mecp_progress.png"))
+        plt.ioff()
+        plt.savefig(os.path.join(test_mecp.out_path, "mecp_progress.png"))
     log.write("Optimization finished.\n")
     log.close()
     print("Optimization finished.")
