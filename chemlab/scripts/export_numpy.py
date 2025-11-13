@@ -256,24 +256,23 @@ def smart_parse_list(s):
 #
 
 
+
 def main():
-    from chemlab.config import ExportNumpyConfig
+    from chemlab.config import get_mecp_config,ExportNumpyConfig
+    cfg = get_mecp_config()
 
-    def main():
-        cfg = ExportNumpyConfig()
+    parser = argparse.ArgumentParser(description="Export TDDFT data")
+    ExportNumpyConfig.add_to_argparse(parser)
+    parser.add_argument("--data", required=True)
+    parser.add_argument("--out", required=True)
 
-        parser = argparse.ArgumentParser(description="Export TDDFT data")
-        ExportNumpyConfig.add_to_argparse(parser)
-        parser.add_argument("--data", required=True)
-        parser.add_argument("--out", required=True)
+    args = parser.parse_args()
 
-        args = parser.parse_args()
+    cfg.apply_override(vars(args))
 
-        cfg.apply_override(vars(args))
+    print("Input folder:", cfg.data)
+    print("Output folder:", cfg.out)
 
-        print(cfg.energy_unit)
-        print(cfg.distance_unit)
-
-        export_numpy(cfg)
+    export_numpy(cfg)
 if __name__ == "__main__":
     main()
