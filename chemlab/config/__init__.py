@@ -7,13 +7,16 @@ from .config_loader import (
 )
 
 
-mecp = MecpConfig()
-export_numpy = ExportNumpyConfig()
+def get_mecp_config():
+    return MecpConfig()
+
+def get_export_numpy_config():
+    return ExportNumpyConfig()
 
 __all__ = [
     "ConfigBase",
     "MecpConfig",
     "ExportNumpyConfig",
-    "mecp",
-    "export_numpy",
+    "get_mecp_config",
+    "get_export_numpy_config",
 ]
