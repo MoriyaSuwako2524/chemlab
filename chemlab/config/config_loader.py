@@ -2,8 +2,8 @@
 
 import tomllib
 from pathlib import Path
-import argparse
-
+import ast
+from typing import get_origin
 
 
 class ConfigBase:
@@ -34,10 +34,35 @@ class ConfigBase:
         for k, v in data.items():
             setattr(self, k, v)
 
-    def apply_override(self, cli_dict):
-        for k, v in cli_dict.items():
-            if v is not None:
-                setattr(self, k, v)
+    def apply_override(self, overrides: dict):
+
+        for key, val in overrides.items():
+            if not hasattr(self, key):
+                continue
+
+            # 获取当前字段的类型
+            typ = type(getattr(self, key))
+
+            # --- list[int] ---
+            if get_origin(typ) is list:
+                if isinstance(val, str):
+                    setattr(self, key, ast.literal_eval(val))
+                else:
+                    setattr(self, key, list(val))
+                continue
+
+            # --- int ---
+            if typ is int:
+                setattr(self, key, int(val))
+                continue
+
+            # --- float ---
+            if typ is float:
+                setattr(self, key, float(val))
+                continue
+
+            # 默认：使用原值
+            setattr(self, key, val)
 
     @classmethod
     def add_to_argparse(cls, parser):
@@ -55,3 +80,4 @@ class MecpConfig(ConfigBase):
 
 class ExportNumpyConfig(ConfigBase):
     section_name = "export_numpy"
+
