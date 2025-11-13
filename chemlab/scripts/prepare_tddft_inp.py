@@ -6,6 +6,7 @@ from chemlab.util.modify_inp import qchem_out_aimd_multi
 import numpy as np
 from pathlib import Path
 from chemlab.util.modify_inp import single_spin_job
+
 def export_aimd(args):
     path = args.path
     files = args.file.split(",")

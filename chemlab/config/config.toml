@@ -1,0 +1,24 @@
+[export_numpy]
+
+# Path settings
+data = "./raw_data/"
+out = "./"
+prefix = "full_"
+
+# Alignment options
+align_ref = "transition_density"
+
+# State selection
+state_idx = 1
+
+# Units
+energy_unit = "kcal/mol"
+ex_energy_unit = "ev"
+distance_unit = "ang"
+grad_unit = ["kcal/mol", "ang"]
+force_unit = ["kcal/mol", "ang"]
+
+# Dataset splitting
+train_splits = [1000, 500, 2000]
+val_splits = 400
+test_splits = 400

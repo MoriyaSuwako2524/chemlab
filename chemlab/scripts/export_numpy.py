@@ -257,23 +257,23 @@ def smart_parse_list(s):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Export tddft calculation using Q-Chem.")
-    parser.add_argument("--data", required=True,default="./raw_data/" ,help="Path to reference Q-Chem input file.")
-    parser.add_argument("--out", required=True,default="./" ,help="Output directory.")
-    parser.add_argument("--prefix", type=str, default="full_", help="prefix of files")
-    parser.add_argument("--align_ref", type=str, default="transition_density", help="Align vector reference")
-    parser.add_argument("--state_idx", type=int, default=1, help="excited state index")
-    parser.add_argument("--energy_unit", type=str, default="kcal/mol", help="Unit of energy")
-    parser.add_argument("--ex_energy_unit", type=str, default="ev", help="Unit of excitation energy")
-    parser.add_argument("--distance_unit", type=str, default="ang", help="Unit of coordinates")
-    parser.add_argument("--grad_unit", type=tuple, default=("kcal/mol", "ang"), help="Unit of gradient")
-    parser.add_argument("--force_unit", type=tuple, default=("kcal/mol", "ang"), help="Unit of force")
-    parser.add_argument("--train_splits", type=smart_parse_list, default="[1000,500,2000]" ,help="To export splits. This should be a list")
-    parser.add_argument("--val_splits", type=int, default=400,
-                        help="To export val splits. This should be a list")
-    parser.add_argument("--test_splits", type=int, default=400,
-                        help="To export test splits. This should be a list")
-    args = parser.parse_args()
-    export_numpy(args)
+    from chemlab.config import ExportNumpyConfig
+
+    def main():
+        cfg = ExportNumpyConfig()
+
+        parser = argparse.ArgumentParser(description="Export TDDFT data")
+        ExportNumpyConfig.add_to_argparse(parser)
+        parser.add_argument("--data", required=True)
+        parser.add_argument("--out", required=True)
+
+        args = parser.parse_args()
+
+        cfg.apply_override(vars(args))
+
+        print(cfg.energy_unit)
+        print(cfg.distance_unit)
+
+        export_numpy(cfg)
 if __name__ == "__main__":
     main()
