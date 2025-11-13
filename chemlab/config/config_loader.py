@@ -42,7 +42,6 @@ class ConfigBase:
             if val is None:
                 continue
 
-            # 获取当前字段的类型
             typ = type(getattr(self, key))
 
             # --- list[int] ---

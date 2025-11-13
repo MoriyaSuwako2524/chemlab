@@ -267,6 +267,9 @@ def main():
     cfg.apply_override(vars(args))
     print("Input folder:", cfg.data)
     print("Output folder:", cfg.out)
+    print("train:",cfg.train_splits)
+    print("val:",cfg.val_splits)
+    print("test",cfg.test_splits)
 
     export_numpy(cfg)
 if __name__ == "__main__":
