@@ -263,13 +263,8 @@ def main():
 
     parser = argparse.ArgumentParser(description="Export TDDFT data")
     ExportNumpyConfig.add_to_argparse(parser)
-    parser.add_argument("--data", required=True)
-    parser.add_argument("--out", required=True)
-
     args = parser.parse_args()
-
     cfg.apply_override(vars(args))
-
     print("Input folder:", cfg.data)
     print("Output folder:", cfg.out)
 
