@@ -238,14 +238,17 @@ vector<vector<int>> generate_combinations(int start, int end, int k) {
 
 
 mat make_E_a(int n_alpha, int n_beta, const vector<int>& flip_idxs) {
+
     vector<char> is_flip(n_alpha, 0);
     for (int idx : flip_idxs)
         if (idx >= 0 && idx < n_alpha)
             is_flip[idx] = 1;
 
+
     int n_unflipped = 0;
     for (int i = 0; i < n_alpha; ++i)
         if (!is_flip[i]) ++n_unflipped;
+
 
     mat J_alpha(n_alpha, n_unflipped, fill::zeros);
     int col = 0;
@@ -256,6 +259,7 @@ mat make_E_a(int n_alpha, int n_beta, const vector<int>& flip_idxs) {
 
     mat E_alpha_full(n_alpha + n_beta, n_unflipped, fill::zeros);
     E_alpha_full.submat(0, 0, n_alpha - 1, n_unflipped - 1) = J_alpha;
+
     return E_alpha_full;
 }
 
@@ -269,13 +273,21 @@ mat make_E_b(int n_alpha, int n_beta, const vector<int>& flip_idxs) {
     }
 
     int nflip = static_cast<int>(flip_idxs.size());
-    mat E_beta_full(n_alpha + n_beta, nflip + n_beta, fill::zeros);
-    if (nflip > 0)
-        E_beta_full.submat(0, 0, n_alpha - 1, nflip - 1) = E_alpha;
+
+    mat E_beta_full(n_alpha + n_beta, n_beta + nflip, fill::zeros);
+
+
     if (n_beta > 0)
-        E_beta_full.submat(n_alpha, nflip,
-                           n_alpha + n_beta - 1, nflip + n_beta - 1)
+        E_beta_full.submat(n_alpha, 0,
+                           n_alpha + n_beta - 1, n_beta - 1)
             = eye(n_beta, n_beta);
+
+
+    if (nflip > 0)
+        E_beta_full.submat(0, n_beta,
+                           n_alpha - 1, n_beta + nflip - 1)
+            = E_alpha;
+
     return E_beta_full;
 }
 
@@ -1852,47 +1864,253 @@ void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
 void spin_adiabatic_state::k_matrix(OrbitalPair& pair)
 {
     pi_matrix(pair);
-    MOpair b1 = pair.block1;
-    MOpair b2 = pair.block2;
-    mat k_a_1(b1.n_vir_a , b1.n_occ_a, fill::zeros);
-    mat k_a_2(b2.n_vir_a , b2.n_occ_a, fill::zeros);
-    mat k_b_1(b1.n_vir_b , b1.n_occ_b, fill::zeros);
-    mat k_b_2(b2.n_vir_b , b2.n_occ_b, fill::zeros);
 
-    vec lambda_b_inv = pair.lambda_b;
-    for (size_t i = 0; i < lambda_b_inv.n_elem; ++i) {
-        lambda_b_inv[i] = 1/pair.lambda_b[i];
-    }
+    MOpair &b1 = pair.block1;
+    MOpair &b2 = pair.block2;
+    size_t n_ao = b1.n_ao;
 
-    mat tem_du = diagmat(lambda_b_inv) * pair.U_b.t();
-    mat Sooinvb = pair.V_b * tem_du;
+    mat k_a_1(b1.n_vir_a, b1.n_occ_a, fill::zeros);
+    mat k_b_1(b1.n_vir_b, b1.n_occ_b, fill::zeros);
+    mat k_a_2(b2.n_vir_a, b2.n_occ_a, fill::zeros);
+    mat k_b_2(b2.n_vir_b, b2.n_occ_b, fill::zeros);
 
-    vec lambda_a_inv = pair.lambda_a;
-    for (size_t i = 0; i < lambda_a_inv.n_elem; ++i) {
-        lambda_a_inv[i] = 1/pair.lambda_a[i];
-    }
+    vec lambda_a_inv = 1.0 / pair.lambda_a;
+    vec lambda_b_inv = 1.0 / pair.lambda_b;
+    mat Sooinva = pair.V_a * diagmat(lambda_a_inv) * pair.U_a.t();
+    mat Sooinvb = pair.V_b * diagmat(lambda_b_inv) * pair.U_b.t();
 
-    tem_du = diagmat(lambda_a_inv) * pair.U_a.t();
-    mat Sooinva = pair.V_a * tem_du;
-
-    mat L_vsocxy   = L_AO.slice(0)+L_AO.slice(1);
+    mat L_vsocxy = L_AO.slice(0) + L_AO.slice(1);
     mat tem_L_psi2 = L_vsocxy * pair.psi2;
     mat tem_psi1_L = pair.psi1.t() * L_vsocxy;
-    mat tem_C1bT_L_psi2
+    mat U_null_b   = pair.U_b;
+    mat V_null_a   = pair.V_a;
+    mat U_null_b_t = U_null_b.t();
+    mat C1bT_L_psi1 = pair.C1_flipped_beta.t() * tem_psi1_L;
+    mat C1bT_L_psi1 = pair.C1_flipped_beta.t() * tem_psi1_L;
 
 
     for (size_t a = 0; a < b1.n_vir_a; ++a) {
+        vec rhs_mu = tem_L_psi2.col(a);
+        vec y_j = Sooinvb * (tem_psi1_L * V_null_a.col(a));
         for (size_t i = 0; i < b1.n_occ_a; ++i) {
-            size_t row_idx = a * b1.n_occ_a + i;
+            size_t ai = a * b1.n_occ_a + i;
 
+            vec v_mu(n_ao, fill::zeros);
+            for (size_t mu = 0; mu < n_ao; ++mu) {
+                double acc_mu = 0.0;
+                for (size_t l = 0; l < b1.n_svd; ++l) {
+                    size_t row = mu * b1.n_svd + l;
+                    double s_aa = b1.sigma_aa(row, a + i * b1.n_vir_a);
+                    double s_ba = b1.sigma_ba(row, a + i * b1.n_vir_a);
+                    double Sj = 0.0;
+                    for (size_t j = 0; j < U_null_b_t.n_rows; ++j) {
+                        double Ee = s_aa * b1.E_a(l, j) + s_ba * b1.E_b(l, j);
+                        for (size_t ip = 0; ip < U_null_b_t.n_cols; ++ip)
+                            Sj += Ee * U_null_b_t(j, ip);
+                    }
+                    acc_mu += Sj;
+                }
+                v_mu(mu) = acc_mu;
+            }
+            double main_val = dot(v_mu, rhs_mu);
 
+            double corr_ba = 0.0;
+            for (size_t ip = 0; ip < U_null_b.n_cols; ++ip) {
+                double tmp = 0.0;
+                for (size_t j = 0; j < y_j.n_rows; ++j)
+                    tmp += pair.pi_ba_1(ip, a + i * b1.n_vir_a) * y_j(j);
+                corr_ba += U_null_b(0, ip) * tmp;
+            }
+
+            mat M = U_null_b.t() * tem_psi1_L;
+            vec x_ip(U_null_b.n_cols, fill::zeros);
+            for (size_t ip = 0; ip < x_ip.n_rows; ++ip)
+                x_ip(ip) = accu(M.row(ip));
+
+            double corr_aa = 0.0;
+            for (size_t ip = 0; ip < x_ip.n_rows; ++ip) {
+                double tmp = 0.0;
+                for (size_t j = 0; j < V_null_a.n_rows; ++j)
+                    tmp += pair.pi_aa_1(ip, a + i * b1.n_vir_a) * V_null_a(j, 0);
+                corr_aa += x_ip(ip) * tmp;
+            }
+
+            k_a_1(a, i) = main_val - corr_ba - corr_aa;
         }
     }
 
 
+    // ============ K^β (block1) ============
 
-    return;
+
+    for (size_t b = 0; b < b1.n_vir_b; ++b) {
+        vec rhs_mu = tem_L_psi2.col(b);
+        vec y_j = Sooinvb * (tem_psi1_L * V_null_a.col(b));
+        for (size_t j = 0; j < b1.n_occ_b; ++j) {
+            size_t bj = b * b1.n_occ_b + j;
+
+            vec v_mu(n_ao, fill::zeros);
+            for (size_t mu = 0; mu < n_ao; ++mu) {
+                double acc_mu = 0.0;
+                for (size_t l = 0; l < b1.n_svd; ++l) {
+                    size_t row = mu * b1.n_svd + l;
+                    double s_bb = b1.sigma_bb(row, b + j * b1.n_vir_b);
+                    double s_ab = b1.sigma_ab(row, b + j * b1.n_vir_b);
+                    double Sj = 0.0;
+                    for (size_t jp = 0; jp < U_null_b_t.n_rows; ++jp) {
+                        double Ee = s_bb * b1.E_b(l, jp) + s_ab * b1.E_a(l, jp);
+                        for (size_t ip = 0; ip < U_null_b_t.n_cols; ++ip)
+                            Sj += Ee * U_null_b_t(jp, ip);
+                    }
+                    acc_mu += Sj;
+                }
+                v_mu(mu) = acc_mu;
+            }
+            double main_val = dot(v_mu, rhs_mu);
+
+            double corr_ba = 0.0;
+            for (size_t ip = 0; ip < U_null_b.n_cols; ++ip) {
+                double tmp = 0.0;
+                for (size_t jj = 0; jj < y_j.n_rows; ++jj)
+                    tmp += pair.pi_ba_1(ip, b + j * b1.n_vir_b) * y_j(jj);
+                corr_ba += U_null_b(0, ip) * tmp;
+            }
+
+            mat M = U_null_b.t() * tem_psi1_L;
+            vec x_ip(U_null_b.n_cols, fill::zeros);
+            for (size_t ip = 0; ip < x_ip.n_rows; ++ip)
+                x_ip(ip) = accu(M.row(ip));
+
+            double corr_aa = 0.0;
+            for (size_t ip = 0; ip < x_ip.n_rows; ++ip) {
+                double tmp = 0.0;
+                for (size_t jj = 0; jj < V_null_a.n_rows; ++jj)
+                    tmp += pair.pi_aa_1(ip, b + j * b1.n_vir_b) * V_null_a(jj, 0);
+                corr_aa += x_ip(ip) * tmp;
+            }
+
+            k_b_1(b, j) = main_val - corr_ba - corr_aa;
+        }
+    }
+
+
+    // ============ K'^α (block2) ============
+
+
+    for (size_t a = 0; a < b2.n_vir_a; ++a) {
+        vec rhs_mu = tem_L_psi2.col(a);
+        vec y_j = Sooinvb * (tem_psi1_L * V_null_a.col(a));
+        for (size_t i = 0; i < b2.n_occ_a; ++i) {
+            size_t ai = a * b2.n_occ_a + i;
+
+            vec v_mu(n_ao, fill::zeros);
+            for (size_t mu = 0; mu < n_ao; ++mu) {
+                double acc_mu = 0.0;
+                for (size_t l = 0; l < b2.n_svd; ++l) {
+                    size_t row = mu * b2.n_svd + l;
+                    double s_aa = b2.sigma_aa(row, a + i * b2.n_vir_a);
+                    double s_ba = b2.sigma_ba(row, a + i * b2.n_vir_a);
+                    double Sj = 0.0;
+                    for (size_t j = 0; j < U_null_b_t.n_rows; ++j) {
+                        double Ee = s_aa * b2.E_a(l, j) + s_ba * b2.E_b(l, j);
+                        for (size_t ip = 0; ip < U_null_b_t.n_cols; ++ip)
+                            Sj += Ee * U_null_b_t(j, ip);
+                    }
+                    acc_mu += Sj;
+                }
+                v_mu(mu) = acc_mu;
+            }
+            double main_val = dot(v_mu, rhs_mu);
+
+            double corr_ba = 0.0;
+            for (size_t ip = 0; ip < U_null_b.n_cols; ++ip) {
+                double tmp = 0.0;
+                for (size_t j = 0; j < y_j.n_rows; ++j)
+                    tmp += pair.pi_ba_2(ip, a + i * b2.n_vir_a) * y_j(j);
+                corr_ba += U_null_b(0, ip) * tmp;
+            }
+
+            mat M = U_null_b.t() * tem_psi1_L;
+            vec x_ip(U_null_b.n_cols, fill::zeros);
+            for (size_t ip = 0; ip < x_ip.n_rows; ++ip)
+                x_ip(ip) = accu(M.row(ip));
+
+            double corr_aa = 0.0;
+            for (size_t ip = 0; ip < x_ip.n_rows; ++ip) {
+                double tmp = 0.0;
+                for (size_t j = 0; j < V_null_a.n_rows; ++j)
+                    tmp += pair.pi_aa_2(ip, a + i * b2.n_vir_a) * V_null_a(j, 0);
+                corr_aa += x_ip(ip) * tmp;
+            }
+
+            k_a_2(a, i) = main_val - corr_ba - corr_aa;
+        }
+    }
+
+
+    // ============ K'^β (block2) ============
+
+
+    for (size_t b = 0; b < b2.n_vir_b; ++b) {
+        vec rhs_mu = tem_L_psi2.col(b);
+        vec y_j = Sooinvb * (tem_psi1_L * V_null_a.col(b));
+        for (size_t j = 0; j < b2.n_occ_b; ++j) {
+            size_t bj = b * b2.n_occ_b + j;
+
+            vec v_mu(n_ao, fill::zeros);
+            for (size_t mu = 0; mu < n_ao; ++mu) {
+                double acc_mu = 0.0;
+                for (size_t l = 0; l < b2.n_svd; ++l) {
+                    size_t row = mu * b2.n_svd + l;
+                    double s_bb = b2.sigma_bb(row, b + j * b2.n_vir_b);
+                    double s_ab = b2.sigma_ab(row, b + j * b2.n_vir_b);
+                    double Sj = 0.0;
+                    for (size_t jp = 0; jp < U_null_b_t.n_rows; ++jp) {
+                        double Ee = s_bb * b2.E_b(l, jp) + s_ab * b2.E_a(l, jp);
+                        for (size_t ip = 0; ip < U_null_b_t.n_cols; ++ip)
+                            Sj += Ee * U_null_b_t(jp, ip);
+                    }
+                    acc_mu += Sj;
+                }
+                v_mu(mu) = acc_mu;
+            }
+            double main_val = dot(v_mu, rhs_mu);
+
+            double corr_ba = 0.0;
+            for (size_t ip = 0; ip < U_null_b.n_cols; ++ip) {
+                double tmp = 0.0;
+                for (size_t jj = 0; jj < y_j.n_rows; ++jj)
+                    tmp += pair.pi_ba_2(ip, b + j * b2.n_vir_b) * y_j(jj);
+                corr_ba += U_null_b(0, ip) * tmp;
+            }
+
+            mat M = U_null_b.t() * tem_psi1_L;
+            vec x_ip(U_null_b.n_cols, fill::zeros);
+            for (size_t ip = 0; ip < x_ip.n_rows; ++ip)
+                x_ip(ip) = accu(M.row(ip));
+
+            double corr_aa = 0.0;
+            for (size_t ip = 0; ip < x_ip.n_rows; ++ip) {
+                double tmp = 0.0;
+                for (size_t jj = 0; jj < V_null_a.n_rows; ++jj)
+                    tmp += pair.pi_aa_2(ip, b + j * b2.n_vir_b) * V_null_a(jj, 0);
+                corr_aa += x_ip(ip) * tmp;
+            }
+
+            k_b_2(b, j) = main_val - corr_ba - corr_aa;
+        }
+    }
+
+
+    pair.K_a_1 = k_a_1;
+    pair.K_b_1 = k_b_1;
+    pair.K_a_2 = k_a_2;
+    pair.K_b_2 = k_b_2;
 }
+
+
+
+
 
 
 
