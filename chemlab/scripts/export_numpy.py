@@ -258,8 +258,8 @@ def smart_parse_list(s):
 
 
 def main():
-    from chemlab.config import get_mecp_config,ExportNumpyConfig
-    cfg = get_mecp_config()
+    from chemlab.config import get_export_numpy_config,ExportNumpyConfig
+    cfg = get_export_numpy_config()
 
     parser = argparse.ArgumentParser(description="Export TDDFT data")
     ExportNumpyConfig.add_to_argparse(parser)
