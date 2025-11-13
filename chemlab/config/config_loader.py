@@ -2,8 +2,7 @@
 
 import tomllib
 from pathlib import Path
-import ast
-from typing import get_origin
+
 
 
 class ConfigBase:
@@ -35,36 +34,46 @@ class ConfigBase:
             setattr(self, k, v)
 
     def apply_override(self, overrides: dict):
-
         for key, val in overrides.items():
-            if not hasattr(self, key):
-                continue
             if val is None:
                 continue
+            if not hasattr(self, key):
+                continue
 
-            typ = type(getattr(self, key))
+            current = getattr(self, key)
 
-            # --- list[int] ---
-            if get_origin(typ) is list:
+            # ---------- list ----------
+            if isinstance(current, list):
                 if isinstance(val, str):
-                    setattr(self, key, ast.literal_eval(val))
+                    import ast
+                    text = val.strip()
+                    if "," in text and not text.startswith("["):
+                        text = "[" + text + "]"
+                    new_list = ast.literal_eval(text)
+                    setattr(self, key, new_list)
                 else:
                     setattr(self, key, list(val))
                 continue
 
-            # --- int ---
-            if typ is int:
+            # ---------- int ----------
+            if isinstance(current, int):
                 setattr(self, key, int(val))
                 continue
 
-            # --- float ---
-            if typ is float:
+            # ---------- float ----------
+            if isinstance(current, float):
                 setattr(self, key, float(val))
                 continue
 
-            # 默认：使用原值
-            setattr(self, key, val)
+            # ---------- bool ----------
+            if isinstance(current, bool):
+                if isinstance(val, str):
+                    setattr(self, key, val.lower() in ["1", "true", "yes"])
+                else:
+                    setattr(self, key, bool(val))
+                continue
 
+            setattr(self, key, val)
     @classmethod
     def add_to_argparse(cls, parser):
         data = cls.section_dict()
