@@ -8,13 +8,12 @@ class ConvertOutToInpConfig(ConfigBase):
 class ConvertOutToInp(Script):
     name = "convert_out_to_inp"
 
-    # 这个 script 不使用 config
-    config = None
+    config = ConvertOutToInpConfig
 
-    def run(self, filename):
-        ref = "ref.in"
+    def run(self, cfg):
+        ref = cfg.ref
         inp = conver_opt_out_to_inp()
         inp.ref_name = ref
-        inp.convert(new_out_file_name=filename)
+        inp.convert(new_out_file_name=cfg.file)
 
 
