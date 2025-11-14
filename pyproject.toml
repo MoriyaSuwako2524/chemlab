@@ -17,10 +17,10 @@ dependencies = ["numpy"]
 where = ["."]
 
 [project.scripts]
-chemlab = "chemlab:__main__:main()"
+chemlab = "chemlab:__main__:main"
 
 run_mecp = "chemlab.scripts.run_mecp:main"
-export_numpy = "chemlab.scripts.export_numpy:main"
-prepare_tddft_inp = "chemlab.scripts.prepare_tddft_inp:main"
+export_numpy = "chemlab.scripts.ml_data.export_numpy:main"
+prepare_tddft_inp = "chemlab.scripts.ml_data.prepare_tddft_inp:main"
 
 

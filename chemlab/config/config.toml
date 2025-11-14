@@ -13,7 +13,7 @@ state_idx = 1
 
 # Units
 energy_unit = "kcal/mol"
-ex_energy_unit = "ev"
+ex_energy_unit = "ev" #Excitation energy, instead of the energy of a specific excited state
 distance_unit = "ang"
 grad_unit = ["kcal/mol", "ang"]
 force_unit = ["kcal/mol", "ang"]
@@ -37,8 +37,8 @@ spin = 1
 # reference file
 ref = "ref.in"
 
-# dataser
-dataset_size = 3000
+# dataset size
+dataset_size = 2000
 
 energy_unit = "kcal/mol"
 ex_energy_unit = "ev"
