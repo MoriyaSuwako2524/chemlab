@@ -58,3 +58,14 @@ ref = "ref.in"
 charge = 0
 spins = 1
 file = ""
+
+[traj_split]
+use_defaults = "qchem"
+
+input_dir = ""
+outdir = ""
+split_file = "split.npz"
+
+train = 0
+val = 0
+test = 0
