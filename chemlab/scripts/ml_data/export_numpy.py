@@ -256,7 +256,7 @@ def smart_parse_list(s):
 #
 
 
-
+'''
 def main():
     from chemlab.config import get_export_numpy_config,ExportNumpyConfig
     cfg = get_export_numpy_config()
@@ -274,3 +274,4 @@ def main():
     export_numpy(cfg)
 if __name__ == "__main__":
     main()
+'''
