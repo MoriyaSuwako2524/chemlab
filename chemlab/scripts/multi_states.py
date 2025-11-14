@@ -1,5 +1,5 @@
 import sys
-from modify_inp import single_spin_job
+from chemlab.util.modify_inp import single_spin_job
 def main(filename):
 	ref = "ref.in"
 	int = single_spin_job()

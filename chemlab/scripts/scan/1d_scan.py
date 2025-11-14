@@ -4,7 +4,7 @@ import time
 import subprocess
 from dataclasses import dataclass
 from typing import Dict, Optional, List, Tuple
-from util.file_system import qchem_file, qchem_out_opt
+from chemlab.util.file_system import qchem_file, qchem_out_opt
 
 # ================== Cluster / Q-Chem env ==================
 QCHEM_ENV_SETUP = """

@@ -91,3 +91,6 @@ class MecpConfig(ConfigBase):
 class ExportNumpyConfig(ConfigBase):
     section_name = "export_numpy"
 
+class PrepareTDDFTConfig(ConfigBase):
+    section_name = "prepare_tddft"
+

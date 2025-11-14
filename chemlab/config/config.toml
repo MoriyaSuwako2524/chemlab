@@ -22,3 +22,27 @@ force_unit = ["kcal/mol", "ang"]
 train_splits = [1000, 500, 2000]
 val_splits = 400
 test_splits = 400
+
+[prepare_tddft]
+
+# Path settings
+path = ""
+file = ""
+out = "/raw_data/"
+
+# Molecule
+charge = 0
+spin = 1
+
+# reference file
+ref = "ref.in"
+
+# dataser
+dataset_size = 3000
+
+energy_unit = "kcal/mol"
+ex_energy_unit = "ev"
+distance_unit = "ang"
+grad_unit = ["kcal/mol", "ang"]
+force_unit = ["kcal/mol", "ang"]
+
