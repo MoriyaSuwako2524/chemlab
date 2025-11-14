@@ -2,35 +2,61 @@ import argparse
 import pkgutil
 import importlib
 import inspect
+from types import ModuleType
 
 
 class CLICommand:
-    """
-    Base class for all CLI command modules.
-    Subclasses must define: name = "cmdname"
-    And implement: add_arguments(self, parser)
-    """
-    name = None  # must be overridden
+    """Base class for all CLI command modules.
 
-    def add_arguments(self, parser):
+    Subclasses must define:
+        name: str
+        add_arguments(self, parser, subparsers)
+    """
+    name = None
+
+    def add_arguments(self, parser, subparsers):
         raise NotImplementedError
 
-    def register(self, subparsers):
-        cmd_parser = subparsers.add_parser(self.name)
-        self.add_arguments(cmd_parser)
+    def register(self, top_subparsers):
+        """Register this command as a first-level subcommand."""
+        parser = top_subparsers.add_parser(self.name)
+        subparsers = parser.add_subparsers(dest=f"{self.name}_cmd")
+        self.add_arguments(parser, subparsers)
+
+
+def is_valid_cli_class(obj):
+    """Check whether obj is a valid CLICommand subclass."""
+    return (
+        inspect.isclass(obj)
+        and issubclass(obj, CLICommand)
+        and obj is not CLICommand       # exclude base class
+        and obj.name is not None        # must define name
+        and isinstance(obj.name, str)
+        and obj.name.strip() != ""
+    )
+
+
+def load_module_recursive(package: ModuleType):
+    """Recursively load all modules under package."""
+    for finder, modname, ispkg in pkgutil.walk_packages(
+        package.__path__, package.__name__ + "."
+    ):
+        yield importlib.import_module(modname)
 
 
 def load_cli_commands(package):
-    """Automatically discover all CLICommand subclasses in package."""
+    """Discover and instantiate CLICommand classes inside package."""
     commands = []
+    seen = set()
 
-    # Scan all modules in package
-    for _, modname, _ in pkgutil.iter_modules(package.__path__, package.__name__ + "."):
-        module = importlib.import_module(modname)
+    # Recursively load modules under chemlab.cli
+    for module in load_module_recursive(package):
 
-        # Find classes inheriting CLICommand
+        # Scan each module for CLICommand subclasses
         for _, obj in inspect.getmembers(module, inspect.isclass):
-            if issubclass(obj, CLICommand) and obj is not CLICommand:
-                commands.append(obj())
+            if is_valid_cli_class(obj):
+                if obj not in seen:     # avoid duplicates
+                    seen.add(obj)
+                    commands.append(obj())
 
     return commands

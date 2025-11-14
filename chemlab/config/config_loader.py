@@ -37,6 +37,8 @@ class ConfigBase:
         for key, val in overrides.items():
             if val is None:
                 continue
+            elif val == "":
+                continue
             if not hasattr(self, key):
                 continue
 
