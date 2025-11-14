@@ -46,3 +46,15 @@ distance_unit = "ang"
 grad_unit = ["kcal/mol", "ang"]
 force_unit = ["kcal/mol", "ang"]
 
+[multi_states]
+use_defaults = "qchem"
+
+[convert_out_to_inp]
+use_defaults = "qchem"
+
+
+[defaults.qchem]
+ref = "ref.in"
+charge = 0
+spins = 1
+file = ""

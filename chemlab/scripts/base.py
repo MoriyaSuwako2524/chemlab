@@ -4,7 +4,7 @@ class Script:
 
     Subclasses must define:
         name   : CLI subcommand name
-        config : a ConfigBase subclass
+        config : a ConfigBase subclass(If the script doesn't require config, config=None)
         run(self, cfg)
     """
 
