@@ -175,7 +175,8 @@ class Scan1D(Script):
         # ========== unpack config ==========
         qenv = QchemEnvConfig()
         env_srcipt = qenv.env_script
-        path = cfg.path
+        path = cfg.inp_path
+        out_path = cfg.out_path
         prefix = cfg.prefix
         ref_filename = cfg.ref
         row_max = cfg.row_max
@@ -188,8 +189,7 @@ class Scan1D(Script):
         poll_interval = cfg.poll_interval
         launcher = cfg.launcher
 
-        os.makedirs(path, exist_ok=True)
-
+        os.makedirs(out_path, exist_ok=True)  # <-- 新增
         # ===== Load reference input file =====
         ref_qf = qchem_file()
         ref_qf.molecule.check = True
@@ -202,8 +202,8 @@ class Scan1D(Script):
         for r in range(row_max):
             row_dis = round(row_start + row_distance * r, 3)
             name = make_scan_name(prefix, row_dis, r)
-            inp_file = os.path.join(path, f"{name}.inp")
-            out_file = os.path.join(path, f"{name}.inp.out")
+            inp_file = os.path.join(out_path, f"{name}.inp")
+            out_file = os.path.join(out_path, f"{name}.inp.out")
             jobs.append(ScanJob(r, row_dis, inp_file, out_file))
 
         # ===== Pre-scan existing outputs =====

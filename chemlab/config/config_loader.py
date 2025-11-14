@@ -41,7 +41,7 @@ class ConfigBase:
 
     def apply_override(self, overrides: dict):
         for key, val in overrides.items():
-            if val is None or val == "":
+            if val is None :
                 continue
             if not hasattr(self, key):
                 continue

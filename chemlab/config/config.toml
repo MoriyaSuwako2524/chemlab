@@ -78,7 +78,8 @@ test = 0
 # SCAN MODULE
 [scan1d]
 use_defaults = "scan"
-path = ""
+inp_path = "./"
+out_path = ""
 prefix = ""
 ref = "ref.in"
 row_max = 40
