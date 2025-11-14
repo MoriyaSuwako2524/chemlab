@@ -80,11 +80,14 @@ class CLICommand:
 # ============================================================
 #   Helper: Script discovery
 # ============================================================
-
+_DISCOVER_CACHE = None
 def discover_scripts():
     """
     Automatically discover ALL Script subclasses under chemlab.scripts.*
     """
+    global _DISCOVER_CACHE
+    if _DISCOVER_CACHE is not None:
+        return _DISCOVER_CACHE
     scripts = []
 
     for _, modname, _ in pkgutil.walk_packages(
@@ -95,7 +98,7 @@ def discover_scripts():
         for _, obj in inspect.getmembers(module, inspect.isclass):
             if issubclass(obj, Script) and obj is not Script:
                 scripts.append(obj)
-
+    _DISCOVER_CACHE = scripts
     return scripts
 
 
