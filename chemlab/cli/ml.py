@@ -1,14 +1,19 @@
-from argparse import ArgumentParser
-from chemlab.scripts.ml_data.export_numpy import main as export_numpy_main
-from chemlab.scripts.ml_data.prepare_tddft_inp  import main as prepare_tddft_main
+from chemlab.cli.base import CLICommand
 
-def add_subcommands(parser: ArgumentParser):
-    sub = parser.add_subparsers(dest="command")
+class MlData(CLICommand):
+    name = "ml_data"
 
-    # export_numpy
-    p_export = sub.add_parser("export_numpy")
-    p_export.set_defaults(func=lambda args: export_numpy_main())
+    def add_arguments(self, parser):
+        sub = parser.add_subparsers(dest="ml_cmd")
 
-    # prepare_tddft
-    p_prepare = sub.add_parser("prepare_tddft")
-    p_prepare.set_defaults(func=lambda args: prepare_tddft_main())
+        train = sub.add_parser("train")
+        train.set_defaults(func=self.train)
+
+        eval_ = sub.add_parser("eval")
+        eval_.set_defaults(func=self.eval)
+
+    def train(self, args):
+        print("[ML] Training...")
+
+    def eval(self, args):
+        print("[ML] Evaluation...")

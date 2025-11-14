@@ -1,16 +1,15 @@
 import argparse
-from chemlab.cli import ml, scan
+import chemlab.cli
+from chemlab.cli.base import load_cli_commands
+
 
 def main():
     parser = argparse.ArgumentParser(prog="chemlab")
-    subparsers = parser.add_subparsers(dest="group")
+    subparsers = parser.add_subparsers(dest="command")
 
-
-    ml_parser = subparsers.add_parser("ml")
-    ml.add_subcommands(ml_parser)
-
-    scan_parser = subparsers.add_parser("scan")
-    scan.add_subcommands(scan_parser)
+    # auto discover and register all subclasses
+    for cmd in load_cli_commands(chemlab.cli):
+        cmd.register(subparsers)
 
     args = parser.parse_args()
 
@@ -18,6 +17,7 @@ def main():
         args.func(args)
     else:
         parser.print_help()
+
 
 if __name__ == "__main__":
     main()
