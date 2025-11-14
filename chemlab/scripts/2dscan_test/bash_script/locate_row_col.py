@@ -20,5 +20,5 @@ def main(row,col,path):
         cols = int(file[-1][3:])
         file_name_dict[(rows,cols)] = filename
     print("filename={}".format(file_name_dict[(row,col)]))
-main(sys.argv[1],sys.argv[2],sys.argv[3])
+#main(sys.argv[1],sys.argv[2],sys.argv[3])
 
