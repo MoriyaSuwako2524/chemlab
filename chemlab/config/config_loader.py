@@ -132,3 +132,6 @@ class PrepareTDDFTConfig(ConfigBase):
 
 class ConvertOutToInpConfig(ConfigBase):
     section_name = "convert_out_to_inp"
+
+class QchemEnvConfig(ConfigBase):
+    section_name = "qchem_env"
