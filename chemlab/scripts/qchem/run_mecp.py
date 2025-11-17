@@ -99,10 +99,9 @@ class RunMecp(Script):
             for state in [test_mecp.state_1, test_mecp.state_2]:
 
                 inp = os.path.join(test_mecp.out_path, state.job_name)
-                out = inp + ".out"
+                out = inp[:-4] + ".out"
                 out_files.append(out)
 
-                # ⭐ 插入 env_script ⭐
                 cmd = f"""{env_script}
 qchem -nt {cfg.nthreads // 2} {inp} {out}
 """

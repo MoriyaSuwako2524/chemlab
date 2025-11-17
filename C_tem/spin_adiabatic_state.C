@@ -326,8 +326,8 @@ void spin_adiabatic_state::build_spin_blocks_for_state(
             mat E_b = make_E_b(static_cast<int>(U0.n_cols),
                                static_cast<int>(V0.n_cols),
                                flips);
-            matrix_print_2d(E_a.memptr(),E_a.n_rows, E_a.n_cols,"E_a:");
-            matrix_print_2d(E_b.memptr(),E_b.n_rows, E_b.n_cols,"E_b:");
+            //matrix_print_2d(E_a.memptr(),E_a.n_rows, E_a.n_cols,"E_a:");
+            //matrix_print_2d(E_b.memptr(),E_b.n_rows, E_b.n_cols,"E_b:");
             block.E_a = E_a;
             block.E_b = E_b;
             mat C_all = join_rows(ortho.C_alpha, ortho.C_beta);
@@ -1111,7 +1111,7 @@ void spin_adiabatic_state::total_gradients()
    nvir1_b = NOrb - nbeta1;
    nvir2_a = NOrb - nalpha2;
    nvir2_b = NOrb - nbeta2;
-
+   test_sigma_overlap_unit();
    // pack terms up
    cout << "gradient restrain lagrangian:" << lagrangian << endl;
    double prefactor_1 = 0.5 * (1 - (E1-E2) / E_soc) + lagrangian * (E1-E2);
@@ -1623,6 +1623,108 @@ mat sigma_V_as_operator(const mat& U, const vec& d, const mat& V, double tol = 1
     return M;
 }
 
+// ================================================================
+// Minimal Unit Test for sigma_U, sigma_V, sigma_overlap
+// Can be called anywhere inside Q-Chem code.
+// ================================================================
+
+void test_sigma_overlap_unit() {
+    cout << "\n=============================\n";
+    cout << "  Running sigma overlap unit test\n";
+    cout << "=============================\n";
+
+    // ------------------------------
+    // 构造最小 1×1 测试 MOpair
+    // ------------------------------
+    MOpair block;
+
+    block.n_svd   = 1;
+    block.n_ao    = 1;
+    block.n_occ_a = 1;
+    block.n_occ_b = 1;
+    block.n_vir_a = 1;
+    block.n_vir_b = 1;
+
+    // SVD: U, V, λ
+    double u = 2.0;
+    double v = 3.0;
+    double s = 5.0;
+
+    block.U = mat{{u}};
+    block.V = mat{{v}};
+    block.lambda = vec{ s };
+
+    // Occupied/virtual coefficients
+    block.effect_C_o_alpha = mat{{1.1}};
+    block.effect_C_o_beta  = mat{{1.2}};
+    block.effect_C_v_alpha = mat{{1.3}};
+    block.effect_C_v_beta  = mat{{1.4}};
+
+    // Hardcode SU, SV so sigma_overlap 仅测试 index 逻辑
+    block.sigma_u = mat{{7.0}};   // SU = 7
+    block.sigma_v = mat{{11.0}};  // SV = 11
+
+    // AO overlap: S = 1
+    AOS = mat{{1.0}};
+
+    // For debugging: print basic info
+    cout << "Test values:\n";
+    cout << "  U = 2, V = 3, lambda = 5\n";
+    cout << "  C_o_alpha = 1.1\n";
+    cout << "  C_o_beta  = 1.2\n";
+    cout << "  C_v_alpha = 1.3\n";
+    cout << "  C_v_beta  = 1.4\n";
+    cout << "  sigma_u = 7, sigma_v = 11\n\n";
+
+    // -------------------------------------
+    // 调用你的真实实现 sigma_overlap()
+    // -------------------------------------
+    sigma_overlap(block);
+
+    // -------------------------------------
+    // 打印结果
+    // -------------------------------------
+    cout << "Computed:\n";
+    cout << "  sigma_aa = " << block.sigma_aa(0,0) << endl;
+    cout << "  sigma_ab = " << block.sigma_ab(0,0) << endl;
+    cout << "  sigma_ba = " << block.sigma_ba(0,0) << endl;
+    cout << "  sigma_bb = " << block.sigma_bb(0,0) << endl;
+
+    // -------------------------------------
+    // Reference analytical results
+    // -------------------------------------
+    double sigma_aa_ref = 6.45;
+    double sigma_ab_ref = 6.16;
+    double sigma_ba_ref = 6.60;
+    double sigma_bb_ref = 14.76;
+
+    cout << "\nReference:\n";
+    cout << "  sigma_aa_ref = " << sigma_aa_ref << endl;
+    cout << "  sigma_ab_ref = " << sigma_ab_ref << endl;
+    cout << "  sigma_ba_ref = " << sigma_ba_ref << endl;
+    cout << "  sigma_bb_ref = " << sigma_bb_ref << endl;
+
+    // -------------------------------------
+    // Compare and print OK / ERROR
+    // -------------------------------------
+    auto check = [&](double val, double ref, const char* name) {
+        double err = fabs(val - ref);
+        if (err < 1e-8)
+            cout << "  [OK]    " << name << endl;
+        else
+            cout << "  [ERROR] " << name
+                 << "  val=" << val << " ref=" << ref
+                 << "  diff=" << err << endl;
+    };
+
+    cout << "\nChecking...\n";
+    check(block.sigma_aa(0,0), sigma_aa_ref, "sigma_aa");
+    check(block.sigma_ab(0,0), sigma_ab_ref, "sigma_ab");
+    check(block.sigma_ba(0,0), sigma_ba_ref, "sigma_ba");
+    check(block.sigma_bb(0,0), sigma_bb_ref, "sigma_bb");
+
+    cout << "=============================\n\n";
+}
 
 void spin_adiabatic_state::sigma_overlap(MOpair& block) {
    /*
@@ -1885,8 +1987,8 @@ void spin_adiabatic_state::k_matrix(OrbitalPair& pair)
     mat U_null_b   = pair.U_b;
     mat V_null_a   = pair.V_a;
     mat U_null_b_t = U_null_b.t();
-    mat C1bT_L_psi1 = pair.C1_flipped_beta.t() * tem_psi1_L;
-    mat C1bT_L_psi1 = pair.C1_flipped_beta.t() * tem_psi1_L;
+    mat C1bT_L_psi2 = pair.C1_flipped_beta.t() * tem_L_psi2;
+    mat psi1_L_C2a = tem_psi1_L * pair.C2_flipped_alpha ;
 
 
     for (size_t a = 0; a < b1.n_vir_a; ++a) {
