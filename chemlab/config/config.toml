@@ -122,3 +122,19 @@ export QCSCRATCH=/scratch/$USER
 module load impi/2021.2.0
 module load intel/2021.2.0
 """
+
+
+[run_mecp]
+path = "/scratch/moriya/molecule/ref_dir"
+file = "ref.in"
+out = "./mecp_out"
+jobtype = "mecp"
+gradient = "analytical"
+spin1 = 1
+spin2 = 3
+nthreads = 16
+stepsize = 0.1
+max_steps = 80
+conv = 1e-5
+
+

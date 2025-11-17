@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chemlab"
-version = "0.1.1"
+version = "0.2.0"
 description = "Utilities for Q-Chem workflows, ML datasets, and scanning"
 authors = [
     { name="moriya2524", email="suwako2524@gmail.com" }
