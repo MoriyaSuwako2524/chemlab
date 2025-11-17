@@ -252,7 +252,7 @@ class spin_adiabatic_state {
    vec state_gradients();
    vec Esoc_gradients();
    void total_gradients();
-
+    void test_sigma_overlap_unit();
     vec gradient_explicit_Ms();
     void gradient_explicit_s(OrbitalPair& pair);
     void gradient_explicit_lxy(OrbitalPair& pair);

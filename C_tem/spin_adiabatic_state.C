@@ -1622,19 +1622,14 @@ mat sigma_V_as_operator(const mat& U, const vec& d, const mat& V, double tol = 1
 
     return M;
 }
+void spin_adiabatic_state::test_sigma_overlap_unit() {
 
-// ================================================================
-// Minimal Unit Test for sigma_U, sigma_V, sigma_overlap
-// Can be called anywhere inside Q-Chem code.
-// ================================================================
-
-void test_sigma_overlap_unit() {
     cout << "\n=============================\n";
-    cout << "  Running sigma overlap unit test\n";
+    cout << "  Running sigma_overlap unit test\n";
     cout << "=============================\n";
 
     // ------------------------------
-    // 构造最小 1×1 测试 MOpair
+    // Construct minimal MOpair
     // ------------------------------
     MOpair block;
 
@@ -1645,83 +1640,82 @@ void test_sigma_overlap_unit() {
     block.n_vir_a = 1;
     block.n_vir_b = 1;
 
-    // SVD: U, V, λ
-    double u = 2.0;
-    double v = 3.0;
-    double s = 5.0;
+    block.lambda = vec(1);
+    block.lambda(0) = 5.0;
 
-    block.U = mat{{u}};
-    block.V = mat{{v}};
-    block.lambda = vec{ s };
+    // -- allocate 1×1 matrices
+    block.U = mat(1,1);
+    block.V = mat(1,1);
+    block.U(0,0) = 2.0;
+    block.V(0,0) = 3.0;
 
-    // Occupied/virtual coefficients
-    block.effect_C_o_alpha = mat{{1.1}};
-    block.effect_C_o_beta  = mat{{1.2}};
-    block.effect_C_v_alpha = mat{{1.3}};
-    block.effect_C_v_beta  = mat{{1.4}};
+    block.effect_C_o_alpha = mat(1,1);
+    block.effect_C_o_beta  = mat(1,1);
+    block.effect_C_v_alpha = mat(1,1);
+    block.effect_C_v_beta  = mat(1,1);
 
-    // Hardcode SU, SV so sigma_overlap 仅测试 index 逻辑
-    block.sigma_u = mat{{7.0}};   // SU = 7
-    block.sigma_v = mat{{11.0}};  // SV = 11
+    block.effect_C_o_alpha(0,0) = 1.1;
+    block.effect_C_o_beta(0,0)  = 1.2;
+    block.effect_C_v_alpha(0,0) = 1.3;
+    block.effect_C_v_beta(0,0)  = 1.4;
 
-    // AO overlap: S = 1
-    AOS = mat{{1.0}};
+    // Fake sigma_U / sigma_V blocks (1×1)
+    block.sigma_u = mat(1,1);
+    block.sigma_v = mat(1,1);
+    block.sigma_u(0,0) = 7.0;
+    block.sigma_v(0,0) = 11.0;
 
-    // For debugging: print basic info
-    cout << "Test values:\n";
-    cout << "  U = 2, V = 3, lambda = 5\n";
-    cout << "  C_o_alpha = 1.1\n";
-    cout << "  C_o_beta  = 1.2\n";
-    cout << "  C_v_alpha = 1.3\n";
-    cout << "  C_v_beta  = 1.4\n";
-    cout << "  sigma_u = 7, sigma_v = 11\n\n";
+    // AO overlap = 1
+    this->AOS = mat(1,1);
+    this->AOS(0,0) = 1.0;
 
-    // -------------------------------------
-    // 调用你的真实实现 sigma_overlap()
-    // -------------------------------------
-    sigma_overlap(block);
+    cout << "Test values loaded OK.\n";
 
-    // -------------------------------------
-    // 打印结果
-    // -------------------------------------
-    cout << "Computed:\n";
+    // ------------------------------
+    // Run real implementation
+    // ------------------------------
+    this->sigma_overlap(block);
+
+    // ------------------------------
+    // Print computed values
+    // ------------------------------
+    cout << "\nComputed:\n";
     cout << "  sigma_aa = " << block.sigma_aa(0,0) << endl;
     cout << "  sigma_ab = " << block.sigma_ab(0,0) << endl;
     cout << "  sigma_ba = " << block.sigma_ba(0,0) << endl;
     cout << "  sigma_bb = " << block.sigma_bb(0,0) << endl;
 
-    // -------------------------------------
-    // Reference analytical results
-    // -------------------------------------
-    double sigma_aa_ref = 6.45;
-    double sigma_ab_ref = 6.16;
-    double sigma_ba_ref = 6.60;
-    double sigma_bb_ref = 14.76;
+    // ------------------------------
+    // Reference values
+    // ------------------------------
+    double ref_aa = 6.45;
+    double ref_ab = 6.16;
+    double ref_ba = 6.60;
+    double ref_bb = 14.76;
 
-    cout << "\nReference:\n";
-    cout << "  sigma_aa_ref = " << sigma_aa_ref << endl;
-    cout << "  sigma_ab_ref = " << sigma_ab_ref << endl;
-    cout << "  sigma_ba_ref = " << sigma_ba_ref << endl;
-    cout << "  sigma_bb_ref = " << sigma_bb_ref << endl;
+    cout << "\nReference values:\n";
+    cout << "  sigma_aa_ref = " << ref_aa << endl;
+    cout << "  sigma_ab_ref = " << ref_ab << endl;
+    cout << "  sigma_ba_ref = " << ref_ba << endl;
+    cout << "  sigma_bb_ref = " << ref_bb << endl;
 
-    // -------------------------------------
-    // Compare and print OK / ERROR
-    // -------------------------------------
-    auto check = [&](double val, double ref, const char* name) {
+    // ------------------------------
+    // Check
+    // ------------------------------
+    auto check = [&](double val, double ref, const char* tag) {
         double err = fabs(val - ref);
         if (err < 1e-8)
-            cout << "  [OK]    " << name << endl;
+            cout << "  [OK]    " << tag << endl;
         else
-            cout << "  [ERROR] " << name
-                 << "  val=" << val << " ref=" << ref
-                 << "  diff=" << err << endl;
+            cout << "  [ERROR] " << tag
+                 << "  val=" << val << " ref=" << ref << " diff=" << err << endl;
     };
 
     cout << "\nChecking...\n";
-    check(block.sigma_aa(0,0), sigma_aa_ref, "sigma_aa");
-    check(block.sigma_ab(0,0), sigma_ab_ref, "sigma_ab");
-    check(block.sigma_ba(0,0), sigma_ba_ref, "sigma_ba");
-    check(block.sigma_bb(0,0), sigma_bb_ref, "sigma_bb");
+    check(block.sigma_aa(0,0), ref_aa, "sigma_aa");
+    check(block.sigma_ab(0,0), ref_ab, "sigma_ab");
+    check(block.sigma_ba(0,0), ref_ba, "sigma_ba");
+    check(block.sigma_bb(0,0), ref_bb, "sigma_bb");
 
     cout << "=============================\n\n";
 }
