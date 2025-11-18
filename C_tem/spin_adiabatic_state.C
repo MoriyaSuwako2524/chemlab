@@ -1837,14 +1837,14 @@ void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
                     double e_bb = b2.E_b(l+b2.n_occ_a, j);
 
                     for (size_t aip = 0; aip < b2.n_vir_a * b2.n_occ_a; ++aip)
-                        pi_ba_2(row_idx, k) += coeff *
-                            (b2.sigma_aa(mu * b2.n_svd + l, k) * e_ab +
-                             b2.sigma_ba(mu * b2.n_svd + l, k) * e_bb);
+                        pi_ba_2(row_idx, aip) += coeff *
+                            (b2.sigma_aa(mu * b2.n_svd + l, aip) * e_ab +
+                             b2.sigma_ba(mu * b2.n_svd + l, aip) * e_bb);
 
                     for (size_t bjp = 0; bjp < b2.n_vir_b * b2.n_occ_b; ++bjp)
-                        pi_bb_2(row_idx, k) += coeff *
-                            (b2.sigma_ab(mu * b2.n_svd + l, k) * e_ab +
-                             b2.sigma_bb(mu * b2.n_svd + l, k) * e_bb);
+                        pi_bb_2(row_idx, bjp) += coeff *
+                            (b2.sigma_ab(mu * b2.n_svd + l, bjp) * e_ab +
+                             b2.sigma_bb(mu * b2.n_svd + l, bjp) * e_bb);
                 }
             }
         }
@@ -1883,13 +1883,13 @@ void spin_adiabatic_state::k_matrix(OrbitalPair& pair)
     mat L_vsocxy = L_AO.slice(0) + L_AO.slice(1);
     mat tem_L_psi2 = L_vsocxy * pair.psi2;
     mat tem_psi1_L = pair.psi1.t() * L_vsocxy;
-    mat U_null_b   = pair.U_b;
-    mat V_null_a   = pair.V_a;
+    mat U_null_b   = pair.U_b.tail_cols(1);
+    mat V_null_a   = pair.V_a.tail_cols(1);
     mat U_null_b_t = U_null_b.t();
     mat C1bT_L_psi2 = pair.C1_flipped_beta.t() * tem_L_psi2;
     mat psi1_L_C2a = tem_psi1_L * pair.C2_flipped_alpha ;
 
-
+    // ============ K^α (block1) ============
     for (size_t a = 0; a < b1.n_vir_a; ++a) {
         vec rhs_mu = tem_L_psi2.col(a);
         vec y_j = Sooinvb * (tem_psi1_L * V_null_a.col(a));
