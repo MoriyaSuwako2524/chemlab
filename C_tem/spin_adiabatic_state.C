@@ -1959,6 +1959,7 @@ void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
 
 void spin_adiabatic_state::k_matrix(OrbitalPair& pair)
 {
+
     pi_matrix(pair);
 
     MOpair &b1 = pair.block1;
