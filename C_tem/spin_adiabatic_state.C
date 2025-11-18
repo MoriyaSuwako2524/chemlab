@@ -1111,7 +1111,7 @@ void spin_adiabatic_state::total_gradients()
    nvir1_b = NOrb - nbeta1;
    nvir2_a = NOrb - nalpha2;
    nvir2_b = NOrb - nbeta2;
-   test_sigma_overlap_unit();
+
    // pack terms up
    cout << "gradient restrain lagrangian:" << lagrangian << endl;
    double prefactor_1 = 0.5 * (1 - (E1-E2) / E_soc) + lagrangian * (E1-E2);
@@ -1622,103 +1622,7 @@ mat sigma_V_as_operator(const mat& U, const vec& d, const mat& V, double tol = 1
 
     return M;
 }
-void spin_adiabatic_state::test_sigma_overlap_unit() {
 
-    cout << "\n=============================\n";
-    cout << "  Running sigma_overlap unit test\n";
-    cout << "=============================\n";
-
-    // ------------------------------
-    // Construct minimal MOpair
-    // ------------------------------
-    MOpair block;
-
-    block.n_svd   = 1;
-    block.n_ao    = 1;
-    block.n_occ_a = 1;
-    block.n_occ_b = 1;
-    block.n_vir_a = 1;
-    block.n_vir_b = 1;
-
-    block.lambda = vec(1);
-    block.lambda(0) = 5.0;
-
-    // -- allocate 1×1 matrices
-    block.U = mat(1,1);
-    block.V = mat(1,1);
-    block.U(0,0) = 2.0;
-    block.V(0,0) = 3.0;
-
-    block.effect_C_o_alpha = mat(1,1);
-    block.effect_C_o_beta  = mat(1,1);
-    block.effect_C_v_alpha = mat(1,1);
-    block.effect_C_v_beta  = mat(1,1);
-
-    block.effect_C_o_alpha(0,0) = 1.1;
-    block.effect_C_o_beta(0,0)  = 1.2;
-    block.effect_C_v_alpha(0,0) = 1.3;
-    block.effect_C_v_beta(0,0)  = 1.4;
-
-    // Fake sigma_U / sigma_V blocks (1×1)
-    block.sigma_u = mat(1,1);
-    block.sigma_v = mat(1,1);
-    block.sigma_u(0,0) = 7.0;
-    block.sigma_v(0,0) = 11.0;
-
-    // AO overlap = 1
-    this->AOS = mat(1,1);
-    this->AOS(0,0) = 1.0;
-
-    cout << "Test values loaded OK.\n";
-
-    // ------------------------------
-    // Run real implementation
-    // ------------------------------
-    this->sigma_overlap(block);
-
-    // ------------------------------
-    // Print computed values
-    // ------------------------------
-    cout << "\nComputed:\n";
-    cout << "  sigma_aa = " << block.sigma_aa(0,0) << endl;
-    cout << "  sigma_ab = " << block.sigma_ab(0,0) << endl;
-    cout << "  sigma_ba = " << block.sigma_ba(0,0) << endl;
-    cout << "  sigma_bb = " << block.sigma_bb(0,0) << endl;
-
-    // ------------------------------
-    // Reference values
-    // ------------------------------
-    double ref_aa = 6.45;
-    double ref_ab = 6.16;
-    double ref_ba = 6.60;
-    double ref_bb = 14.76;
-
-    cout << "\nReference values:\n";
-    cout << "  sigma_aa_ref = " << ref_aa << endl;
-    cout << "  sigma_ab_ref = " << ref_ab << endl;
-    cout << "  sigma_ba_ref = " << ref_ba << endl;
-    cout << "  sigma_bb_ref = " << ref_bb << endl;
-
-    // ------------------------------
-    // Check
-    // ------------------------------
-    auto check = [&](double val, double ref, const char* tag) {
-        double err = fabs(val - ref);
-        if (err < 1e-8)
-            cout << "  [OK]    " << tag << endl;
-        else
-            cout << "  [ERROR] " << tag
-                 << "  val=" << val << " ref=" << ref << " diff=" << err << endl;
-    };
-
-    cout << "\nChecking...\n";
-    check(block.sigma_aa(0,0), ref_aa, "sigma_aa");
-    check(block.sigma_ab(0,0), ref_ab, "sigma_ab");
-    check(block.sigma_ba(0,0), ref_ba, "sigma_ba");
-    check(block.sigma_bb(0,0), ref_bb, "sigma_bb");
-
-    cout << "=============================\n\n";
-}
 
 void spin_adiabatic_state::sigma_overlap(MOpair& block) {
    /*
