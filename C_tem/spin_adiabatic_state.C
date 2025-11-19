@@ -15,6 +15,13 @@
  * =====================================================================================
  */
 
+#define DEBUG_K_LAST 1
+#ifdef DEBUG_K_LAST
+#define DBG(msg) std::cout << "Zexuan Check " << msg << std::endl
+#else
+#define DBG(msg)
+#endif
+
 #include "spin_adiabatic_state.h"
 void matrix_print_2d(const double* matrix, const size_t nrow, const size_t ncol, const char* keyword)
 {
@@ -1386,13 +1393,10 @@ void spin_adiabatic_state::gradient_implicit_rhs_Ms()
          for (auto& pair : pair_list) {;
 
             if (dir != 2){
-               gradient_implicit_Ms_xy(pair);
+               k_matrix_null(pair);
             }
             else{
-               if (Ms1 >=0){
-                  gradient_implicit_Ms_z(pair);
-                  }
-               
+                k_matrix_last(pair);
             }
          }
       }
@@ -1895,7 +1899,6 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
     mat tem_psi1_L_C2a_Sooinva = psi1_L_C2a * Sooinva;
     for (size_t a = 0; a < b1.n_vir_a; ++a) {
         for (size_t i = 0; i < b1.n_occ_a; ++i) {
-            size_t ai = a * b1.n_occ_a + i;
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
                 for (size_t l = 0; l < b1.n_svd; ++l) {
@@ -1932,7 +1935,6 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
 
     for (size_t b = 0; b < b1.n_vir_b; ++b) {
         for (size_t j = 0; j < b1.n_occ_b; ++j) {
-            size_t bj = b * b1.n_occ_a + j;
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
                 for (size_t l = 0; l < b1.n_svd; ++l) {
@@ -1969,7 +1971,6 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
 
     for (size_t a = 0; a < b2.n_vir_a; ++a) {
         for (size_t i = 0; i < b2.n_occ_a; ++i) {
-            size_t ai = a * b2.n_occ_a + i;
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
                 for (size_t l = 0; l < b2.n_svd; ++l) {
@@ -2007,7 +2008,6 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
 
     for (size_t b = 0; b < b2.n_vir_b; ++b) {
         for (size_t j = 0; j < b2.n_occ_b; ++j) {
-            size_t bj = b * b2.n_occ_a + j;
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
                 for (size_t l = 0; l < b2.n_svd; ++l) {
@@ -2050,6 +2050,22 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
 
 void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
 {
+    DBG("===== k_matrix_last START =====");
+    DBG("block1: "
+        << " n_occ_a=" << b1.n_occ_a
+        << " n_occ_b=" << b1.n_occ_b
+        << " n_vir_a=" << b1.n_vir_a
+        << " n_vir_b=" << b1.n_vir_b
+        << " n_svd="   << b1.n_svd);
+
+    DBG("block2: "
+        << " n_occ_a=" << b2.n_occ_a
+        << " n_occ_b=" << b2.n_occ_b
+        << " n_vir_a=" << b2.n_vir_a
+        << " n_vir_b=" << b2.n_vir_b
+        << " n_svd="   << b2.n_svd);
+
+    DBG("n_ao = " << n_ao);
 
     pi_matrix(pair);
 
@@ -2088,9 +2104,9 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
 
 
     // ============ K^αα  1============
+    DBG("Computing K^aa_1");
     for (size_t a = 0; a < b1.n_vir_a; ++a) {
         for (size_t i = 0; i < b1.n_occ_a; ++i) {
-            size_t ai = a * b1.n_occ_a + i;
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
                 for (size_t l = 0; l < b1.n_svd; ++l) {
@@ -2109,7 +2125,7 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
             for (size_t ip = 0; ip < b1.n_occ_a; ++ip) {
                 for (size_t jp = 0; jp < b2.n_occ_a; ++jp){
                     for  (size_t ipp = 0; ipp < b1.n_occ_a; ++ipp)
-                    term2 +=  pair.pi_aa_1(ip * b2.n_occ_b + jp ,a + i * b1.n_vir_a) * pair.sigma_ua((ipp+1) * b1.n_occ_a -1, ip + jp * b2.n_occ_a) * C1aT_L_psi2a(ipp);
+                    term2 +=  pair.pi_aa_1(ip * b2.n_occ_a + jp ,a + i * b1.n_vir_a) * pair.sigma_ua((ipp+1) * b1.n_occ_a -1, ip + jp * b2.n_occ_a) * C1aT_L_psi2a(ipp);
                 }
             }
 
@@ -2118,7 +2134,7 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
             for (size_t ip = 0; ip < b1.n_occ_a; ++ip) {
                 for (size_t jp = 0; jp < b2.n_occ_a; ++jp){
                     for  (size_t jpp = 0; jpp < b2.n_occ_a; ++jpp)
-                    term2 +=   psi1a_L_C2a(jpp) * pair.pi_aa_1(ip * b2.n_occ_b + jp ,a + i * b1.n_vir_a) * pair.sigma_va((jpp+1) * b2.n_occ_a -1, ip + jp * b2.n_occ_a) ;
+                    term2 +=   psi1a_L_C2a(jpp) * pair.pi_aa_1(ip * b2.n_occ_a + jp ,a + i * b1.n_vir_a) * pair.sigma_va((jpp+1) * b2.n_occ_a -1, ip + jp * b2.n_occ_a) ;
                 }
             }
 
@@ -2129,9 +2145,9 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
 
 
     // ============ K^βα 1============
+    DBG("Computing K^ba_1...");
     for (size_t a = 0; a < b1.n_vir_a; ++a) {
         for (size_t i = 0; i < b1.n_occ_a; ++i) {
-            size_t ai = a * b1.n_occ_a + i;
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
                 for (size_t l = 0; l < b1.n_svd; ++l) {
@@ -2140,7 +2156,7 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
                     for (size_t j = 0; j < b1.n_occ_b; ++j) {
                         double e_ab = b1.E_b(l, i);
                         double e_bb = b1.E_b(l+b1.n_occ_a, i);
-                        term1 += U_last_b(j) * (s_aa * e_aa + s_ba * e_ba) * tem_L_psi2b(mu);
+                        term1 += U_last_b(j) * (s_aa * e_ab + s_ba * e_bb) * tem_L_psi2b(mu);
                     }
                 }
             }
@@ -2170,18 +2186,18 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
     }
 
     // ============ K^αb 1  ============
-    for (size_t a = 0; a < b1.n_vir_a; ++a) {
-        for (size_t i = 0; i < b1.n_occ_a; ++i) {
-            size_t ai = a * b1.n_occ_a + i;
+    DBG("Computing K^ab_1...");
+    for (size_t b = 0; b < b1.n_vir_b; ++b) {
+        for (size_t j = 0; j < b1.n_occ_b; ++j) {
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
                 for (size_t l = 0; l < b1.n_svd; ++l) {
-                    double s_aa = b1.sigma_aa(mu * b1.n_svd + l, a + i * b1.n_vir_a);
-                    double s_ba = b1.sigma_ba(mu * b1.n_svd + l, a + i * b1.n_vir_a);
+                    double s_ab = b1.sigma_ab(mu * b1.n_svd + l, b + j * b1.n_vir_b);
+                    double s_bb = b1.sigma_bb(mu * b1.n_svd + l, b + j * b1.n_vir_b);
                     for (size_t j = 0; j < b1.n_occ_a; ++j) {
                         double e_aa = b1.E_a(l, i);
                         double e_ba = b1.E_a(l+b1.n_occ_a, i);
-                        term1 += U_last_a(j) * (s_aa * e_aa + s_ba * e_ba) * tem_L_psi2a(mu);
+                        term1 += U_last_a(j) * (s_ab * e_aa + s_bb * e_ba) * tem_L_psi2a(mu);
                     }
                 }
             }
@@ -2191,7 +2207,7 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
             for (size_t ip = 0; ip < b1.n_occ_a; ++ip) {
                 for (size_t jp = 0; jp < b2.n_occ_a; ++jp){
                     for  (size_t ipp = 0; ipp < b1.n_occ_a; ++ipp)
-                    term2 +=  pair.pi_aa_1(ip * b2.n_occ_b + jp ,a + i * b1.n_vir_a) * pair.sigma_ua((ipp+1) * b1.n_occ_a -1, ip + jp * b2.n_occ_a) * C1aT_L_psi2a(ipp);
+                    term2 +=  pair.pi_ab_1(ip * b2.n_occ_a + jp ,b + j * b1.n_vir_b) * pair.sigma_ua((ipp+1) * b1.n_occ_a -1, ip + jp * b2.n_occ_a) * C1aT_L_psi2a(ipp);
                 }
             }
 
@@ -2200,198 +2216,232 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
             for (size_t ip = 0; ip < b1.n_occ_a; ++ip) {
                 for (size_t jp = 0; jp < b2.n_occ_a; ++jp){
                     for  (size_t jpp = 0; jpp < b2.n_occ_a; ++jpp)
-                    term2 +=   psi1a_L_C2a(jpp) * pair.pi_aa_1(ip * b2.n_occ_b + jp ,a + i * b1.n_vir_a) * pair.sigma_va((jpp+1) * b2.n_occ_a -1, ip + jp * b2.n_occ_a) ;
+                    term2 +=   psi1a_L_C2a(jpp) * pair.pi_ab_1(ip * b2.n_occ_a + jp ,b + j * b1.n_vir_b) * pair.sigma_va((jpp+1) * b2.n_occ_a -1, ip + jp * b2.n_occ_a) ;
+                }
+            }
+            k_ab_1(b, j) = term1 + term2 + term3;
+        }
+    }
+
+    // ============ K^ββ 1============
+    DBG("Computing K^bb_1...");
+    for (size_t b = 0; b < b1.n_vir_b; ++b) {
+        for (size_t j = 0; j < b1.n_occ_b; ++j) {
+            double term1 = 0.0;
+            for (size_t mu = 0; mu < n_ao; ++mu) {
+                for (size_t l = 0; l < b1.n_svd; ++l) {
+                    double s_ab = b1.sigma_ab(mu * b1.n_svd + l, b + j * b1.n_vir_b);
+                    double s_bb = b1.sigma_bb(mu * b1.n_svd + l, b + j * b1.n_vir_b);
+                    for (size_t j = 0; j < b1.n_occ_b; ++j) {
+                        double e_ab = b1.E_b(l, i);
+                        double e_bb = b1.E_b(l+b1.n_occ_a, i);
+                        term1 += U_last_b(j) * (s_ab * e_ab + s_bb * e_bb) * tem_L_psi2b(mu);
+                    }
                 }
             }
 
 
-            k_aa_1(a, i) = term1 + term2 + term3;
+            double term2 = 0.0;
+            for (size_t ip = 0; ip < b1.n_occ_b; ++ip) {
+                for (size_t jp = 0; jp < b2.n_occ_b; ++jp){
+                    for  (size_t ipp = 0; ipp < b1.n_occ_b; ++ipp)
+                    term2 +=  pair.pi_bb_1(ip * b2.n_occ_b + jp ,b + j * b1.n_vir_b) * pair.sigma_ub((ipp+1) * b1.n_occ_b -1, ip + jp * b2.n_occ_b) * C1bT_L_psi2b(ipp);
+                }
+            }
+
+
+            double term3 = 0.0;
+            for (size_t ip = 0; ip < b1.n_occ_b; ++ip) {
+                for (size_t jp = 0; jp < b2.n_occ_b; ++jp){
+                    for  (size_t jpp = 0; jpp < b2.n_occ_b; ++jpp)
+                    term2 +=   psi1b_L_C2b(jpp) * pair.pi_bb_1(ip * b2.n_occ_b + jp ,b + j * b1.n_vir_b) * pair.sigma_va((jpp+1) * b2.n_occ_b -1, ip + jp * b2.n_occ_b) ;
+                }
+            }
+            k_bb_1(b, j) = term1 + term2 + term3;
+        }
+    }
+    // block2
+    // ============ K^αα  2============
+    DBG("Computing K^aa_2...");
+    for (size_t a = 0; a < b2.n_vir_a; ++a) {
+        for (size_t i = 0; i < b2.n_occ_a; ++i) {
+            double term1 = 0.0;
+            for (size_t mu = 0; mu < n_ao; ++mu) {
+                for (size_t l = 0; l < b2.n_svd; ++l) {
+                    double s_aa = b2.sigma_aa(mu * b2.n_svd + l, a + i * b2.n_vir_a);
+                    double s_ba = b2.sigma_ba(mu * b2.n_svd + l, a + i * b2.n_vir_a);
+                    for (size_t j = 0; j < b2.n_occ_a; ++j) {
+                        double e_aa = b2.E_a(l, i);
+                        double e_ba = b2.E_a(l+b2.n_occ_a, i);
+                        term1 += tem_psi1aT_L(mu) * (s_aa * e_aa + s_ba * e_ba) * V_last_a(j);
+                    }
+                }
+            }
+
+
+            double term2 = 0.0;
+            for (size_t ip = 0; ip < b1.n_occ_a; ++ip) {
+                for (size_t jp = 0; jp < b2.n_occ_a; ++jp){
+                    for  (size_t ipp = 0; ipp < b1.n_occ_a; ++ipp)
+                    term2 +=  pair.pi_aa_2(ip * b2.n_occ_a + jp ,a + i * b2.n_vir_a) * pair.sigma_ua((ipp+1) * b1.n_occ_a -1, ip + jp * b2.n_occ_a) * C1aT_L_psi2a(ipp);
+                }
+            }
+
+
+            double term3 = 0.0;
+            for (size_t ip = 0; ip < b1.n_occ_a; ++ip) {
+                for (size_t jp = 0; jp < b2.n_occ_a; ++jp){
+                    for  (size_t jpp = 0; jpp < b2.n_occ_a; ++jpp)
+                    term2 +=   psi1a_L_C2a(jpp) * pair.pi_aa_2(ip * b2.n_occ_a + jp ,a + i * b2.n_vir_a) * pair.sigma_va((jpp+1) * b2.n_occ_a -1, ip + jp * b2.n_occ_a) ;
+                }
+            }
+
+
+            k_aa_2(a, i) = term1 + term2 + term3;
         }
     }
 
 
-    pair.K_a_1 = k_a_1;
-    pair.K_b_1 = k_b_1;
-    pair.K_a_2 = k_a_2;
-    pair.K_b_2 = k_ba_2;
+    // ============ K^βα 2============
+    DBG("Computing K^ba_2...");
+    for (size_t a = 0; a < b2.n_vir_a; ++a) {
+        for (size_t i = 0; i < b2.n_occ_a; ++i) {
+            double term1 = 0.0;
+            for (size_t mu = 0; mu < n_ao; ++mu) {
+                for (size_t l = 0; l < b2.n_svd; ++l) {
+                    double s_aa = b2.sigma_aa(mu * b2.n_svd + l, a + i * b2.n_vir_a);
+                    double s_ba = b2.sigma_ba(mu * b1.n_svd + l, a + i * b2.n_vir_a);
+                    for (size_t j = 0; j < b2.n_occ_b; ++j) {
+                        double e_ab = b2.E_b(l, i);
+                        double e_bb = b2.E_b(l+b2.n_occ_a, i);
+                        term1 += tem_psi1bT_L(mu) * (s_aa * e_ab + s_ba * e_bb) * V_last_b(j);
+                    }
+                }
+            }
+
+
+            double term2 = 0.0;
+            for (size_t ip = 0; ip < b1.n_occ_b; ++ip) {
+                for (size_t jp = 0; jp < b2.n_occ_b; ++jp){
+                    for  (size_t ipp = 0; ipp < b2.n_occ_b; ++ipp)
+                    term2 +=  pair.pi_ba_2(ip * b2.n_occ_b + jp ,a + i * b2.n_vir_a) * pair.sigma_ub((ipp+1) * b1.n_occ_a -1, ip + jp * b2.n_occ_a) * C1bT_L_psi2b(ipp);
+                }
+            }
+
+
+            double term3 = 0.0;
+            for (size_t ip = 0; ip < b1.n_occ_b; ++ip) {
+                for (size_t jp = 0; jp < b2.n_occ_b; ++jp){
+                    for  (size_t jpp = 0; jpp < b1.n_occ_b; ++jpp)
+                    term2 +=   psi1b_L_C2b(jpp) * pair.pi_ba_2(ip * b2.n_occ_b + jp ,a + i * b2.n_vir_a) * pair.sigma_vb((jpp+1) * b2.n_occ_b -1, ip + jp * b2.n_occ_b) ;
+
+                }
+            }
+
+
+            k_ba_2(a, i) = term1 + term2 + term3;
+        }
+    }
+
+    // ============ K^αb 2  ============
+    DBG("Computing K^ab_2...");
+    for (size_t b = 0; b < b2.n_vir_b; ++b) {
+        for (size_t j = 0; j < b2.n_occ_b; ++j) {
+            double term1 = 0.0;
+            for (size_t mu = 0; mu < n_ao; ++mu) {
+                for (size_t l = 0; l < b2.n_svd; ++l) {
+                    double s_ab = b2.sigma_ab(mu * b2.n_svd + l, b + j * b2.n_vir_b);
+                    double s_bb = b2.sigma_bb(mu * b2.n_svd + l, b + j * b2.n_vir_b);
+                    for (size_t j = 0; j < b2.n_occ_a; ++j) {
+                        double e_aa = b2.E_a(l, i);
+                        double e_ba = b2.E_a(l+b1.n_occ_a, i);
+                        term1 += tem_psi1aT_L(mu) * (s_aa * e_ab + s_ba * e_bb) * V_last_a(j);
+                    }
+                }
+            }
+
+
+            double term2 = 0.0;
+            for (size_t ip = 0; ip < b1.n_occ_a; ++ip) {
+                for (size_t jp = 0; jp < b2.n_occ_a; ++jp){
+                    for  (size_t ipp = 0; ipp < b1.n_occ_a; ++ipp)
+                    term2 +=  pair.pi_ab_2(ip * b2.n_occ_a + jp ,b + j * b2.n_vir_b) * pair.sigma_ua((ipp+1) * b1.n_occ_a -1, ip + jp * b2.n_occ_a) * C1aT_L_psi2a(ipp);
+                }
+            }
+
+
+            double term3 = 0.0;
+            for (size_t ip = 0; ip < b1.n_occ_a; ++ip) {
+                for (size_t jp = 0; jp < b2.n_occ_a; ++jp){
+                    for  (size_t jpp = 0; jpp < b2.n_occ_a; ++jpp)
+                    term2 +=   psi1a_L_C2a(jpp) * pair.pi_ab_2(ip * b2.n_occ_a + jp ,b + j * b2.n_vir_b) * pair.sigma_va((jpp+1) * b2.n_occ_a -1, ip + jp * b2.n_occ_a) ;
+                }
+            }
+            k_ab_2(b, j) = term1 + term2 + term3;
+        }
+    }
+
+    // ============ K^ββ 2============
+    DBG("Computing K^bb_2...");
+    for (size_t b = 0; b < b2.n_vir_b; ++b) {
+        for (size_t j = 0; j < b2.n_occ_b; ++j) {
+            double term1 = 0.0;
+            for (size_t mu = 0; mu < n_ao; ++mu) {
+                for (size_t l = 0; l < b2.n_svd; ++l) {
+                    double s_ab = b2.sigma_ab(mu * b2.n_svd + l, b + j * b2.n_vir_b);
+                    double s_bb = b2.sigma_bb(mu * b2.n_svd + l, b + j * b2.n_vir_b);
+                    for (size_t j = 0; j < b2.n_occ_b; ++j) {
+                        double e_ab = b2.E_b(l, i);
+                        double e_bb = b2.E_b(l+b2.n_occ_a, i);
+                        term1 += tem_psi1bT_L(mu) * (s_aa * e_ab + s_ba * e_bb) * V_last_b(j);
+                    }
+                }
+            }
+
+
+            double term2 = 0.0;
+            for (size_t ip = 0; ip < b1.n_occ_b; ++ip) {
+                for (size_t jp = 0; jp < b2.n_occ_b; ++jp){
+                    for  (size_t ipp = 0; ipp < b1.n_occ_b; ++ipp)
+                    term2 +=  pair.pi_bb_2(ip * b2.n_occ_b + jp ,b + j * b2.n_vir_b) * pair.sigma_ub((ipp+1) * b1.n_occ_b -1, ip + jp * b2.n_occ_b) * C1bT_L_psi2b(ipp);
+                }
+            }
+
+
+            double term3 = 0.0;
+            for (size_t ip = 0; ip < b1.n_occ_b; ++ip) {
+                for (size_t jp = 0; jp < b2.n_occ_b; ++jp){
+                    for  (size_t jpp = 0; jpp < b2.n_occ_b; ++jpp)
+                    term2 +=   psi1b_L_C2b(jpp) * pair.pi_bb_2(ip * b2.n_occ_b + jp ,b + j * b2.n_vir_b) * pair.sigma_va((jpp+1) * b2.n_occ_b -1, ip + jp * b2.n_occ_b) ;
+                }
+            }
+            k_bb_2(b, j) = term1 + term2 + term3;
+        }
+    }
+
+
+    DBG("||K_aa_1|| = " << norm(k_aa_1, "fro"));
+    DBG("||K_ba_1|| = " << norm(k_ba_1, "fro"));
+    DBG("||K_ab_1|| = " << norm(k_ab_1, "fro"));
+    DBG("||K_bb_1|| = " << norm(k_bb_1, "fro"));
+
+    DBG("||K_aa_2|| = " << norm(k_aa_2, "fro"));
+    DBG("||K_ba_2|| = " << norm(k_ba_2, "fro"));
+    DBG("||K_ab_2|| = " << norm(k_ab_2, "fro"));
+    DBG("||K_bb_2|| = " << norm(k_bb_2, "fro"));
+
+    pair.K_aa_1 = k_aa_1;
+    pair.K_ba_1 = k_ba_1;
+    pair.K_aa_2 = k_aa_2;
+    pair.K_ba_2 = k_ba_2;
+    pair.K_ab_1 = k_ab_1;
+    pair.K_bb_1 = k_bb_1;
+    pair.K_ab_2 = k_ab_2;
+    pair.K_bb_2 = k_bb_2;
 }
 
 
 
-void spin_adiabatic_state::gradient_implicit_Ms_xy(OrbitalPair& pair)
-{
-    pi_matrix(pair);
-
-
-
-
-   return;
-}
-
-
-void spin_adiabatic_state::gradient_implicit_Ms_z(OrbitalPair& pair)
-{
-    /*
-   cout << "gradient_implicit_Ms_z start. This means Ms1 >=0 and Ms2>=0" << endl;
-   //init
-   mat effect_C1_alpha,effect_C1_beta;
-   mat effect_C2_alpha,effect_C2_beta;
-   mat y1_a,y1_b,y2_a,y2_b;
-   mat tem_C1vb,tem_C1va,tem_C2va,tem_C2vb;
-   gradient_implicit_Ms_z_init(pair);
-   effect_C1_alpha = C1_alpha;
-   effect_C1_beta = C1_beta;
-   y1_a = zeros<mat>(nvir1_a, nalpha1);
-   y1_b  = zeros<mat>(nvir1_b, nbeta1);
-   tem_C1vb = C1_beta.tail_cols(nvir1_b);
-   tem_C1va = C1_alpha.tail_cols(nvir1_a);
-   
-   effect_C2_alpha = C2_alpha;
-   effect_C2_beta = C2_beta;
-   y2_a = zeros<mat>(nalpha2, nvir2_a); 
-   y2_b  = zeros<mat>(nbeta2,  nvir2_b); 
-   tem_C2va = C2_alpha.tail_cols(nvir2_a);
-   tem_C2vb = C2_beta.tail_cols(nvir2_b);
-   
-   vec U_last,V_last;
-   vec Ub_remain_part,Ub_flip_part;
-   vec Vb_remain_part,Vb_flip_part;
-   U_last = pair.U_b.tail_cols(1); 
-   Ub_remain_part   = U_last.rows(0, pair.block1.C_ori_beta.n_cols - 1);
-   Ub_flip_part  = U_last.rows(pair.block1.C_ori_beta.n_cols,U_last.n_rows - 1);
-   V_last = pair.V_b.tail_cols(1);
-   Vb_remain_part   = V_last.rows(0, pair.block2.C_ori_beta.n_cols - 1);
-   Vb_flip_part  = V_last.rows(pair.block2.C_ori_beta.n_cols,V_last.n_rows - 1); 
-
-
-   vec lambda_b_inv = pair.lambda_b;
-   for (size_t i = 0; i < lambda_b_inv.n_elem; ++i) {
-      lambda_b_inv[i] = 1/pair.lambda_b[i];
-   }
-
-   mat tem_du = diagmat(lambda_b_inv) * pair.U_b.t();
-   mat Sooinvb = pair.V_b * tem_du;
-
-
-
-   vec w = lambda_b_inv;
-   w[lambda_b_inv.n_elem] = 0;
-   mat tem_dw = diagmat(w) * pair.U_b.t();
-   mat Sooinvbom = pair.V_b * tem_dw;  // n x m
-
-   vec lambda_a_inv = pair.lambda_a;
-   for (size_t i = 0; i < lambda_a_inv.n_elem; ++i) {
-      lambda_a_inv[i] = 1/pair.lambda_a[i];
-   }
-
-   w = lambda_a_inv;
-   w[lambda_a_inv.n_elem] = 0;
-   tem_dw = diagmat(w) * pair.U_a.t();
-   mat Sooinvaom = pair.V_a * tem_dw;  // n x m
-   
-   tem_du = diagmat(lambda_a_inv) * pair.U_a.t();
-   mat Sooinva = pair.V_a * tem_du;
-
-   double v_soc_square_a = pair.val_a * vsoc_values[pair.Ms_idx].vsoc_z;
-   double v_soc_square_b = pair.val_b * vsoc_values[pair.Ms_idx].vsoc_z;
-   mat L_vsocz   = L_AO.slice(2) * vsoc_values[pair.Ms_idx].vsoc_z;
-   cout << " Zexuan Wei implicit z end init"  << endl;
-   
-
-
-
-
-
-
-
-
-   cout << " Zexuan Wei implicit z end of init SVD deriv"  << endl;
-
-
-
-
-
-   pair.y1_a = y1_a;
-   pair.y1_b = y1_b;
-   pair.y2_a = y2_a;
-   pair.y2_b = y2_b;
-
-   y1_vo_alpha += y1_a;
-   y1_vo_beta  += y1_b;
-   y2_ov_alpha  += y2_a;
-   y2_ov_beta += y2_b;
-    
-
-          cout << " y1_vo_alpha shape = (" << y1_vo_alpha.n_rows
-     << ", " << y1_vo_alpha.n_cols << "), norm = " << norm(y1_vo_alpha, "fro") << endl;
-
-          cout << " y1_vo_beta shape = (" << y1_vo_beta.n_rows
-     << ", " << y1_vo_beta.n_cols << "), norm = " << norm(y1_vo_beta, "fro") << endl;
-
-          cout << " y2_ov_alpha shape = (" << y2_ov_alpha.n_rows
-     << ", " << y2_ov_alpha.n_cols << "), norm = " << norm(y2_ov_alpha, "fro") << endl;
-
-          cout << " y2_ov_beta shape = (" << y2_ov_beta.n_rows
-     << ", " << y2_ov_beta.n_cols << "), norm = " << norm(y2_ov_beta, "fro") << endl;
-
-   
-
-    */
-   return;
-}
-
-void spin_adiabatic_state::gradient_implicit_Ms_z_init(OrbitalPair& pair){
-   /*
-   pair.C1vb = C1_beta.tail_cols(nvir1_b);
-   pair.C1va = C1_alpha.tail_cols(nvir1_a);
-   pair.C2va = C2_alpha.tail_cols(nvir2_a);
-   pair.C2vb = C2_beta.tail_cols(nvir2_b);
-   mat L_vsocz   = L_AO.slice(2) * vsoc_values[pair.Ms_idx].vsoc_z;
-
-   mat tem_L_C2va = L_vsocz * pair.C2va;
-   mat tem_L_C2vb = L_vsocz * pair.C2vb;
-   mat tem_C1vaT_L = pair.C1va.t() * L_vsocz;;
-   mat tem_C1vbT_L = pair.C1vb.t() * L_vsocz;
-
-   pair.C1vaT_L_C2a = tem_C1vaT_L * pair.block2.C_ori_alpha;
-   pair.C1vaT_L_C2b = tem_C1vaT_L * pair.block2.C_ori_beta;
-   pair.C1vbT_L_C2a = tem_C1vbT_L * pair.block2.C_ori_alpha;
-   pair.C1vbT_L_C2b = tem_C1vbT_L * pair.block2.C_ori_beta;
-   pair.C1aT_L_C2va = pair.block1.C_ori_alpha.t() * tem_L_C2va;
-   pair.C1aT_L_C2vb = pair.block1.C_ori_alpha.t() * tem_L_C2vb;
-   pair.C1bT_L_C2va = pair.block1.C_ori_beta.t() * tem_L_C2va;
-   pair.C1bT_L_C2vb = pair.block1.C_ori_beta.t() * tem_L_C2vb;
-
-   mat tem_C1vaT_S = pair.C1va.t() * AOS;
-   mat tem_C2vaT_S = pair.C2va.t() * AOS;
-   mat tem_C1vbT_S = pair.C1vb.t() * AOS;
-
-   mat tem_C1aT_S = pair.block1.C_ori_alpha.t() * AOS;
-   mat tem_C2aT_S = pair.block2.C_ori_alpha.t() * AOS;
-   mat tem_C1bT_S = pair.block2.C_ori_beta.t() * AOS;
-
-   pair.S1voab = tem_C1vaT_S * pair.block1.C_ori_beta;
-   pair.S1ovab = tem_C1aT_S * pair.C1vb;
-   pair.S2voab = tem_C2vaT_S * pair.block2.C_ori_beta;
-   pair.S2ovab = tem_C2aT_S * pair.C2vb;
-
-   pair.S12ooa = tem_C1aT_S * pair.block2.C_ori_alpha;
-   pair.S12oob = tem_C1bT_S * pair.block2.C_ori_beta;
-
-   pair.S12voa = tem_C1vaT_S * pair.block2.C_ori_alpha;
-   pair.S12ova = tem_C1aT_S * pair.C1va;
-   pair.S12vob = tem_C1vbT_S * pair.block2.C_ori_beta;
-   pair.S12ovb = tem_C1bT_S * pair.C2vb;
-   
-   mat tem_C1aT_L = pair.block1.C_ori_alpha.t() * L_vsocz;
-   mat tem_C1bT_L = pair.block1.C_ori_beta.t() * L_vsocz;
-
-   pair.C1aT_L_C2a = tem_C1aT_L * pair.block2.C_ori_alpha;
-   pair.C1bT_L_C2b = tem_C1bT_L * pair.block2.C_ori_beta;
-   pair.C1aT_L_C2b = tem_C1aT_L * pair.block2.C_ori_beta;
-   pair.C1bT_L_C2a = tem_C1bT_L * pair.block2.C_ori_alpha;
-   */
-}
 
 
 

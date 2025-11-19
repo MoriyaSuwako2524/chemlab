@@ -131,6 +131,8 @@ struct OrbitalPair {
     mat pi_aa_1,pi_bb_1,pi_ab_1,pi_ba_1;
     mat pi_aa_2,pi_bb_2,pi_ab_2,pi_ba_2;
     mat K_a_1,K_a_2,K_b_1,K_b_2;
+    mat K_aa_1,K_ab_1,K_ba_1,K_bb_1;
+    mat K_aa_2,K_ab_2,K_ba_2,K_bb_2;
     vec explicit_derivatives;
     vec implicit_derivatives_1;
     vec implicit_derivatives_2;
@@ -260,9 +262,7 @@ class spin_adiabatic_state {
     void pseudo_density_explicit_xy(OrbitalPair& pair);
     void pseudo_density_explicit_z(OrbitalPair& pair);
     void gradient_implicit_rhs_Ms();
-    void gradient_implicit_Ms_xy(OrbitalPair& pair);
-    void gradient_implicit_Ms_z(OrbitalPair& pair);
-    void gradient_implicit_Ms_z_init(OrbitalPair& pair);
+
 
     void sigma_overlap(MOpair& block);
     void pi_matrix(OrbitalPair& pair);
