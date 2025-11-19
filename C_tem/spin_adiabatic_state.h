@@ -266,7 +266,8 @@ class spin_adiabatic_state {
 
     void sigma_overlap(MOpair& block);
     void pi_matrix(OrbitalPair& pair);
-    void k_matrix(OrbitalPair& pair);
+    void k_matrix_null(OrbitalPair& pair); //  +- vsoc
+    void k_matrix_last(OrbitalPair& pair); //  0 vsoc
 
    //void pseudo_density_explicit(mat &deriv_explicit_s, mat &deriv_explicit_l);
    void pseudo_density_explicit(mat &deriv_explicit_s, vector<mat> &deriv_explicit_l);
