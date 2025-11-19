@@ -127,7 +127,7 @@ struct OrbitalPair {
     mat deriv_explicit_s;
     mat y1_a,y1_b,y2_a,y2_b;
 
-
+    mat sigma_ua, sigma_va,sigma_ub, sigma_vb;
     mat pi_aa_1,pi_bb_1,pi_ab_1,pi_ba_1;
     mat pi_aa_2,pi_bb_2,pi_ab_2,pi_ba_2;
     mat K_a_1,K_a_2,K_b_1,K_b_2;
