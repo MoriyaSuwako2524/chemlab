@@ -1376,6 +1376,8 @@ void spin_adiabatic_state::gradient_implicit_rhs_Ms()
    for (size_t k=0; k<nbeta2; ++k){
       s_oo_inv_2 += S2_orthonal.V.col(k) * (S2_orthonal.U.col(k) / S2_orthonal.lambda(k));
    }
+    auto P1 = core_null_split(pair.block1.U,pair.block1.V,pair.block1.lambda);
+    auto P2 = core_null_split(pair.block2.U,pair.block2.V,pair.block2.lambda);
    cout << "Zexuan Wei gradient_implicit_rhs start" << endl;
    for (double Ms1 = -S1; Ms1 <= S1; Ms1 += 1.0) {
       for (int dir = 0; dir < 3; ++dir) {
@@ -1392,8 +1394,11 @@ void spin_adiabatic_state::gradient_implicit_rhs_Ms()
 
          for (auto& pair : pair_list) {;
 
-            if (dir != 2){
+            if (dir != 2){ // vsoc value is inplemented in k_matrix_null(pair), where it's multiplied to L matrix
+
                k_matrix_null(pair);
+               mat term2 = pair.vsoc_x
+
             }
             else{
                 k_matrix_last(pair);
@@ -2084,7 +2089,7 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
     mat k_bb_2(b2.n_vir_b, b2.n_occ_b, fill::zeros);
 
 
-    mat L_vsocz = L_AO.slice(2);
+    mat L_vsocz = L_AO.slice(2) ;
     mat tem_L_psi2a = L_vsocz * pair.psi2_alpha;
     mat tem_psi1aT_L = pair.psi1_alpha.t() * L_vsocz;
     mat tem_L_psi2b = L_vsocz * pair.psi2_beta;
