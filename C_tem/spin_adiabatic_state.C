@@ -1616,10 +1616,10 @@ void spin_adiabatic_state::sigma_overlap(MOpair& block) {
     */
     block.n_svd = block.lambda.n_elem;
     block.n_ao = block.effect_C_o_alpha.n_rows;
-    block.n_occ_a = block.effect_C_o_alpha.n_cols;
-    block.n_occ_b = block.effect_C_o_beta.n_cols;
-    block.n_vir_b = block.effect_C_v_beta.n_cols;
-    block.n_vir_a = block.effect_C_v_alpha.n_cols;
+    block.n_occ_a = block.C_alpha.n_cols;
+    block.n_occ_b = block.C_beta.n_cols;
+    block.n_vir_b = block.n_ao - block.n_occ_b;
+    block.n_vir_a = block.n_ao - block.n_occ_a;
    mat sigma_aa(block.n_ao * block.n_svd, block.n_vir_a * block.n_occ_a, fill::zeros);
    mat sigma_ab(block.n_ao * block.n_svd, block.n_vir_b * block.n_occ_b, fill::zeros);
    mat sigma_ba(block.n_ao * block.n_svd, block.n_vir_a * block.n_occ_a, fill::zeros);
@@ -1855,7 +1855,7 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
     MOpair &b2 = pair.block2;
     size_t n_ao = b1.n_ao;
     DBG("===== k_matrix_null START =====");
-    DBG("block1: "
+    DBG("Notice: For Ms<0, the alpha-beta should exchange here:block1: "
         << " n_occ_a=" << b1.n_occ_a
         << " n_occ_b=" << b1.n_occ_b
         << " n_vir_a=" << b1.n_vir_a
@@ -2034,12 +2034,16 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
             k_b_1(b, j) = term1 - term2 - term3;
         }
     }
+    DBG("||k_a_1|| = " << norm(k_a_1, "fro"));
+    DBG("||k_b_1|| = " << norm(k_b_1, "fro"));
+    DBG("||k_a_2|| = " << norm(k_a_2, "fro"));
+    DBG("||k_b_2|| = " << norm(k_b_2, "fro"));
 
 
-    pair.L_a_1 = k_a_1 + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_aa_1 + Sooinvb * pair.pi_ba_1);
-    pair.L_b_1 = k_b_1 + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_ab_1 + Sooinvb * pair.pi_bb_1);
-    pair.L_a_2 = k_a_2 + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_aa_2 + Sooinvb * pair.pi_ba_2);
-    pair.L_b_2 = k_b_2 + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_ab_2 + Sooinvb * pair.pi_bb_2);
+    pair.L_a_1 = k_a_1 * scaling_factor + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_aa_1 + Sooinvb * pair.pi_ba_1);
+    pair.L_b_1 = k_b_1 * scaling_factor + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_ab_1 + Sooinvb * pair.pi_bb_1);
+    pair.L_a_2 = k_a_2 * scaling_factor + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_aa_2 + Sooinvb * pair.pi_ba_2);
+    pair.L_b_2 = k_b_2 * scaling_factor + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_ab_2 + Sooinvb * pair.pi_bb_2);
     DBG("===== k_matrix_null END =====");
 }
 
@@ -2048,7 +2052,7 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
 void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
 {
 
-    DBG("===== k_matrix_last START =====");
+    DBG("Notice: For Ms<0, the alpha-beta should exchange here:===== k_matrix_last START =====");
     pi_matrix(pair);
 
     MOpair &b1 = pair.block1;
@@ -2439,14 +2443,14 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
     mat Sooinva = Pa.Vc * diagmat(lambda_a_m1_inv) * Pa.Uc.t();
     mat Sooinvb = Pb.Vc * diagmat(lambda_b_m1_inv) * Pb.Uc.t();
 
-    pair.L_aa_1 = k_aa_1 + (pair.val_a) * (Sooinva * pair.pi_aa_1 + Sooinvb * pair.pi_ba_1);
-    pair.L_ba_1 = k_ba_1 + (pair.val_b) * (Sooinvb * pair.pi_ba_1 + Sooinva * pair.pi_aa_1);
-    pair.L_ab_1 = k_ab_1 + (pair.val_a) * (Sooinva * pair.pi_ab_1 + Sooinvb * pair.pi_bb_1);
-    pair.L_bb_1 = k_bb_1 + (pair.val_b) * (Sooinvb * pair.pi_bb_1 + Sooinva * pair.pi_ab_1);
-    pair.L_aa_2 = k_aa_2 + (pair.val_a) * (Sooinva * pair.pi_aa_2 + Sooinvb * pair.pi_ba_2);
-    pair.L_ba_2 = k_ba_2 + (pair.val_b) * (Sooinvb * pair.pi_ba_2 + Sooinva * pair.pi_aa_2);
-    pair.L_ab_2 = k_ab_2 + (pair.val_a) * (Sooinva * pair.pi_ab_2 + Sooinvb * pair.pi_bb_2);
-    pair.L_bb_2 = k_bb_2 + (pair.val_b) * (Sooinvb * pair.pi_bb_2 + Sooinva * pair.pi_ab_2);
+    pair.L_aa_1 = k_aa_1 * scaling_factor + (pair.val_a) * (Sooinva * pair.pi_aa_1 + Sooinvb * pair.pi_ba_1);
+    pair.L_ba_1 = k_ba_1 * scaling_factor + (pair.val_b) * (Sooinvb * pair.pi_ba_1 + Sooinva * pair.pi_aa_1);
+    pair.L_ab_1 = k_ab_1 * scaling_factor + (pair.val_a) * (Sooinva * pair.pi_ab_1 + Sooinvb * pair.pi_bb_1);
+    pair.L_bb_1 = k_bb_1 * scaling_factor + (pair.val_b) * (Sooinvb * pair.pi_bb_1 + Sooinva * pair.pi_ab_1);
+    pair.L_aa_2 = k_aa_2 * scaling_factor + (pair.val_a) * (Sooinva * pair.pi_aa_2 + Sooinvb * pair.pi_ba_2);
+    pair.L_ba_2 = k_ba_2 * scaling_factor + (pair.val_b) * (Sooinvb * pair.pi_ba_2 + Sooinva * pair.pi_aa_2);
+    pair.L_ab_2 = k_ab_2 * scaling_factor + (pair.val_a) * (Sooinva * pair.pi_ab_2 + Sooinvb * pair.pi_bb_2);
+    pair.L_bb_2 = k_bb_2 * scaling_factor + (pair.val_b) * (Sooinvb * pair.pi_bb_2 + Sooinva * pair.pi_ab_2);
 
 }
 
