@@ -84,10 +84,6 @@ struct OrbitalPair {
     double Ms1;
     double Ms2;
     int direction;
-    int nalpha1;
-    int nbeta1;
-    int nalpha2;
-    int nbeta2;
     int nvir1_a;
     int nvir1_b;
     int nvir2_a;
@@ -115,9 +111,9 @@ struct OrbitalPair {
     vec psi2_alpha;  
     vec psi1_beta;   
     vec psi2_beta;  
-    double v_soc_x,v_soc_y;
+    double vsoc_x,vsoc_y;
     double val_a,val_b;
-    double v_soc_z;
+    double vsoc_z;
     double phase_alpha,phase_beta; 
 
     // gradients

@@ -360,18 +360,18 @@ void spin_adiabatic_state::build_spin_blocks_for_state(
 
         for (const auto& orig : it->second) {
             MOpair flipped;
-            flipped.C_alpha = orig.C_beta;
-            flipped.C_beta  = orig.C_alpha;
-            flipped.E_a = orig.E_b;
-            flipped.E_b = orig.E_a;
+            flipped.C_alpha = orig.C_alpha;
+            flipped.C_beta  = orig.C_beta;
+            flipped.E_a = orig.E_a;
+            flipped.E_b = orig.E_b;
             flipped.flips = orig.flips;
-            flipped.effect_C_o_alpha = orig.effect_C_o_beta;
-            flipped.effect_C_o_beta = orig.effect_C_o_alpha;
-            flipped.effect_C_v_alpha = orig.effect_C_v_beta;
-            flipped.effect_C_v_beta = orig.effect_C_v_alpha;
+            flipped.effect_C_o_alpha = orig.effect_C_o_alpha;
+            flipped.effect_C_o_beta = orig.effect_C_o_beta;
+            flipped.effect_C_v_alpha = orig.effect_C_v_alpha;
+            flipped.effect_C_v_beta = orig.effect_C_v_beta;
             flipped.lambda = orig.lambda;
-            flipped.V = orig.U;
-            flipped.U = orig.V;
+            flipped.V = orig.V;
+            flipped.U = orig.U;
 
             Ms_blocks[Ms].push_back(flipped);
         }
@@ -504,17 +504,11 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
                if (dir == 0) 
                {
                   OrbitalPair pair;
-
-
                   pair.Ms1 = Ms1;
                   pair.Ms2 = Ms2;
                   pair.direction = dir;
-                  pair.nalpha1 = static_cast<int>((n_total * 0.5) + Ms1);
-                  pair.nbeta1  = n_total - pair.nalpha1;
-                  pair.nalpha2 = static_cast<int>((n_total * 0.5) + Ms2);
                   pair.block1 = b1;
                   pair.block2 = b2;
-                  pair.nbeta2  = n_total - pair.nalpha2;
                   pair.C1_flipped_alpha = b1.C_alpha;
                   pair.C1_flipped_beta  = b1.C_beta;
                   pair.C2_flipped_alpha = b2.C_alpha;
@@ -536,8 +530,8 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
                   pair.phase *=scaling_factor;
                   val_x *= scaling_factor;
                   val_y *= scaling_factor;
-                  pair.v_soc_x = val_x;
-                  pair.v_soc_y = val_y;
+                  pair.vsoc_x = val_x;
+                  pair.vsoc_y = val_y;
                   tem_x += val_x;
                   tem_y += val_y;
                   vsoc_idx = get_index(Ms1, Ms2);
@@ -550,10 +544,6 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
                   pair.Ms1 = Ms1;
                   pair.Ms2 = Ms2;
                   pair.direction = dir;
-                  pair.nalpha1 = static_cast<int>((n_total * 0.5) + Ms1);
-                  pair.nbeta1  = n_total - pair.nalpha1;
-                  pair.nalpha2 = static_cast<int>((n_total * 0.5) + Ms2);
-                  pair.nbeta2  = n_total - pair.nalpha2;
                   pair.block1 = b1;
                   pair.block2 = b2;
                   pair.C1_flipped_alpha = b1.C_alpha;
@@ -569,8 +559,8 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
                   pair.slater_phase2 = state_phase(nalpha2,nbeta2,pair.block2.flips);
                   pair.phase *= pair.slater_phase1 * pair.slater_phase2;
 
-                  pair.psi1 = b1.C_alpha * Ua.tail_cols(1);
-                  pair.psi2 = b2.C_beta * Vb.tail_cols(1);
+                  pair.psi1 = b1.C_beta * Ub.tail_cols(1);
+                  pair.psi2 = b2.C_alpha * Va.tail_cols(1);
                   double val_x = pair.phase * dot(pair.psi1, L_AO.slice(0) * pair.psi2);
                   double val_y = pair.phase * dot(pair.psi1, L_AO.slice(1) * pair.psi2);
                   pair.phase *=scaling_factor;
@@ -578,8 +568,8 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
                   cout << "Zexuan Wei vsoc val_x:" << val_x << "val_y:" << -val_y << endl;
                   val_x *= scaling_factor;
                   val_y *= scaling_factor;
-                  pair.v_soc_x = val_x;
-                  pair.v_soc_y = val_y;
+                  pair.vsoc_x = val_x;
+                  pair.vsoc_y = val_y;
                   tem_x += val_x;
                   tem_y += val_y;
 
@@ -593,10 +583,6 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
                   pair.Ms1 = Ms1;
                   pair.Ms2 = Ms2;
                   pair.direction = dir;
-                  pair.nalpha1 = static_cast<int>((n_total * 0.5) + Ms1);
-                  pair.nbeta1  = n_total - pair.nalpha1;
-                  pair.nalpha2 = static_cast<int>((n_total * 0.5) + Ms2);
-                  pair.nbeta2  = n_total - pair.nalpha2;
                   pair.block1 = b1;
                   pair.block2 = b2;
                   pair.C1_flipped_alpha = b1.C_alpha;
@@ -638,7 +624,7 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
                   pair.Ms_idx = vsoc_idx;
                   pair.val_a = val_a * scaling_factor;
                   pair.val_b = val_b * scaling_factor;
-                  pair.v_soc_z = val;
+                  pair.vsoc_z = val;
                   tem_z += val;
                   pair.phase_alpha *=scaling_factor;
                   pair.phase_beta *=scaling_factor;
@@ -1191,17 +1177,6 @@ vec spin_adiabatic_state::gradient_explicit_Ms()
 
          for (auto& pair : pair_list) {
             pair.explicit_derivatives = zeros<vec>(Nuclear);
-
-            //this part init implicit mats
-            pair.nvir1_a = NOrb - pair.nalpha1;
-            pair.nvir1_b = NOrb - pair.nbeta1;
-            pair.nvir2_a = NOrb - pair.nalpha2;
-            pair.nvir2_b = NOrb - pair.nbeta2;
-
-
-
-
-
             if (dir != 2){ //xy
 			  //components: 1. (C1U1U0)^T dLC2V2V0D ,deriv of L, need to claim that L,S are all AO basis here
               //2.- 0.5 (C1U1U0)^T dS^T(CC^T)  L                           C2V2V0D explicit part in deriv of C1
@@ -1367,7 +1342,7 @@ void spin_adiabatic_state::gradient_implicit_rhs_Ms()
    // second high-spin state
    y2_ov_alpha = zeros<mat>(nalpha2, nvir2_a); // (D+S)*V
    y2_ov_beta  = zeros<mat>(nbeta2,  nvir2_b); // D*(S+V)
-   cout << "Zexuan Wei gradient_implicit_rhs start" << endl;
+   DBG("Zexuan Wei gradient_implicit_rhs start");
    for (double Ms1 = -S1; Ms1 <= S1; Ms1 += 1.0) {
       for (int dir = 0; dir < 3; ++dir) {
          double delta_Ms = (dir == 0) ? +1 :
@@ -1385,21 +1360,21 @@ void spin_adiabatic_state::gradient_implicit_rhs_Ms()
 
             if (dir != 2){ // vsoc value is inplemented in k_matrix_null(pair), where it's multiplied to L matrix
                k_matrix_null(pair);
-               vsoc_idx = get_index(Ms1, Ms2);
-               y1_vo_alpha += vsoc(vsoc_idx) * pair.L_a_1 * pair.phase ;
-               y1_vo_beta += vsoc(vsoc_idx) * pair.L_b_1 * pair.phase ;
-               y2_ov_alpha += vsoc(vsoc_idx) * pair.L_a_2 * pair.phase ;
-               y2_ov_beta += vsoc(vsoc_idx) * pair.L_b_2 * pair.phase ;
+               int vsoc_idx = get_index(Ms1, Ms2);
+               y1_vo_alpha += v_soc(vsoc_idx) * pair.L_a_1 * pair.phase ;
+               y1_vo_beta  += v_soc(vsoc_idx) * pair.L_b_1 * pair.phase ;
+               y2_ov_alpha += v_soc(vsoc_idx) * pair.L_a_2 * pair.phase ;
+               y2_ov_beta  += v_soc(vsoc_idx) * pair.L_b_2 * pair.phase ;
 
 
             }
             else{
                k_matrix_last(pair);
-               vsoc_idx = get_index(Ms1, Ms2);
-               y1_vo_alpha += vsoc(vsoc_idx) * (pair.L_aa_1 * pair.phase_alpha + pair.L_ba_1 * pair.phase_beta);
-               y1_vo_beta += vsoc(vsoc_idx) *  (pair.L_ab_1 * pair.phase_alpha + pair.L_bb_1 * pair.phase_beta);
-               y2_ov_alpha += vsoc(vsoc_idx) * (pair.L_aa_2 * pair.phase_alpha + pair.L_ba_2 * pair.phase_beta);
-               y2_ov_beta += vsoc(vsoc_idx) *  (pair.L_ab_2 * pair.phase_alpha + pair.L_bb_2 * pair.phase_beta);
+               int vsoc_idx = get_index(Ms1, Ms2);
+               y1_vo_alpha += v_soc(vsoc_idx) * (pair.L_aa_1 * pair.phase_alpha + pair.L_ba_1 * pair.phase_beta);
+               y1_vo_beta += v_soc(vsoc_idx) *  (pair.L_ab_1 * pair.phase_alpha + pair.L_bb_1 * pair.phase_beta);
+               y2_ov_alpha += v_soc(vsoc_idx) * (pair.L_aa_2 * pair.phase_alpha + pair.L_ba_2 * pair.phase_beta);
+               y2_ov_beta += v_soc(vsoc_idx) *  (pair.L_ab_2 * pair.phase_alpha + pair.L_bb_2 * pair.phase_beta);
             }
          }
       }
@@ -1632,6 +1607,7 @@ mat sigma_V(const mat& U, const vec& d, const mat& V, double tol = 1e-12) {
 
 
 void spin_adiabatic_state::sigma_overlap(MOpair& block) {
+    DBG("===== sigma_overlap START =====");
    /*
    * size of sigma_aa: (n_ao(mu) * r , n_vir_a(a) * n_occ_a(i))
    *sigma_ab: (n_ao(mu) * r , n_vir_b(b) * n_occ_b(j))
@@ -1730,13 +1706,14 @@ void spin_adiabatic_state::sigma_overlap(MOpair& block) {
     block.sigma_ba = sigma_ba;
     block.sigma_ab = sigma_ab;
     block.sigma_bb = sigma_bb;
+    DBG("===== sigma_overlap END =====");
     return;
 }
 
 
 void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
 
-
+    DBG("===== pi_matrix START =====");
     sigma_overlap(pair.block1);
     sigma_overlap(pair.block2);
 
@@ -1866,6 +1843,7 @@ void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
     pair.pi_bb_1 = pi_bb_1;
     pair.pi_ba_2 = pi_ba_2;
     pair.pi_bb_2 = pi_bb_2;
+    DBG("===== pi_matrix END =====");
 }
 
 void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
@@ -1876,7 +1854,22 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
     MOpair &b1 = pair.block1;
     MOpair &b2 = pair.block2;
     size_t n_ao = b1.n_ao;
+    DBG("===== k_matrix_null START =====");
+    DBG("block1: "
+        << " n_occ_a=" << b1.n_occ_a
+        << " n_occ_b=" << b1.n_occ_b
+        << " n_vir_a=" << b1.n_vir_a
+        << " n_vir_b=" << b1.n_vir_b
+        << " n_svd="   << b1.n_svd);
 
+    DBG("block2: "
+        << " n_occ_a=" << b2.n_occ_a
+        << " n_occ_b=" << b2.n_occ_b
+        << " n_vir_a=" << b2.n_vir_a
+        << " n_vir_b=" << b2.n_vir_b
+        << " n_svd="   << b2.n_svd);
+
+    DBG("n_ao = " << n_ao);
     mat k_a_1(b1.n_vir_a, b1.n_occ_a, fill::zeros);
     mat k_b_1(b1.n_vir_b, b1.n_occ_b, fill::zeros);
     mat k_a_2(b2.n_vir_a, b2.n_occ_a, fill::zeros);
@@ -1897,7 +1890,7 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
 
 
     // ============ K^α (block1) ============
-
+    DBG("Computing K^a_1");
     mat tem_Sooinvb_C1bT_L_psi2 = Sooinvb * C1bT_L_psi2;
     mat tem_psi1_L_C2a_Sooinva = psi1_L_C2a * Sooinva;
     for (size_t a = 0; a < b1.n_vir_a; ++a) {
@@ -1935,7 +1928,7 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
 
 
     // ============ K^β (block1) ============
-
+    DBG("Computing K^b_1");
     for (size_t b = 0; b < b1.n_vir_b; ++b) {
         for (size_t j = 0; j < b1.n_occ_b; ++j) {
             double term1 = 0.0;
@@ -1971,7 +1964,7 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
 
 
     // ============ K'^α (block2) ============
-
+    DBG("Computing K^a_2");
     for (size_t a = 0; a < b2.n_vir_a; ++a) {
         for (size_t i = 0; i < b2.n_occ_a; ++i) {
             double term1 = 0.0;
@@ -2007,7 +2000,7 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
 
 
     // ============ K'^β (block2) ============
-
+    DBG("Computing K^b_2");
 
     for (size_t b = 0; b < b2.n_vir_b; ++b) {
         for (size_t j = 0; j < b2.n_occ_b; ++j) {
@@ -2042,12 +2035,12 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
         }
     }
 
-    mat term4 = (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_aa_1 + Sooinvb * pair.pi_ba_1);
 
     pair.L_a_1 = k_a_1 + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_aa_1 + Sooinvb * pair.pi_ba_1);
     pair.L_b_1 = k_b_1 + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_ab_1 + Sooinvb * pair.pi_bb_1);
     pair.L_a_2 = k_a_2 + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_aa_2 + Sooinvb * pair.pi_ba_2);
     pair.L_b_2 = k_b_2 + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_ab_2 + Sooinvb * pair.pi_bb_2);
+    DBG("===== k_matrix_null END =====");
 }
 
 
@@ -2055,13 +2048,13 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
 void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
 {
 
-
+    DBG("===== k_matrix_last START =====");
     pi_matrix(pair);
 
     MOpair &b1 = pair.block1;
     MOpair &b2 = pair.block2;
     size_t n_ao = b1.n_ao;
-    DBG("===== k_matrix_last START =====");
+
     DBG("block1: "
         << " n_occ_a=" << b1.n_occ_a
         << " n_occ_b=" << b1.n_occ_b
@@ -2102,10 +2095,10 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
     mat C1aT_L_psi2a = pair.C1_flipped_alpha.t() * tem_L_psi2a;
     mat psi1a_L_C2a = tem_psi1aT_L * pair.C2_flipped_alpha ;
     mat psi1b_L_C2b = tem_psi1bT_L * pair.C2_flipped_beta ;
-    pair.sigma_ua = sigma_U(pair.U_a,block.lambda_a,block.V_a);
-    pair.sigma_va = sigma_V(pair.U_a,block.lambda_a,block.V_a);
-    pair.sigma_ub = sigma_U(pair.U_b,block.lambda_b,block.V_b);
-    pair.sigma_vb = sigma_V(pair.U_b,block.lambda_b,block.V_b);
+    pair.sigma_ua = sigma_U(pair.U_a,pair.lambda_a,pair.V_a);
+    pair.sigma_va = sigma_V(pair.U_a,pair.lambda_a,pair.V_a);
+    pair.sigma_ub = sigma_U(pair.U_b,pair.lambda_b,pair.V_b);
+    pair.sigma_vb = sigma_V(pair.U_b,pair.lambda_b,pair.V_b);
 
 
     // ============ K^αα  1============
@@ -2398,7 +2391,7 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
                     for (size_t jp = 0; jp < b2.n_occ_b; ++jp) {
                         double e_ab = b2.E_b(l, jp);
                         double e_bb = b2.E_b(l+b2.n_occ_a, jp);
-                        term1 += tem_psi1bT_L(mu) * (s_aa * e_ab + s_ba * e_bb) * V_last_b(j);
+                        term1 += tem_psi1bT_L(mu) * (s_ab * e_ab + s_bb * e_bb) * V_last_b(j);
                     }
                 }
             }
