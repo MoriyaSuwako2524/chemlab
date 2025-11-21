@@ -130,9 +130,9 @@ struct OrbitalPair {
     mat sigma_ua, sigma_va,sigma_ub, sigma_vb;
     mat pi_aa_1,pi_bb_1,pi_ab_1,pi_ba_1;
     mat pi_aa_2,pi_bb_2,pi_ab_2,pi_ba_2;
-    mat K_a_1,K_a_2,K_b_1,K_b_2;
-    mat K_aa_1,K_ab_1,K_ba_1,K_bb_1;
-    mat K_aa_2,K_ab_2,K_ba_2,K_bb_2;
+    mat L_a_1,L_a_2,L_b_1,L_b_2;
+    mat L_aa_1,L_ab_1,L_ba_1,L_bb_1;
+    mat L_aa_2,L_ab_2,L_ba_2,L_bb_2;
     vec explicit_derivatives;
     vec implicit_derivatives_1;
     vec implicit_derivatives_2;

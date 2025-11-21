@@ -1367,17 +1367,6 @@ void spin_adiabatic_state::gradient_implicit_rhs_Ms()
    // second high-spin state
    y2_ov_alpha = zeros<mat>(nalpha2, nvir2_a); // (D+S)*V
    y2_ov_beta  = zeros<mat>(nbeta2,  nvir2_b); // D*(S+V)
-
-   s_oo_inv_1 = zeros<mat>(nbeta1, nalpha1);
-   for (size_t k=0; k<nbeta1; ++k){
-      s_oo_inv_1 += S1_orthonal.V.col(k) * (S1_orthonal.U.col(k) / S1_orthonal.lambda(k));
-   }
-   s_oo_inv_2 = zeros<mat>(nbeta2, nalpha2);
-   for (size_t k=0; k<nbeta2; ++k){
-      s_oo_inv_2 += S2_orthonal.V.col(k) * (S2_orthonal.U.col(k) / S2_orthonal.lambda(k));
-   }
-    auto P1 = core_null_split(pair.block1.U,pair.block1.V,pair.block1.lambda);
-    auto P2 = core_null_split(pair.block2.U,pair.block2.V,pair.block2.lambda);
    cout << "Zexuan Wei gradient_implicit_rhs start" << endl;
    for (double Ms1 = -S1; Ms1 <= S1; Ms1 += 1.0) {
       for (int dir = 0; dir < 3; ++dir) {
@@ -1395,13 +1384,22 @@ void spin_adiabatic_state::gradient_implicit_rhs_Ms()
          for (auto& pair : pair_list) {;
 
             if (dir != 2){ // vsoc value is inplemented in k_matrix_null(pair), where it's multiplied to L matrix
-
                k_matrix_null(pair);
-               mat term2 = pair.vsoc_x
+               vsoc_idx = get_index(Ms1, Ms2);
+               y1_vo_alpha += vsoc(vsoc_idx) * pair.L_a_1 * pair.phase ;
+               y1_vo_beta += vsoc(vsoc_idx) * pair.L_b_1 * pair.phase ;
+               y2_ov_alpha += vsoc(vsoc_idx) * pair.L_a_2 * pair.phase ;
+               y2_ov_beta += vsoc(vsoc_idx) * pair.L_b_2 * pair.phase ;
+
 
             }
             else{
-                k_matrix_last(pair);
+               k_matrix_last(pair);
+               vsoc_idx = get_index(Ms1, Ms2);
+               y1_vo_alpha += vsoc(vsoc_idx) * (pair.L_aa_1 * pair.phase_alpha + pair.L_ba_1 * pair.phase_beta);
+               y1_vo_beta += vsoc(vsoc_idx) *  (pair.L_ab_1 * pair.phase_alpha + pair.L_bb_1 * pair.phase_beta);
+               y2_ov_alpha += vsoc(vsoc_idx) * (pair.L_aa_2 * pair.phase_alpha + pair.L_ba_2 * pair.phase_beta);
+               y2_ov_beta += vsoc(vsoc_idx) *  (pair.L_ab_2 * pair.phase_alpha + pair.L_bb_2 * pair.phase_beta);
             }
          }
       }
@@ -2044,11 +2042,12 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
         }
     }
 
+    mat term4 = (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_aa_1 + Sooinvb * pair.pi_ba_1);
 
-    pair.K_a_1 = k_a_1;
-    pair.K_b_1 = k_b_1;
-    pair.K_a_2 = k_a_2;
-    pair.K_b_2 = k_b_2;
+    pair.L_a_1 = k_a_1 + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_aa_1 + Sooinvb * pair.pi_ba_1);
+    pair.L_b_1 = k_b_1 + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_ab_1 + Sooinvb * pair.pi_bb_1);
+    pair.L_a_2 = k_a_2 + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_aa_2 + Sooinvb * pair.pi_ba_2);
+    pair.L_b_2 = k_b_2 + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_ab_2 + Sooinvb * pair.pi_bb_2);
 }
 
 
@@ -2434,15 +2433,27 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
     DBG("||K_ba_2|| = " << norm(k_ba_2, "fro"));
     DBG("||K_ab_2|| = " << norm(k_ab_2, "fro"));
     DBG("||K_bb_2|| = " << norm(k_bb_2, "fro"));
+    auto Pa = core_null_split(pair.U_a,pair.V_a,pair.lambda_a);
+    auto Pb = core_null_split(pair.U_b,pair.V_b,pair.lambda_b);
 
-    pair.K_aa_1 = k_aa_1;
-    pair.K_ba_1 = k_ba_1;
-    pair.K_aa_2 = k_aa_2;
-    pair.K_ba_2 = k_ba_2;
-    pair.K_ab_1 = k_ab_1;
-    pair.K_bb_1 = k_bb_1;
-    pair.K_ab_2 = k_ab_2;
-    pair.K_bb_2 = k_bb_2;
+    vec lambda_a_m1_inv = 1.0 / pair.lambda_a;
+    vec lambda_b_m1_inv = 1.0 / pair.lambda_b;
+    lambda_a_m1_inv(lambda_a_m1_inv.n_elem - 1) = 0.0;
+    lambda_b_m1_inv(lambda_b_m1_inv.n_elem - 1) = 0.0;
+
+
+    mat Sooinva = Pa.Vc * diagmat(lambda_a_m1_inv) * Pa.Uc.t();
+    mat Sooinvb = Pb.Vc * diagmat(lambda_b_m1_inv) * Pb.Uc.t();
+
+    pair.L_aa_1 = k_aa_1 + (pair.val_a) * (Sooinva * pair.pi_aa_1 + Sooinvb * pair.pi_ba_1);
+    pair.L_ba_1 = k_ba_1 + (pair.val_b) * (Sooinvb * pair.pi_ba_1 + Sooinva * pair.pi_aa_1);
+    pair.L_ab_1 = k_ab_1 + (pair.val_a) * (Sooinva * pair.pi_ab_1 + Sooinvb * pair.pi_bb_1);
+    pair.L_bb_1 = k_bb_1 + (pair.val_b) * (Sooinvb * pair.pi_bb_1 + Sooinva * pair.pi_ab_1);
+    pair.L_aa_2 = k_aa_2 + (pair.val_a) * (Sooinva * pair.pi_aa_2 + Sooinvb * pair.pi_ba_2);
+    pair.L_ba_2 = k_ba_2 + (pair.val_b) * (Sooinvb * pair.pi_ba_2 + Sooinva * pair.pi_aa_2);
+    pair.L_ab_2 = k_ab_2 + (pair.val_a) * (Sooinva * pair.pi_ab_2 + Sooinvb * pair.pi_bb_2);
+    pair.L_bb_2 = k_bb_2 + (pair.val_b) * (Sooinvb * pair.pi_bb_2 + Sooinva * pair.pi_ab_2);
+
 }
 
 
