@@ -1616,8 +1616,8 @@ void spin_adiabatic_state::sigma_overlap(MOpair& block) {
     */
     block.n_svd = block.lambda.n_elem;
     block.n_ao = block.effect_C_o_alpha.n_rows;
-    block.n_occ_a = block.C_alpha.n_cols;
-    block.n_occ_b = block.C_beta.n_cols;
+    block.n_occ_a = block.effect_C_o_alpha.n_cols;
+    block.n_occ_b = block.effect_C_o_beta.n_cols;
     block.n_vir_b = block.n_ao - block.n_occ_b;
     block.n_vir_a = block.n_ao - block.n_occ_a;
    mat sigma_aa(block.n_ao * block.n_svd, block.n_vir_a * block.n_occ_a, fill::zeros);
@@ -2431,6 +2431,7 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
     DBG("||K_ba_2|| = " << norm(k_ba_2, "fro"));
     DBG("||K_ab_2|| = " << norm(k_ab_2, "fro"));
     DBG("||K_bb_2|| = " << norm(k_bb_2, "fro"));
+
     auto Pa = core_null_split(pair.U_a,pair.V_a,pair.lambda_a);
     auto Pb = core_null_split(pair.U_b,pair.V_b,pair.lambda_b);
 
@@ -2442,6 +2443,57 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
 
     mat Sooinva = Pa.Vc * diagmat(lambda_a_m1_inv) * Pa.Uc.t();
     mat Sooinvb = Pb.Vc * diagmat(lambda_b_m1_inv) * Pb.Uc.t();
+    DBG("===== Matrix size check =====");
+
+    DBG("K_aa_1 size = " << k_aa_1.n_rows << " x " << k_aa_1.n_cols);
+    DBG("K_ba_1 size = " << k_ba_1.n_rows << " x " << k_ba_1.n_cols);
+    DBG("K_ab_1 size = " << k_ab_1.n_rows << " x " << k_ab_1.n_cols);
+    DBG("K_bb_1 size = " << k_bb_1.n_rows << " x " << k_bb_1.n_cols);
+
+    DBG("K_aa_2 size = " << k_aa_2.n_rows << " x " << k_aa_2.n_cols);
+    DBG("K_ba_2 size = " << k_ba_2.n_rows << " x " << k_ba_2.n_cols);
+    DBG("K_ab_2 size = " << k_ab_2.n_rows << " x " << k_ab_2.n_cols);
+    DBG("K_bb_2 size = " << k_bb_2.n_rows << " x " << k_bb_2.n_cols);
+
+    // --- pi matrices
+    DBG("pi_aa_1 size = " << pair.pi_aa_1.n_rows << " x " << pair.pi_aa_1.n_cols);
+    DBG("pi_ba_1 size = " << pair.pi_ba_1.n_rows << " x " << pair.pi_ba_1.n_cols);
+    DBG("pi_ab_1 size = " << pair.pi_ab_1.n_rows << " x " << pair.pi_ab_1.n_cols);
+    DBG("pi_bb_1 size = " << pair.pi_bb_1.n_rows << " x " << pair.pi_bb_1.n_cols);
+
+    DBG("pi_aa_2 size = " << pair.pi_aa_2.n_rows << " x " << pair.pi_aa_2.n_cols);
+    DBG("pi_ba_2 size = " << pair.pi_ba_2.n_rows << " x " << pair.pi_ba_2.n_cols);
+    DBG("pi_ab_2 size = " << pair.pi_ab_2.n_rows << " x " << pair.pi_ab_2.n_cols);
+    DBG("pi_bb_2 size = " << pair.pi_bb_2.n_rows << " x " << pair.pi_bb_2.n_cols);
+
+    // --- U, V, lambda
+    DBG("U_a size = " << pair.U_a.n_rows << " x " << pair.U_a.n_cols);
+    DBG("V_a size = " << pair.V_a.n_rows << " x " << pair.V_a.n_cols);
+    DBG("lambda_a size = " << pair.lambda_a.n_elem);
+
+    DBG("U_b size = " << pair.U_b.n_rows << " x " << pair.U_b.n_cols);
+    DBG("V_b size = " << pair.V_b.n_rows << " x " << pair.V_b.n_cols);
+    DBG("lambda_b size = " << pair.lambda_b.n_elem);
+
+    // --- core / null split results
+    DBG("Pa.Uc size = " << Pa.Uc.n_rows << " x " << Pa.Uc.n_cols);
+    DBG("Pa.Vc size = " << Pa.Vc.n_rows << " x " << Pa.Vc.n_cols);
+
+    DBG("Pb.Uc size = " << Pb.Uc.n_rows << " x " << Pb.Uc.n_cols);
+    DBG("Pb.Vc size = " << Pb.Vc.n_rows << " x " << Pb.Vc.n_cols);
+
+    // --- Sooinv blocks
+    DBG("Sooinva size = " << Sooinva.n_rows << " x " << Sooinva.n_cols);
+    DBG("Sooinvb size = " << Sooinvb.n_rows << " x " << Sooinvb.n_cols);
+
+    // --- vector sizes used in diagmat
+    DBG("lambda_a_m1_inv size = " << lambda_a_m1_inv.n_elem);
+    DBG("lambda_b_m1_inv size = " << lambda_b_m1_inv.n_elem);
+
+    // --- scalars
+    DBG("scaling_factor = " << scaling_factor);
+    DBG("val_a = " << pair.val_a);
+    DBG("val_b = " << pair.val_b);
 
     pair.L_aa_1 = k_aa_1 * scaling_factor + (pair.val_a) * (Sooinva * pair.pi_aa_1 + Sooinvb * pair.pi_ba_1);
     pair.L_ba_1 = k_ba_1 * scaling_factor + (pair.val_b) * (Sooinvb * pair.pi_ba_1 + Sooinva * pair.pi_aa_1);
@@ -2451,6 +2503,19 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
     pair.L_ba_2 = k_ba_2 * scaling_factor + (pair.val_b) * (Sooinvb * pair.pi_ba_2 + Sooinva * pair.pi_aa_2);
     pair.L_ab_2 = k_ab_2 * scaling_factor + (pair.val_a) * (Sooinva * pair.pi_ab_2 + Sooinvb * pair.pi_bb_2);
     pair.L_bb_2 = k_bb_2 * scaling_factor + (pair.val_b) * (Sooinvb * pair.pi_bb_2 + Sooinva * pair.pi_ab_2);
+
+    DBG("===== Final L-block size check =====");
+
+    DBG("L_aa_1 size = " << pair.L_aa_1.n_rows << " x " << pair.L_aa_1.n_cols);
+    DBG("L_ba_1 size = " << pair.L_ba_1.n_rows << " x " << pair.L_ba_1.n_cols);
+    DBG("L_ab_1 size = " << pair.L_ab_1.n_rows << " x " << pair.L_ab_1.n_cols);
+    DBG("L_bb_1 size = " << pair.L_bb_1.n_rows << " x " << pair.L_bb_1.n_cols);
+
+    DBG("L_aa_2 size = " << pair.L_aa_2.n_rows << " x " << pair.L_aa_2.n_cols);
+    DBG("L_ba_2 size = " << pair.L_ba_2.n_rows << " x " << pair.L_ba_2.n_cols);
+    DBG("L_ab_2 size = " << pair.L_ab_2.n_rows << " x " << pair.L_ab_2.n_cols);
+    DBG("L_bb_2 size = " << pair.L_bb_2.n_rows << " x " << pair.L_bb_2.n_cols);
+
 
 }
 
