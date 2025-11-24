@@ -1420,15 +1420,15 @@ mat sigma_u(MOpair& block) {
                             if (lp == l){
                                 continue;
                             }
-                            sigma(i * block.n_occ_a, ip + jp *block.n_occ_a) += block.U(i,lp) *(block.U(ip,lp) * block.V(jp,l) * block.lambda(l) + block.U(ip,l) * block.V(jp,lp) * block.lambda(lp) )/(block.lambda(l) * block.lambda(l) - block.lambda(lp) * block.lambda(lp));
+                            sigma(i * block.n_occ_a +l, ip + jp *block.n_occ_a) += block.U(i,lp) *(block.U(ip,lp) * block.V(jp,l) * block.lambda(l) + block.U(ip,l) * block.V(jp,lp) * block.lambda(lp) )/(block.lambda(l) * block.lambda(l) - block.lambda(lp) * block.lambda(lp));
                             if (block.n_occ_a > block.n_svd){
-                                sigma(i * block.n_occ_a, ip + jp *block.n_occ_a) += UnUnT(i,ip) * Vdinv(jp,l);
+                                sigma(i * block.n_occ_a +l, ip + jp *block.n_occ_a) += UnUnT(i,ip) * Vdinv(jp,l);
                             }
 
                         }
                     }
                     else{
-                        sigma(i * block.n_occ_a, ip + jp *block.n_occ_a) = -U_null(ip,l) * Ainv(jp,i);
+                        sigma(i * block.n_occ_a +l, ip + jp *block.n_occ_a) = -U_null(ip,l) * Ainv(jp,i);
                     }
 
                 }
@@ -1440,7 +1440,6 @@ mat sigma_u(MOpair& block) {
 }
 
 mat sigma_v(MOpair& block) {
-    const size_t m = block.n_occ_a, n = block.n_occ_b, r = block.n_svd;
     mat sigma(block.n_occ_b * block.n_occ_b, block.n_occ_a * block.n_occ_b, fill::zeros);
     DBG("block.n_occ_a = " << block.n_occ_a << " block.n_occ_b = " << block.n_occ_b);
     for (size_t j = 0; j < block.n_occ_b; ++j){
@@ -1451,10 +1450,8 @@ mat sigma_v(MOpair& block) {
                         if (lp == l){
                             continue;
                         }
-                        sigma(i * block.n_occ_a + l, ip + jp *block.n_occ_a) += block.U(i,lp) *(block.U(ip,lp) * block.V(jp,l) * block.lambda(l) + block.U(ip,l) * block.V(jp,lp) * block.lambda(lp) )/(block.lambda(l) * block.lambda(l) - block.lambda(lp) * block.lambda(lp));
+                        sigma(j * block.n_occ_b + l, ip + jp *block.n_occ_a) += block.V(j,lp) *(block.U(ip,lp) * block.V(jp,l) * block.lambda(lp) + block.U(ip,l) * block.V(jp,lp) * block.lambda(l) )/(block.lambda(l) * block.lambda(l) - block.lambda(lp) * block.lambda(lp));
                     }
-
-
                 }
             }
         }
@@ -1477,82 +1474,88 @@ void spin_adiabatic_state::sigma_overlap(MOpair& block) {
     block.n_occ_b = block.effect_C_o_beta.n_cols;
     block.n_vir_b = block.n_ao - block.n_occ_b;
     block.n_vir_a = block.n_ao - block.n_occ_a;
-   mat sigma_aa(block.n_ao * block.n_svd, block.n_vir_a * block.n_occ_a, fill::zeros);
-   mat sigma_ab(block.n_ao * block.n_svd, block.n_vir_b * block.n_occ_b, fill::zeros);
-   mat sigma_ba(block.n_ao * block.n_svd, block.n_vir_a * block.n_occ_a, fill::zeros);
-   mat sigma_bb(block.n_ao * block.n_svd, block.n_vir_b * block.n_occ_b, fill::zeros);
+   mat sigma_aa(block.n_ao * block.n_occ_a, block.n_vir_a * block.n_occ_a, fill::zeros);
+   mat sigma_ab(block.n_ao * block.n_occ_a, block.n_vir_b * block.n_occ_b, fill::zeros);
+   mat sigma_ba(block.n_ao * block.n_occ_b, block.n_vir_a * block.n_occ_a, fill::zeros);
+   mat sigma_bb(block.n_ao * block.n_occ_b, block.n_vir_b * block.n_occ_b, fill::zeros);
    mat s_vo_ab = block.effect_C_v_alpha.t() * AOS * block.effect_C_o_beta;
    mat s_ov_ab = block.effect_C_o_alpha.t() * AOS * block.effect_C_v_beta;
-   block.sigma_u = sigma_U(block.U,block.lambda,block.V);
-   block.sigma_v = sigma_V(block.U,block.lambda,block.V);
+   block.sigma_u = sigma_u(block);
+   block.sigma_v = sigma_v(block);
 
        //最怀念einsum的一集
     for (size_t mu = 0; mu < block.n_ao; ++mu) {
-        for (size_t l = 0; l < block.n_svd; ++l) {
-            const size_t row = mu + l * block.n_ao;
-            // ---------- αα ----------
-            for (size_t a = 0; a < block.n_vir_a; ++a)
+        // ---------- αα ----------
+        for (size_t l = 0; l < block.n_occ_a; ++l) {
+            for (size_t a = 0; a < block.n_vir_a; ++a){
                 for (size_t i = 0; i < block.n_occ_a; ++i) {
                     double val = block.effect_C_v_alpha(mu, a) * block.U(i, l);
                     for (size_t ip = 0; ip < block.n_occ_a; ++ip) {
                         double Coi = block.effect_C_o_alpha(mu, ip);
                         if (Coi == 0.0) continue;
                         for (size_t j = 0; j < block.n_occ_b; ++j) {
-                            double su = block.sigma_u(ip * block.n_svd + l,i + j * block.n_occ_a);
+                            double su = block.sigma_u(ip * block.n_occ_a + l,i + j * block.n_occ_a);
                             if (su == 0.0) continue;
                             val += Coi * su * s_vo_ab(a, j);
                         }
                     }
-                    sigma_aa(row, a + i * block.n_vir_a) = val;
+                    sigma_aa(mu * block.n_occ_a + l , a + i * block.n_vir_a) = val;
                 }
-
-            // ---------- αβ ----------
-            for (size_t b = 0; b < block.n_vir_b; ++b)
+            }
+        }
+        // ---------- αβ ----------
+        for (size_t l = 0; l < block.n_occ_a; ++l) {
+            for (size_t b = 0; b < block.n_vir_b; ++b){
                 for (size_t j = 0; j < block.n_occ_b; ++j) {
                     double val = 0.0;
                     for (size_t i = 0; i < block.n_occ_a; ++i) {
                         double Coi = block.effect_C_o_alpha(mu, i);
                         if (Coi == 0.0) continue;
                         for (size_t ip = 0; ip < block.n_occ_a; ++ip) {
-                            double su = block.sigma_u(i * block.n_svd + l,ip + j * block.n_occ_a);
+                            double su = block.sigma_u(i * block.n_occ_a + l,ip + j * block.n_occ_a);
                             if (su == 0.0) continue;
                             val += Coi * su * s_ov_ab(ip, b);
                         }
                     }
-                    sigma_ab(row, b + j * block.n_vir_b) = val;
+                    sigma_ab(mu * block.n_occ_a + l, b + j * block.n_vir_b) = val;
                 }
-
-            // ---------- βα ----------
-            for (size_t a = 0; a < block.n_vir_a; ++a)
+            }
+        }
+        // ---------- βα ----------
+        for (size_t l = 0; l < block.n_occ_b; ++l) {
+            for (size_t a = 0; a < block.n_vir_a; ++a){
                 for (size_t i = 0; i < block.n_occ_a; ++i) {
                     double val = 0.0;
                     for (size_t j = 0; j < block.n_occ_b; ++j) {
                         double Coj = block.effect_C_o_beta(mu, j);
                         if (Coj == 0.0) continue;
                         for (size_t jp = 0; jp < block.n_occ_b; ++jp) {
-                            double sv = block.sigma_v(j * block.n_svd + l,i + jp * block.n_occ_a);
+                            double sv = block.sigma_v(j * block.n_occ_b + l,i + jp * block.n_occ_a);
                             if (sv == 0.0) continue;
                             val += Coj * sv * s_vo_ab(a, jp);
                         }
                     }
-                    sigma_ba(row, a + i * block.n_vir_a) = val;
+                    sigma_ba(mu * block.n_occ_a + l, a + i * block.n_vir_a) = val;
                 }
-
-            // ---------- ββ ----------
-            for (size_t b = 0; b < block.n_vir_b; ++b)
+            }
+        }
+        // ---------- ββ ----------
+        for (size_t l = 0; l < block.n_occ_b; ++l) {
+            for (size_t b = 0; b < block.n_vir_b; ++b){
                 for (size_t j = 0; j < block.n_occ_b; ++j) {
                     double val = block.effect_C_v_beta(mu, b) * block.V(j, l);
                     for (size_t jp = 0; jp < block.n_occ_b; ++jp) {
                         double Coj = block.effect_C_o_beta(mu, jp);
                         if (Coj == 0.0) continue;
                         for (size_t i = 0; i < block.n_occ_a; ++i) {
-                            double sv = block.sigma_v(j * block.n_svd + l,i + jp * block.n_occ_a);
+                            double sv = block.sigma_v(j * block.n_occ_b + l,i + jp * block.n_occ_a);
                             if (sv == 0.0) continue;
                             val += Coj * sv * s_ov_ab(i, b);
                         }
                     }
-                    sigma_bb(row, b + j * block.n_vir_b) = val;
+                    sigma_bb(mu * block.n_occ_a + l, b + j * block.n_vir_b) = val;
                 }
+            }
         }
     }
     block.sigma_aa = sigma_aa;
@@ -1589,104 +1592,120 @@ void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
     mat CaT_S = b1.C_alpha.t() * AOS;
     mat CbT_S = b1.C_beta.t() * AOS;
 
-
+    // aa 1 & ab 1
     for (size_t i = 0; i < b1.n_occ_a; ++i) {
         for (size_t j = 0; j < b2.n_occ_a; ++j) {
             size_t row_idx = i * b2.n_occ_a + j;
-            vec Scol = S_Cpa.col(j);
-
             for (size_t mu = 0; mu < b1.n_ao; ++mu) {
-                for (size_t l = 0; l < b1.n_svd; ++l) {
+                double coeff = S_Cpa(mu,j);
+                for (size_t l = 0; l < b1.n_occ_a; ++l) {
                     double e_aa = b1.E_a(l, i);
-                    double e_ba = b1.E_a(l+b1.n_occ_a, i);
-                    double coeff = Scol(mu);
 
+                    for (size_t aip = 0; aip < b1.n_vir_a * b1.n_occ_a; ++aip){
+                        pi_aa_1(row_idx, aip) += coeff * b1.sigma_aa(mu * b1.n_occ_a + l, aip) * e_aa;
+                    }
+                    for (size_t bjp = 0; bjp < b1.n_vir_b * b1.n_occ_b; ++bjp)
+                        pi_ab_1(row_idx, bjp) += coeff * b1.sigma_ab(mu * b1.n_occ_a + l, bjp) * e_aa;
+                for (size_t lp = 0; lp < b1.n_occ_b; ++lp) {
+                    double e_ba = b1.E_a(lp+b1.n_occ_a, i);
                     for (size_t aip = 0; aip < b1.n_vir_a * b1.n_occ_a; ++aip)
-                        pi_aa_1(row_idx, aip) += coeff *
-                            (b1.sigma_aa(mu * b1.n_svd + l, aip) * e_aa +
-                             b1.sigma_ba(mu * b1.n_svd + l, aip) * e_ba);
+                        pi_aa_1(row_idx, aip) += coeff * b1.sigma_ba(mu * b1.n_occ_b + lp, aip) * e_ba;
 
                     for (size_t bjp = 0; bjp < b1.n_vir_b * b1.n_occ_b; ++bjp)
-                        pi_ab_1(row_idx, bjp) += coeff *
-                            (b1.sigma_ab(mu * b1.n_svd + l, bjp) * e_aa +
-                             b1.sigma_bb(mu * b1.n_svd + l, bjp) * e_ba);
+                        pi_ab_1(row_idx, bjp) += coeff * b1.sigma_bb(mu * b1.n_occ_b + lp, bjp) * e_ba;
+
                 }
             }
         }
     }
 
+    // ba 1 and bb 1
     for (size_t i = 0; i < b1.n_occ_b; ++i) {
         for (size_t j = 0; j < b2.n_occ_b; ++j) {
             size_t row_idx = i * b2.n_occ_b + j;
-            vec Scol = S_Cpb.col(j);
-
             for (size_t mu = 0; mu < b1.n_ao; ++mu) {
-                for (size_t l = 0; l < b1.n_svd; ++l) {
+                double coeff = S_Cpb(mu,j);
+                for (size_t l = 0; l < b1.n_occ_a; ++l) {
                     double e_ab = b1.E_b(l, i);
-                    double e_bb = b1.E_b(l+b1.n_occ_a, i);
-                    double coeff = Scol(mu);
+                    for (size_t aip = 0; aip < b1.n_vir_a * b1.n_occ_a; ++aip){
+                        pi_ba_1(row_idx, aip) += coeff * b1.sigma_aa(mu * b1.n_occ_a + l, aip) * e_ab ;
+                    }
+                    for (size_t bjp = 0; bjp < b1.n_vir_b * b1.n_occ_b; ++bjp){
+                        pi_bb_1(row_idx, bjp) += coeff * b1.sigma_ab(mu * b1.n_occ_a + l, bjp) * e_ab ;
+                    }
+                }
 
-                    for (size_t aip = 0; aip < b1.n_vir_a * b1.n_occ_a; ++aip)
-                        pi_ba_1(row_idx, aip) += coeff *
-                            (b1.sigma_aa(mu * b1.n_svd + l, aip) * e_ab +
-                             b1.sigma_ba(mu * b1.n_svd + l, aip) * e_bb);
+                for (size_t lp = 0; lp < b1.n_occ_b; ++lp) {
+                    double e_bb = b1.E_b(lp+b1.n_occ_a, i);
 
-                    for (size_t bjp = 0; bjp < b1.n_vir_b * b1.n_occ_b; ++bjp)
-                        pi_bb_1(row_idx, bjp) += coeff *
-                            (b1.sigma_ab(mu * b1.n_svd + l, bjp) * e_ab +
-                             b1.sigma_bb(mu * b1.n_svd + l, bjp) * e_bb);
+                    for (size_t aip = 0; aip < b1.n_vir_a * b1.n_occ_a; ++aip){
+                        pi_ba_1(row_idx, aip) += coeff * b1.sigma_ba(mu * b1.n_occ_b + lp, aip) * e_bb);
+                    }
+                    for (size_t bjp = 0; bjp < b1.n_vir_b * b1.n_occ_b; ++bjp){
+                        pi_bb_1(row_idx, bjp) += coeff * b1.sigma_bb(mu * b1.n_occ_b + lp, bjp) * e_bb);
+                    }
                 }
             }
         }
     }
 
-
+    // aa 2 and ab 2
     for (size_t i = 0; i < b1.n_occ_a; ++i) {
         for (size_t j = 0; j < b2.n_occ_a; ++j) {
             size_t row_idx = i * b2.n_occ_a + j;
             for (size_t mu = 0; mu < b1.n_ao; ++mu) {
                 double coeff = CaT_S(i, mu);
-                for (size_t l = 0; l < b2.n_svd; ++l) {
+                for (size_t l = 0; l < b2.n_occ_a; ++l) {
                     double e_aa = b2.E_a(l, j);
-                    double e_ba = b2.E_a(l+b2.n_occ_a, j);
 
-                    for (size_t aip = 0; aip < b2.n_vir_a * b2.n_occ_a; ++aip)
-                        pi_aa_2(row_idx, aip) += coeff *
-                            (b2.sigma_aa(mu * b2.n_svd + l, aip) * e_aa +
-                             b2.sigma_ba(mu * b2.n_svd + l, aip) * e_ba);
+                    for (size_t aip = 0; aip < b2.n_vir_a * b2.n_occ_a; ++aip){
+                        pi_aa_2(row_idx, aip) += coeff * b2.sigma_aa(mu * b2.n_occ_a + l, aip) * e_aa;
+                    }
+                    for (size_t bjp = 0; bjp < b2.n_vir_b * b2.n_occ_b; ++bjp){
+                        pi_ab_2(row_idx, bjp) += coeff * b2.sigma_ab(mu * b2.n_occ_a + l, bjp) * e_aa ;
+                    }
+                }
 
-                    for (size_t bjp = 0; bjp < b2.n_vir_b * b2.n_occ_b; ++bjp)
-                        pi_ab_2(row_idx, bjp) += coeff *
-                            (b2.sigma_ab(mu * b2.n_svd + l, bjp) * e_aa +
-                             b2.sigma_bb(mu * b2.n_svd + l, bjp) * e_ba);
+                for (size_t lp = 0; lp < b2.n_occ_b; ++lp) {
+                    double e_ba = b2.E_a(lp+b2.n_occ_a, j);
+
+                    for (size_t aip = 0; aip < b2.n_vir_a * b2.n_occ_a; ++aip){
+                        pi_aa_2(row_idx, aip) += coeff * b2.sigma_ba(mu * b2.n_occ_b + lp, aip) * e_ba;
+                    }
+                    for (size_t bjp = 0; bjp < b2.n_vir_b * b2.n_occ_b; ++bjp){
+                        pi_ab_2(row_idx, bjp) += coeff * b2.sigma_bb(mu * b2.n_occ_b + lp, bjp) * e_ba;
+                    }
                 }
             }
         }
     }
-
+    // ba 2 and bb 2
     for (size_t i = 0; i < b1.n_occ_b; ++i) {
         for (size_t j = 0; j < b2.n_occ_b; ++j) {
             size_t row_idx = i * b2.n_occ_b + j;
             for (size_t mu = 0; mu < b1.n_ao; ++mu) {
                 double coeff = CbT_S(i, mu);
-                for (size_t l = 0; l < b2.n_svd; ++l) {
+                for (size_t l = 0; l < b2.n_occ_a; ++l) {
                     double e_ab = b2.E_b(l, j);
-                    double e_bb = b2.E_b(l+b2.n_occ_a, j);
-
                     for (size_t aip = 0; aip < b2.n_vir_a * b2.n_occ_a; ++aip)
-                        pi_ba_2(row_idx, aip) += coeff *
-                            (b2.sigma_aa(mu * b2.n_svd + l, aip) * e_ab +
-                             b2.sigma_ba(mu * b2.n_svd + l, aip) * e_bb);
+                        pi_ba_2(row_idx, aip) += coeff * b2.sigma_aa(mu * b2.n_occ_a + l, aip) * e_ab ;
 
                     for (size_t bjp = 0; bjp < b2.n_vir_b * b2.n_occ_b; ++bjp)
-                        pi_bb_2(row_idx, bjp) += coeff *
-                            (b2.sigma_ab(mu * b2.n_svd + l, bjp) * e_ab +
-                             b2.sigma_bb(mu * b2.n_svd + l, bjp) * e_bb);
+                        pi_bb_2(row_idx, bjp) += coeff * b2.sigma_ab(mu * b2.n_occ_a + l, bjp) * e_ab ;
+                }
+                for (size_t lp = 0; lp < b2.n_occ_b; ++lp) {
+                    double e_bb = b2.E_b(lp+b2.n_occ_a, j);
+
+                    for (size_t aip = 0; aip < b2.n_vir_a * b2.n_occ_a; ++aip){
+                        pi_ba_2(row_idx, aip) += coeff * b2.sigma_ba(mu * b2.n_occ_b + l, aip) * e_bb;
+                    }
+                    for (size_t bjp = 0; bjp < b2.n_vir_b * b2.n_occ_b; ++bjp){
+                        pi_bb_2(row_idx, bjp) += coeff * b2.sigma_bb(mu * b2.n_occ_b + l, bjp) * e_bb;
+                    }
                 }
             }
         }
     }
-
 
     pair.pi_aa_1 = pi_aa_1;
     pair.pi_ab_1 = pi_ab_1;
@@ -1750,13 +1769,16 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
         for (size_t i = 0; i < b1.n_occ_a; ++i) {
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
-                for (size_t l = 0; l < b1.n_svd; ++l) {
-                    double s_aa = b1.sigma_aa(mu * b1.n_svd + l, a + i * b1.n_vir_a);
-                    double s_ba = b1.sigma_ba(mu * b1.n_svd + l, a + i * b1.n_vir_a);
-                    for (size_t j = 0; j < b1.n_occ_b; ++j) {
+                for (size_t j = 0; j < b1.n_occ_b; ++j) {
+                    for (size_t l = 0; l < b1.n_occ_a; ++l) {
+                        double s_aa = b1.sigma_aa(mu * b1.n_occ_a + l, a + i * b1.n_vir_a);
                         double e_ab = b1.E_b(l, j);
-                        double e_bb = b1.E_b(l+b1.n_occ_a, j);
-                        term1 += U_null_b(j) * (s_aa * e_ab + s_ba * e_bb) * tem_L_psi2(mu);
+                        term1 += U_null_b(j) * s_aa * e_ab  * tem_L_psi2(mu);
+                    }
+                    for (size_t lp = 0; lp < b1.n_occ_b; ++lp) {
+                        double s_ba = b1.sigma_ba(mu * b1.n_occ_b + lp, a + i * b1.n_vir_a);
+                        double e_bb = b1.E_b(lp+b1.n_occ_a, j);
+                        term1 += U_null_b(j) * s_aa * e_ab * tem_L_psi2(mu);
                     }
                 }
             }
@@ -1786,14 +1808,18 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
         for (size_t j = 0; j < b1.n_occ_b; ++j) {
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
-                for (size_t l = 0; l < b1.n_svd; ++l) {
-                    double s_ab = b1.sigma_ab(mu * b1.n_svd + l, b + j * b1.n_vir_b);
-                    double s_bb = b1.sigma_bb(mu * b1.n_svd + l, b + j * b1.n_vir_b);
-                    for (size_t jp = 0; jp < b1.n_occ_b; ++jp) {
+                for (size_t jp = 0; jp < b1.n_occ_b; ++jp) {
+                    for (size_t l = 0; l < b1.n_occ_a; ++l) {
+                        double s_ab = b1.sigma_ab(mu * b1.n_occ_a + l, b + j * b1.n_vir_b);
                         double e_ab = b1.E_b(l, jp);
-                        double e_bb = b1.E_b(l+b1.n_occ_a, jp);
-                        term1 += U_null_b(jp) * (s_ab * e_ab + s_bb * e_bb) * tem_L_psi2(mu);
+                        term1 += U_null_b(jp) * s_ab * e_ab  * tem_L_psi2(mu);
                     }
+                    for (size_t lp = 0; lp < b1.n_occ_b; ++lp) {
+                        double s_bb = b1.sigma_bb(mu * b1.n_occ_b + lp, b + j * b1.n_vir_b);
+                        double e_bb = b1.E_b(lp+b1.n_occ_a, jp);
+                        term1 += U_null_b(jp) *  s_bb * e_bb * tem_L_psi2(mu);
+                    }
+
                 }
             }
 
@@ -1822,13 +1848,16 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
         for (size_t i = 0; i < b2.n_occ_a; ++i) {
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
-                for (size_t l = 0; l < b2.n_svd; ++l) {
-                    double s_aa = b2.sigma_aa(mu * b2.n_svd + l, a + i * b2.n_vir_a);
-                    double s_ba = b2.sigma_ba(mu * b2.n_svd + l, a + i * b2.n_vir_a);
-                    for (size_t j = 0; j < b2.n_occ_b; ++j) {
+                for (size_t j = 0; j < b2.n_occ_b; ++j) {
+                    for (size_t l = 0; l < b2.n_occ_a; ++l) {
+                        double s_aa = b2.sigma_aa(mu * b2.n_occ_a + l, a + i * b2.n_vir_a);
                         double e_ab = b2.E_b(l, j);
-                        double e_bb = b2.E_b(l+b2.n_occ_a, j);
-                        term1 += tem_psi1_L(mu) * (s_aa * e_ab + s_ba * e_bb) * V_null_a(j);
+                        term1 += tem_psi1_L(mu) * s_aa * e_ab  * V_null_a(j);
+                    }
+                    for (size_t lp = 0; lp < b2.n_occ_b; ++lp) {
+                        double s_ba = b2.sigma_ba(mu * b2.n_occ_b + lp, a + i * b2.n_vir_a);
+                        double e_bb = b2.E_b(lp+b2.n_occ_a, j);
+                        term1 += tem_psi1_L(mu) * s_ba * e_bb * V_null_a(j);
                     }
                 }
             }
@@ -1859,13 +1888,16 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
         for (size_t j = 0; j < b2.n_occ_b; ++j) {
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
-                for (size_t l = 0; l < b2.n_svd; ++l) {
-                    double s_ab = b2.sigma_ab(mu * b2.n_svd + l, b + j * b2.n_vir_b);
-                    double s_bb = b2.sigma_bb(mu * b2.n_svd + l, b + j * b2.n_vir_b);
-                    for (size_t jp = 0; jp < b2.n_occ_b; ++jp) {
+                for (size_t jp = 0; jp < b2.n_occ_b; ++jp) {
+                    for (size_t l = 0; l < b2.n_occ_a; ++l) {
+                        double s_ab = b2.sigma_ab(mu * b2.n_occ_a + l, b + j * b2.n_vir_b);
                         double e_ab = b2.E_b(l, jp);
-                        double e_bb = b2.E_b(l+b2.n_occ_a, jp);
-                        term1 += tem_psi1_L(mu) * (s_ab * e_ab + s_bb * e_bb) * V_null_a(jp);
+                        term1 += tem_psi1_L(mu) * s_ab * e_ab  * V_null_a(jp);
+                    }
+                    for (size_t lp = 0; lp < b2.n_occ_b; ++lp) {
+                        double s_bb = b2.sigma_bb(mu * b2.n_occ_b + lp, b + j * b2.n_vir_b);
+                        double e_bb = b2.E_b(lp+b2.n_occ_a, jp);
+                        term1 += tem_psi1_L(mu) * s_bb * e_bb * V_null_a(jp);
                     }
                 }
             }
@@ -1964,13 +1996,16 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
         for (size_t i = 0; i < b1.n_occ_a; ++i) {
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
-                for (size_t l = 0; l < b1.n_svd; ++l) {
-                    double s_aa = b1.sigma_aa(mu * b1.n_svd + l, a + i * b1.n_vir_a);
-                    double s_ba = b1.sigma_ba(mu * b1.n_svd + l, a + i * b1.n_vir_a);
-                    for (size_t j = 0; j < b1.n_occ_a; ++j) {
+                for (size_t j = 0; j < b1.n_occ_a; ++j) {
+                    for (size_t l = 0; l < b1.n_occ_a; ++l) {
+                        double s_aa = b1.sigma_aa(mu * b1.n_occ_a + l, a + i * b1.n_vir_a);
                         double e_aa = b1.E_a(l, j);
-                        double e_ba = b1.E_a(l+b1.n_occ_a, j);
-                        term1 += U_last_a(j) * (s_aa * e_aa + s_ba * e_ba) * tem_L_psi2a(mu);
+                        term1 += U_last_a(j) * s_aa * e_aa  * tem_L_psi2a(mu);
+                    }
+                    for (size_t lp = 0; lp < b1.n_occ_b; ++lp) {
+                        double s_ba = b1.sigma_ba(mu * b1.n_occ_b + lp, a + i * b1.n_vir_a);
+                        double e_ba = b1.E_a(lp+b1.n_occ_a, j);
+                        term1 += U_last_a(j) *  s_ba * e_ba * tem_L_psi2a(mu);
                     }
                 }
             }
@@ -2005,13 +2040,16 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
         for (size_t i = 0; i < b1.n_occ_a; ++i) {
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
-                for (size_t l = 0; l < b1.n_svd; ++l) {
-                    double s_aa = b1.sigma_aa(mu * b1.n_svd + l, a + i * b1.n_vir_a);
-                    double s_ba = b1.sigma_ba(mu * b1.n_svd + l, a + i * b1.n_vir_a);
-                    for (size_t j = 0; j < b1.n_occ_b; ++j) {
+                for (size_t j = 0; j < b1.n_occ_b; ++j) {
+                    for (size_t l = 0; l < b1.n_occ_a; ++l) {
+                        double s_aa = b1.sigma_aa(mu * b1.n_occ_a + l, a + i * b1.n_vir_a);
                         double e_ab = b1.E_b(l, j);
-                        double e_bb = b1.E_b(l+b1.n_occ_a, j);
-                        term1 += U_last_b(j) * (s_aa * e_ab + s_ba * e_bb) * tem_L_psi2b(mu);
+                        term1 += U_last_b(j) * s_aa * e_ab * tem_L_psi2b(mu);
+                    }
+                    for (size_t lp = 0; lp < b1.n_occ_b; ++lp) {
+                        double s_ba = b1.sigma_ba(mu * b1.n_occ_b + lp, a + i * b1.n_vir_a);
+                        double e_bb = b1.E_b(lp+b1.n_occ_a, j);
+                        term1 += U_last_b(j) *  s_ba * e_bb * tem_L_psi2b(mu);
                     }
                 }
             }
@@ -2046,13 +2084,16 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
         for (size_t j = 0; j < b1.n_occ_b; ++j) {
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
-                for (size_t l = 0; l < b1.n_svd; ++l) {
-                    double s_ab = b1.sigma_ab(mu * b1.n_svd + l, b + j * b1.n_vir_b);
-                    double s_bb = b1.sigma_bb(mu * b1.n_svd + l, b + j * b1.n_vir_b);
-                    for (size_t jp = 0; jp < b1.n_occ_a; ++jp) {
+                for (size_t jp = 0; jp < b1.n_occ_a; ++jp) {
+                    for (size_t l = 0; l < b1.n_occ_a; ++l) {
+                        double s_ab = b1.sigma_ab(mu * b1.n_occ_a + l, b + j * b1.n_vir_b);
                         double e_aa = b1.E_a(l, jp);
-                        double e_ba = b1.E_a(l+b1.n_occ_a, jp);
-                        term1 += U_last_a(j) * (s_ab * e_aa + s_bb * e_ba) * tem_L_psi2a(mu);
+                        term1 += U_last_a(j) * s_ab * e_aa * tem_L_psi2a(mu);
+                    }
+                    for (size_t lp = 0; lp < b1.n_occ_b; ++lp) {
+                        double s_bb = b1.sigma_bb(mu * b1.n_occ_b + lp, b + j * b1.n_vir_b);
+                        double e_ba = b1.E_a(lp+b1.n_occ_a, jp);
+                        term1 += U_last_a(j) *  s_bb * e_ba * tem_L_psi2a(mu);
                     }
                 }
             }
@@ -2084,13 +2125,16 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
         for (size_t j = 0; j < b1.n_occ_b; ++j) {
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
-                for (size_t l = 0; l < b1.n_svd; ++l) {
-                    double s_ab = b1.sigma_ab(mu * b1.n_svd + l, b + j * b1.n_vir_b);
-                    double s_bb = b1.sigma_bb(mu * b1.n_svd + l, b + j * b1.n_vir_b);
-                    for (size_t jp = 0; jp < b1.n_occ_b; ++jp) {
+                for (size_t jp = 0; jp < b1.n_occ_b; ++jp) {
+                    for (size_t l = 0; l < b1.n_occ_a; ++l) {
+                        double s_ab = b1.sigma_ab(mu * b1.n_occ_a + l, b + j * b1.n_vir_b);
                         double e_ab = b1.E_b(l, jp);
-                        double e_bb = b1.E_b(l+b1.n_occ_a, jp);
-                        term1 += U_last_b(j) * (s_ab * e_ab + s_bb * e_bb) * tem_L_psi2b(mu);
+                        term1 += U_last_b(j) * s_ab * e_ab  * tem_L_psi2b(mu);
+                    }
+                    for (size_t lp = 0; lp < b1.n_occ_b; ++lp) {
+                        double s_bb = b1.sigma_bb(mu * b1.n_occ_b + lp, b + j * b1.n_vir_b);
+                        double e_bb = b1.E_b(lp+b1.n_occ_a, jp);
+                        term1 += U_last_b(j) *  s_bb * e_bb * tem_L_psi2b(mu);
                     }
                 }
             }
@@ -2122,13 +2166,16 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
         for (size_t i = 0; i < b2.n_occ_a; ++i) {
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
-                for (size_t l = 0; l < b2.n_svd; ++l) {
-                    double s_aa = b2.sigma_aa(mu * b2.n_svd + l, a + i * b2.n_vir_a);
-                    double s_ba = b2.sigma_ba(mu * b2.n_svd + l, a + i * b2.n_vir_a);
-                    for (size_t j = 0; j < b2.n_occ_a; ++j) {
+                for (size_t j = 0; j < b2.n_occ_a; ++j) {
+                    for (size_t l = 0; l < b2.n_occ_a; ++l) {
+                        double s_aa = b2.sigma_aa(mu * b2.n_occ_a + l, a + i * b2.n_vir_a);
                         double e_aa = b2.E_a(l, j);
-                        double e_ba = b2.E_a(l+b2.n_occ_a, j);
-                        term1 += tem_psi1aT_L(mu) * (s_aa * e_aa + s_ba * e_ba) * V_last_a(j);
+                        term1 += tem_psi1aT_L(mu) * s_aa * e_aa * V_last_a(j);
+                    }
+                    for (size_t lp = 0; lp < b2.n_occ_b; ++lp) {
+                        double s_ba = b2.sigma_ba(mu * b2.n_occ_b + lp, a + i * b2.n_vir_a);
+                        double e_ba = b2.E_a(lp+b2.n_occ_a, j);
+                        term1 += tem_psi1aT_L(mu) *  s_ba * e_ba * V_last_a(j);
                     }
                 }
             }
@@ -2163,10 +2210,15 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
         for (size_t i = 0; i < b2.n_occ_a; ++i) {
             double term1 = 0.0;
             for (size_t mu = 0; mu < n_ao; ++mu) {
-                for (size_t l = 0; l < b2.n_svd; ++l) {
-                    double s_aa = b2.sigma_aa(mu * b2.n_svd + l, a + i * b2.n_vir_a);
-                    double s_ba = b2.sigma_ba(mu * b1.n_svd + l, a + i * b2.n_vir_a);
-                    for (size_t j = 0; j < b2.n_occ_b; ++j) {
+                for (size_t j = 0; j < b2.n_occ_b; ++j) {
+                    for (size_t l = 0; l < b2.n_occ_a; ++l) {
+                        double s_aa = b2.sigma_aa(mu * b2.n_occ_a + l, a + i * b2.n_vir_a);
+                        double e_ab = b2.E_b(l, j);
+                        term1 += tem_psi1bT_L(mu) * s_aa * e_ab  * V_last_b(j);
+                    }
+                    for (size_t l = 0; l < b2.n_svd; ++l) {
+                        double s_aa = b2.sigma_aa(mu * b2.n_svd + l, a + i * b2.n_vir_a);
+                        double s_ba = b2.sigma_ba(mu * b1.n_svd + l, a + i * b2.n_vir_a);
                         double e_ab = b2.E_b(l, j);
                         double e_bb = b2.E_b(l+b2.n_occ_a, j);
                         term1 += tem_psi1bT_L(mu) * (s_aa * e_ab + s_ba * e_bb) * V_last_b(j);
