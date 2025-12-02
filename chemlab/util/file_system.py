@@ -1127,9 +1127,6 @@ def reshape_force(force_block):
 
 
 class qchem_out_geomene(qchem_out):
-    """
-    Minimal parser: only reads Total energy and last Standard Nuclear Orientation geometry
-    """
 
     def __init__(self, filename=""):
         super().__init__(filename)

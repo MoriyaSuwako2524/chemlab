@@ -17,6 +17,7 @@ class Script:
     def run(self, cfg):
         raise NotImplementedError
 
+
 class QchemBaseScript(Script):
     name = "Qchem"
     config = None
@@ -40,3 +41,104 @@ class QchemBaseScript(Script):
             print(msg)
             if log: log.write(msg + "\n")
             time.sleep(interval)
+    def run_jobs(self, jobs, cfg, print_status_func=None):
+
+        cfg_env = QchemEnvConfig()
+        env_script = cfg_env.env_script.strip()
+
+        poll_interval = getattr(cfg, "poll_interval", 20)
+        max_attempts  = getattr(cfg, "max_attempts", 2)
+        njob          = cfg.njob
+
+        running: Dict[int, object] = {}
+
+        while True:
+            # ---- Poll running jobs ----
+            completed_ids = []
+            for jid, job in running.items():
+                ret = job.popen.poll()
+                if ret is not None:
+                    job.finished = True
+                    job.converged = self.check_qchem_success(job.out_file)
+                    completed_ids.append(jid)
+
+            # Remove completed entries
+            for jid in completed_ids:
+                running.pop(jid)
+
+            # Print status table (if provided)
+            if print_status_func:
+                print_status_func(jobs, running, njob)
+
+            # ---- Launch new jobs up to njob limit ----
+            ready_jobs = [j for j in jobs if (not j.started and not j.finished)]
+            while len(running) < njob and ready_jobs:
+                job = ready_jobs.pop(0)
+                job.attempts += 1
+                print(f"Launching job {job.idx}{job.sign} attempt={job.attempts}")
+
+                job.popen = run_qchem_job_async(
+                    job.inp_file,
+                    job.out_file,
+                    cfg.ncore,
+                    env_script,
+                    launcher=cfg.launcher
+                )
+                job.started = True
+                job.start_time = time.time()
+                running[id(job)] = job
+
+            # ---- Check if all done ----
+            if all(j.finished for j in jobs):
+                print("All Q-Chem jobs completed.")
+                break
+
+            # ---- Retry failed ----
+            for j in jobs:
+                if j.finished and not j.converged:
+                    if j.attempts < max_attempts:
+                        print(f"Retry job {j.idx}{j.sign}")
+                        j.started = False
+                        j.finished = False
+
+            time.sleep(poll_interval)
+
+def run_qchem_job_async(inp_file, out_file, ncore, env_script, launcher="srun"):
+
+    if launcher == "srun":
+        cmd = f"""
+{env_script}
+export OMP_NUM_THREADS={ncore}
+srun -n1 -c {ncore} --cpu-bind=cores --hint=nomultithread qchem -nt {ncore} {inp_file} {out_file}
+"""
+    else:
+        cmd = f"""
+{env_script}
+export OMP_NUM_THREADS={ncore}
+qchem -nt {ncore} {inp_file} {out_file}
+"""
+
+    return subprocess.Popen(
+        cmd,
+        shell=True,
+        executable="/bin/bash",
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT
+    )
+
+
+@dataclass
+class QchemJob:
+    inp_file: str
+    out_file: str
+    attempts: int = 0
+    popen: Optional[subprocess.Popen] = None
+    started: bool = False
+    finished: bool = False
+    converged: bool = False
+    start_time: Optional[float] = None
+
+import time
+from typing import List, Dict
+
+
