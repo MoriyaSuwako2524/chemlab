@@ -187,7 +187,7 @@ class FivePointMethod(FDMethod):
 
 class ThreePointFiniteDifference(QchemBaseScript):
 
-    name = "tpfd"
+    name = "TPFD"
     config = ThreePointFDConfig
     method_class = ThreePointMethod
 
