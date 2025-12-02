@@ -1340,75 +1340,6 @@ vec spin_adiabatic_state::gradient_explicit_Ms()
 }
 
 
-
-
-void spin_adiabatic_state::gradient_implicit_rhs_Ms()
-{
-   // build CPKS equation
-   S_MO_alpha = C1_alpha.t() * AOS * C2_alpha;
-   S_MO_beta  = C1_beta.t() * AOS * C2_beta;
-   // first low-spin state
-   y1_vo_alpha = zeros<mat>(nvir1_a, nalpha1);
-   y1_vo_beta  = zeros<mat>(nvir1_b, nbeta1);
-   // second high-spin state
-   y2_ov_alpha = zeros<mat>(nvir2_a, nalpha2); // (D+S)*V
-   y2_ov_beta  = zeros<mat>(nvir2_b,  nbeta2); // D*(S+V)
-   DBG("Zexuan Wei gradient_implicit_rhs start");
-   DBG("y1_vo_alpha size = " << y1_vo_alpha.n_rows << " x " << y1_vo_alpha.n_cols);
-   DBG("y1_vo_beta size = " << y1_vo_beta.n_rows << " x " << y1_vo_beta.n_cols);
-   DBG("y2_ov_alpha size = " << y2_ov_alpha.n_rows << " x " << y2_ov_alpha.n_cols);
-   DBG("y2_ov_beta size = " << y2_ov_beta.n_rows << " x " << y2_ov_beta.n_cols);
-   for (double Ms1 = -S1; Ms1 <= S1; Ms1 += 1.0) {
-      for (int dir = 0; dir < 3; ++dir) {
-         double delta_Ms = (dir == 0) ? +1 :
-                           (dir == 1) ? -1 : 0;
-         double Ms2 = Ms1 + delta_Ms;
-
-         int idx = get_index(Ms1, Ms2);
-
-
-         auto& pair_list = vsoc_pairs[idx];
-         cout << "Processing Ms1 = " << Ms1 << ", Ms2 = " << Ms2 
-               << ", direction = " << dir << ", num pairs = " << pair_list.size() << endl;
-
-         for (auto& pair : pair_list) {;
-
-            if (dir != 2){ // vsoc value is inplemented in k_matrix_null(pair), where it's multiplied to L matrix
-               k_matrix_null(pair);
-               int vsoc_idx = get_index(Ms1, Ms2);
-               DBG("pair.L_a_1 size = " << pair.L_a_1.n_rows << " x " << pair.L_a_1.n_cols);
-               DBG("pair.L_b_1 size = " << pair.L_b_1.n_rows << " x " << pair.L_b_1.n_cols);
-               DBG("pair.L_a_2 size = " << pair.L_a_2.n_rows << " x " << pair.L_a_2.n_cols);
-               DBG("pair.L_b_2 size = " << pair.L_b_2.n_rows << " x " << pair.L_b_2.n_cols);
-               y1_vo_alpha += v_soc(vsoc_idx) * pair.L_a_1 * pair.phase ;
-               y1_vo_beta  += v_soc(vsoc_idx) * pair.L_b_1 * pair.phase ;
-               y2_ov_alpha += v_soc(vsoc_idx) * pair.L_a_2 * pair.phase ;
-               y2_ov_beta  += v_soc(vsoc_idx) * pair.L_b_2 * pair.phase ;
-
-
-            }
-            else{
-               k_matrix_last(pair);
-               int vsoc_idx = get_index(Ms1, Ms2);
-               y1_vo_alpha += v_soc(vsoc_idx) * (pair.L_aa_1 * pair.phase_alpha + pair.L_ba_1 * pair.phase_beta);
-               y1_vo_beta += v_soc(vsoc_idx) *  (pair.L_ab_1 * pair.phase_alpha + pair.L_bb_1 * pair.phase_beta);
-               y2_ov_alpha += v_soc(vsoc_idx) * (pair.L_aa_2 * pair.phase_alpha + pair.L_ba_2 * pair.phase_beta);
-               y2_ov_beta += v_soc(vsoc_idx) *  (pair.L_ab_2 * pair.phase_alpha + pair.L_bb_2 * pair.phase_beta);
-            }
-         }
-      }
-   }
-
-   y2_ov_alpha = y2_ov_alpha.t();
-   y2_ov_beta = y2_ov_beta.t();
-   cout << "Zexuan Wei gradient_implicit_rhs end" << endl;
-   return;
-}
-
-
-
-
-
 mat sigma_u(MOpair& block) {
     mat sigma(block.n_occ_a * block.n_occ_a, block.n_occ_a * block.n_occ_b, fill::zeros);
     DBG("block.n_occ_a = " << block.n_occ_a << " block.n_occ_b = " << block.n_occ_b);
@@ -1416,7 +1347,7 @@ mat sigma_u(MOpair& block) {
     if (block.n_occ_a > block.n_svd){
         mat U_core = block.U.cols(0, block.n_svd - 1);
         mat V_core = block.V.cols(0, block.n_svd - 1);
-        Ainv = block.V * diagmat(1.0/block.lambda) * U_core.t();
+        Ainv = V_core * diagmat(1.0/block.lambda) * U_core.t();
         mat lambda_inv = 1.0 / block.lambda;
         U_null = block.U.cols(block.n_svd, block.n_occ_a - 1);
         DBG("U_null size = " << U_null.n_rows << " x " << U_null.n_cols);
@@ -1435,7 +1366,7 @@ mat sigma_u(MOpair& block) {
                                 continue;
                             }
                             double dl2 = (block.lambda(l) * block.lambda(l));
-                            double dlp2 = (block.lambda(l) * block.lambda(lp));
+                            double dlp2 = (block.lambda(lp) * block.lambda(lp));
                             double denom = dl2 - dlp2;
                             if (std::abs(denom) < 1e-8){
                                 denom = (denom >= 0 ? +1 : -1) * 1e-8;
@@ -1531,6 +1462,102 @@ mat sigma_v(MOpair& block) {
     DBG("sigma_v max abs=" << abs(sigma).max());
     return sigma;
 }
+
+void test_sigma_UV() {
+    DBG("===== Testing sigma_u / sigma_v START =====");
+
+    int n = 6; // test matrix size
+    double eps = 1e-5;
+
+    // --- Construct random A0 and perturbation B ---
+    mat A0 = randn<mat>(n, n);
+    mat B  = randn<mat>(n, n);
+
+    // --- Compute SVD of A0 ---
+    mat U0, V0;
+    vec s0;
+    svd(U0, s0, V0, A0);
+
+    // --- Fill MOpair block with minimal required data ---
+    MOpair block;
+    block.U = U0;
+    block.V = V0;
+    block.lambda = s0;
+    block.n_occ_a = n;
+    block.n_occ_b = n;
+    block.n_svd   = s0.n_elem;
+    block.n_ao    = n;
+
+    // --- Compute sigma_u and sigma_v using your current code ---
+    block.sigma_u = sigma_u(block);
+    block.sigma_v = sigma_v(block);
+    DBG("--- Finite difference for dU/dt and dV/dt ---");
+    mat U_plus, U_minus, V_plus,V_minus;
+    vec stmp;
+    svd(U_plus,  stmp, V_plus, A0 + eps * B);
+    svd(U_minus, stmp, V_minus, A0 - eps * B);
+    mat U_fd = (U_plus - U_minus) / (2 * eps);
+    mat V_fd = (V_plus - V_minus) / (2 * eps);
+    DBG("--- Analytic dU/dt = Sigma_U(A) : B ---");
+    mat U_an(n, n, fill::zeros);
+    for (int i = 0; i < n; ++i){
+        for (int l = 0; l < n; ++l){
+
+            double sum = 0.0;
+
+            for (int ip = 0; ip < n; ++ip){
+                for (int jp = 0; jp < n; ++jp){
+
+                    // index in sigma_u
+                    double coeff = block.sigma_u(i*n + l, ip + jp*n);
+                    sum += coeff * B(ip, jp);
+                }
+            }
+
+            U_an(i, l) = sum;
+        }
+    }
+
+    // --- Analytic dV/dt = Sigma_V(A) : B ---
+    mat V_an(n, n, fill::zeros);
+    for (int j = 0; j < n; ++j){
+        for (int l = 0; l < n; ++l){
+
+            double sum = 0.0;
+
+            for (int ip = 0; ip < n; ++ip) {
+                for (int jp = 0; jp < n; ++jp){
+                    double coeff = block.sigma_v(j*n + l, ip + jp*n);
+                    sum += coeff * B(ip, jp);
+                }
+            }
+
+            V_an(j, l) = sum;
+        }
+    }
+    DBG("--- compare ---");
+    double errU = norm(U_fd - U_an, "fro");
+    double errV = norm(V_fd - V_an, "fro");
+
+    DBG("|| dU_fd - dU_an ||_F = " << errU);
+    DBG("|| dV_fd - dV_an ||_F = " << errV);
+
+    if (errU < 1e-7)
+        DBG("sigma_u PASSED ✓");
+    else
+        DBG("sigma_u FAILED ✗ (too large error)");
+
+    if (errV < 1e-7)
+        DBG("sigma_v PASSED ✓");
+    else
+        DBG("sigma_v FAILED ✗ (too large error)");
+
+    DBG("===== Testing sigma_u / sigma_v END =====");
+}
+
+
+
+
 
 
 void spin_adiabatic_state::sigma_overlap(MOpair& block) {
@@ -1642,6 +1669,7 @@ void spin_adiabatic_state::sigma_overlap(MOpair& block) {
     DBG("===== sigma_overlap END =====");
     return;
 }
+
 
 
 void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
@@ -2028,7 +2056,7 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
 void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
 {
 
-    DBG("Notice: For Ms<0, the alpha-beta should exchange here:===== k_matrix_last START =====");
+    DBG("Notice: For Ms<0, the alpha-beta should exchange here(it shouldn't change inside code, but exchange in physic):===== k_matrix_last START =====");
     pi_matrix(pair);
 
     MOpair &b1 = pair.block1;
@@ -2543,6 +2571,71 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
 
 
 
+
+
+void spin_adiabatic_state::gradient_implicit_rhs_Ms()
+{
+   //test_sigma_UV();
+   // build CPKS equation
+   S_MO_alpha = C1_alpha.t() * AOS * C2_alpha;
+   S_MO_beta  = C1_beta.t() * AOS * C2_beta;
+   // first low-spin state
+   y1_vo_alpha = zeros<mat>(nvir1_a, nalpha1);
+   y1_vo_beta  = zeros<mat>(nvir1_b, nbeta1);
+   // second high-spin state
+   y2_ov_alpha = zeros<mat>(nvir2_a, nalpha2); // (D+S)*V
+   y2_ov_beta  = zeros<mat>(nvir2_b,  nbeta2); // D*(S+V)
+   DBG("Zexuan Wei gradient_implicit_rhs start");
+   DBG("y1_vo_alpha size = " << y1_vo_alpha.n_rows << " x " << y1_vo_alpha.n_cols);
+   DBG("y1_vo_beta size = " << y1_vo_beta.n_rows << " x " << y1_vo_beta.n_cols);
+   DBG("y2_ov_alpha size = " << y2_ov_alpha.n_rows << " x " << y2_ov_alpha.n_cols);
+   DBG("y2_ov_beta size = " << y2_ov_beta.n_rows << " x " << y2_ov_beta.n_cols);
+   for (double Ms1 = -S1; Ms1 <= S1; Ms1 += 1.0) {
+      for (int dir = 0; dir < 3; ++dir) {
+         double delta_Ms = (dir == 0) ? +1 :
+                           (dir == 1) ? -1 : 0;
+         double Ms2 = Ms1 + delta_Ms;
+
+         int idx = get_index(Ms1, Ms2);
+
+
+         auto& pair_list = vsoc_pairs[idx];
+         cout << "Processing Ms1 = " << Ms1 << ", Ms2 = " << Ms2
+               << ", direction = " << dir << ", num pairs = " << pair_list.size() << endl;
+
+         for (auto& pair : pair_list) {;
+
+            if (dir != 2){ // vsoc value is inplemented in k_matrix_null(pair), where it's multiplied to L matrix
+               k_matrix_null(pair);
+               int vsoc_idx = get_index(Ms1, Ms2);
+               DBG("pair.L_a_1 size = " << pair.L_a_1.n_rows << " x " << pair.L_a_1.n_cols);
+               DBG("pair.L_b_1 size = " << pair.L_b_1.n_rows << " x " << pair.L_b_1.n_cols);
+               DBG("pair.L_a_2 size = " << pair.L_a_2.n_rows << " x " << pair.L_a_2.n_cols);
+               DBG("pair.L_b_2 size = " << pair.L_b_2.n_rows << " x " << pair.L_b_2.n_cols);
+               y1_vo_alpha += v_soc(vsoc_idx) * pair.L_a_1 * pair.phase ;
+               y1_vo_beta  += v_soc(vsoc_idx) * pair.L_b_1 * pair.phase ;
+               y2_ov_alpha += v_soc(vsoc_idx) * pair.L_a_2 * pair.phase ;
+               y2_ov_beta  += v_soc(vsoc_idx) * pair.L_b_2 * pair.phase ;
+
+
+            }
+            else{
+               k_matrix_last(pair);
+               int vsoc_idx = get_index(Ms1, Ms2);
+               y1_vo_alpha += v_soc(vsoc_idx) * (pair.L_aa_1 * pair.phase_alpha + pair.L_ba_1 * pair.phase_beta);
+               y1_vo_beta += v_soc(vsoc_idx) *  (pair.L_ab_1 * pair.phase_alpha + pair.L_bb_1 * pair.phase_beta);
+               y2_ov_alpha += v_soc(vsoc_idx) * (pair.L_aa_2 * pair.phase_alpha + pair.L_ba_2 * pair.phase_beta);
+               y2_ov_beta += v_soc(vsoc_idx) *  (pair.L_ab_2 * pair.phase_alpha + pair.L_bb_2 * pair.phase_beta);
+            }
+         }
+      }
+   }
+
+   y2_ov_alpha = y2_ov_alpha.t();
+   y2_ov_beta = y2_ov_beta.t();
+   cout << "Zexuan Wei gradient_implicit_rhs end" << endl;
+   return;
+}
 
 
 
