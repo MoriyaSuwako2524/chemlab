@@ -5,7 +5,7 @@ import subprocess
 from dataclasses import dataclass
 from typing import Optional, List, Dict
 
-from chemlab.scripts.base import QchemBaseScript, run_qchem_job_async, QchemJob
+from chemlab.scripts.base import QchemBaseScript, run_qchem_job_async
 from chemlab.util.file_system import qchem_file, qchem_out_geomene
 from chemlab.config.config_loader import QchemEnvConfig, ConfigBase
 

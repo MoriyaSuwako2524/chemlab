@@ -127,18 +127,5 @@ qchem -nt {ncore} {inp_file} {out_file}
     )
 
 
-@dataclass
-class QchemJob:
-    inp_file: str
-    out_file: str
-    attempts: int = 0
-    popen: Optional[subprocess.Popen] = None
-    started: bool = False
-    finished: bool = False
-    converged: bool = False
-    start_time: Optional[float] = None
-
-import time
-from typing import List, Dict
 
 
