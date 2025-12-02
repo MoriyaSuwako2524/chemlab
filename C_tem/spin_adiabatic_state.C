@@ -303,15 +303,20 @@ void spin_adiabatic_state::build_spin_blocks_for_state(
     const MOpair& ortho, double S, size_t nalpha, size_t nbeta,
     map<double, vector<MOpair>>& Ms_blocks)
 {
-    int n_Ms = static_cast<int>(2 * S) + 1;
+    int twoS = static_cast<int>(std::lround(2 * S));
+    int n_Ms = twoS + 1;
 
     for (int i = 0; i < n_Ms; ++i) {
-        double Ms = -S + i * 1.0;
-        if (Ms < 0.0) continue;
-
-        int tem_nalpha = static_cast<int>((n_total * 0.5) + Ms);
+        int twoMs_int = -twoS + 2 * i;
+        double Ms = 0.5 * twoMs_int;
+        int tem_nalpha = (n_total + std::abs(twoMs_int)) / 2;
         int tem_nbeta  = n_total - tem_nalpha;
         int nflip = static_cast<int>(nalpha) - tem_nalpha;
+
+        DBG("fabs(Ms):" << std::fabs(Ms) << " Ms:" << Ms
+            << " tem_nalpha:" << tem_nalpha
+            << " tem_nbeta:"  << tem_nbeta
+            << " nflip:"      << nflip);
 
         vector<vector<int>> flip_indices_list =
             generate_combinations(nbeta, nalpha, nflip);
@@ -322,8 +327,6 @@ void spin_adiabatic_state::build_spin_blocks_for_state(
 
             const mat& U0 = ortho.U;   // (n_ori_alpha, nalpha)
             const mat& V0 = ortho.V;   // (n_ori_beta,  nbeta)
-            block.U = ortho.U;
-            block.V = ortho.V;
             block.flips = flips;
 
 
@@ -335,47 +338,26 @@ void spin_adiabatic_state::build_spin_blocks_for_state(
                                flips);
             //matrix_print_2d(E_a.memptr(),E_a.n_rows, E_a.n_cols,"E_a:");
             //matrix_print_2d(E_b.memptr(),E_b.n_rows, E_b.n_cols,"E_b:");
-            block.E_a = E_a;
-            block.E_b = E_b;
+            if (Ms >= -0.01){
+                block.E_a = E_a;
+                block.E_b = E_b;
+                block.U = ortho.U;
+                block.V = ortho.V;
+            }
+            else {
+                block.E_a = E_b;
+                block.E_b = E_a;
+                block.U = ortho.V;
+                block.V = ortho.U;
+            }
             mat C_all = join_rows(ortho.C_alpha, ortho.C_beta);
-            block.C_alpha = C_all * E_a;
-            block.C_beta  = C_all * E_b;
+            block.C_alpha = C_all * block.E_a;
+            block.C_beta  = C_all * block.E_b;
 
             Ms_blocks[Ms].push_back(block);
         }
     }
 
-
-    // Step 2: Ms < 0 via α/β swap of Ms > 0
-    for (int i = 0; i < n_Ms; ++i) {
-        double Ms = -S + i * 1.0;
-        if (Ms >= 0.0) continue;
-        double Ms_flip = -Ms;
-
-        const auto it = Ms_blocks.find(Ms_flip);
-        if (it == Ms_blocks.end()) {
-            cout << "[Error] Ms_flip = " << Ms_flip << " not found in Ms_blocks.\n" << endl;
-            continue;
-        }
-
-        for (const auto& orig : it->second) {
-            MOpair flipped;
-            flipped.C_alpha = orig.C_alpha;
-            flipped.C_beta  = orig.C_beta;
-            flipped.E_a = orig.E_a;
-            flipped.E_b = orig.E_b;
-            flipped.flips = orig.flips;
-            flipped.effect_C_o_alpha = orig.effect_C_o_alpha;
-            flipped.effect_C_o_beta = orig.effect_C_o_beta;
-            flipped.effect_C_v_alpha = orig.effect_C_v_alpha;
-            flipped.effect_C_v_beta = orig.effect_C_v_beta;
-            flipped.lambda = orig.lambda;
-            flipped.V = orig.V;
-            flipped.U = orig.U;
-
-            Ms_blocks[Ms].push_back(flipped);
-        }
-    }
 }
 
 
@@ -463,8 +445,9 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
    S2_orthonal.U = U2;
    S2_orthonal.V = V2;
    S2_orthonal.lambda = lambda2;
-   //mat S_MO_t = S1_orthonal.C_alpha.t() * AOS * S1_orthonal.C_beta;
-   //MatPrint(S_MO_t.memptr(), S_MO_t.n_rows, S_MO_t.n_cols, "S_MO_t");  
+   MatPrint(lambda1.memptr(), 1, lambda1.n_elem, "Zexuan Wei S1 lambda:");
+   MatPrint(lambda2.memptr(), 1, lambda2.n_elem, "Zexuan Wei S2 lambda:");
+
 
    map<double, vector<MOpair>> MO_state1_by_Ms1;
    map<double, vector<MOpair>> MO_state2_by_Ms2;
@@ -472,7 +455,8 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
    build_spin_blocks_for_state(S2_orthonal, S2, nalpha2, nbeta2, MO_state2_by_Ms2);
 
    int vsoc_idx;
-   for (auto it = MO_state1_by_Ms1.begin();it !=  MO_state1_by_Ms1.end(); ++it) {
+
+   for (auto it = MO_state1_by_Ms1.begin() ; it !=  MO_state1_by_Ms1.end(); ++it) {
       double Ms1 = it->first;
       const vector<MOpair>& blocks1 = it->second;        
       cout << "Zexuan Wei vsoc Ms1 :" << Ms1 << endl;
@@ -519,14 +503,14 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
                   pair.phase = prod(la) * prod(lb)* det(Ua) * det(Va)* det(Ub) * det(Vb)
                   / sqrt(blocks1.size() * blocks2.size());
                   pair.slater_phase1 = state_phase(nalpha1,nbeta1,pair.block1.flips);
-		  pair.slater_phase2 = state_phase(nalpha2,nbeta2,pair.block2.flips);
-		  pair.phase *= pair.slater_phase1 * pair.slater_phase2;
+                  pair.slater_phase2 = state_phase(nalpha2,nbeta2,pair.block2.flips);
+                  pair.phase *= pair.slater_phase1 * pair.slater_phase2;
                   pair.psi1 = b1.C_beta * Ub.tail_cols(1);
                   pair.psi2 = b2.C_alpha * Va.tail_cols(1);
 
                   double val_x = pair.phase * dot(pair.psi1, L_AO.slice(0) * pair.psi2);
                   double val_y = pair.phase * dot(pair.psi1, L_AO.slice(1) * pair.psi2);
-                  cout << "Zexuan Wei vsoc val_x:" << val_x << "val_x:" << val_y << endl;
+                  cout << "Zexuan Wei vsoc val_x:" << val_x << "val_y:" << val_y << endl;
                   pair.phase *=scaling_factor;
                   val_x *= scaling_factor;
                   val_y *= scaling_factor;
@@ -1134,7 +1118,6 @@ void spin_adiabatic_state::total_gradients()
    else if (rem_read(2096) == 2) {
       grad_soc = E_adiab_gradients();
    }
-	grad_soc /= v_soc.size();
    grad_soc *= prefactor_v;
 
    matrix_print_2d(grad_soc.memptr(), 3, NAtoms, "zheng ASG soc");
