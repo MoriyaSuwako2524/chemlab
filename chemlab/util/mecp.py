@@ -112,31 +112,73 @@ class mecp(object):
             for restrain in self.restrain_list:
                 grad = self.restrain_force(restrain[0],restrain[1], restrain[2],restrain[3])
                 self.parallel_gradient += grad
+        self.delta_gradient = delta_gradient.copy()
 
     def update_structure(self):
 
-
-        structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
+        structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T  # (3, N)
         natom = self.state_1.inp.molecule.natom
 
-        x_k = structure.flatten()
-        g_tot = (self.parallel_gradient + self.orthogonal_gradient)
-        if g_tot.shape[0] != 3 and g_tot.shape[1] == 3:
-            g_tot = g_tot.T
-        g_k = g_tot.flatten()
+        x_k = structure.flatten()  # (3N,)
+
+        g_par = self.parallel_gradient
+        g_orth = self.orthogonal_gradient
+
+
+        if g_par.shape != structure.shape:
+            if g_par.ndim == 2 and g_par.shape[0] != 3 and g_par.shape[1] == 3:
+                g_par = g_par.T
+        if g_orth.shape != structure.shape:
+            if g_orth.ndim == 2 and g_orth.shape[0] != 3 and g_orth.shape[1] == 3:
+                g_orth = g_orth.T
+
+        g_par_vec = g_par.flatten()  # (3N,)
+        g_orth_vec = g_orth.flatten()  # (3N,)
+        g_k = g_par_vec + g_orth_vec  # 总梯度（用于记录 & BFGS 差分）
 
         nvar = g_k.size
         assert nvar == 3 * natom
 
 
-        if self.inv_hess is None:
-            print("⚠️ First iteration: use identity inverse Hessian")
-            self.inv_hess = np.eye(nvar)
+        delta_g = getattr(self, "delta_gradient", None)
+        if delta_g is None:
 
+            grad1 = self.state_1.out.force
+            grad2 = self.state_2.out.force
+            delta_g = grad1 - grad2
+
+
+        if delta_g.shape != structure.shape:
+            if delta_g.ndim == 2 and delta_g.shape[0] != 3 and delta_g.shape[1] == 3:
+                delta_g = delta_g.T
+
+        dg_vec = delta_g.flatten()
+        norm_dg = np.linalg.norm(dg_vec)
+
+        if norm_dg < 1e-8:
+
+            print("⚠️ |Δg| ~ 0, projector set to identity.")
+            P = np.eye(nvar)
+        else:
+            u = dg_vec / norm_dg
+            P = np.eye(nvar) - np.outer(u, u)
+
+
+        if self.inv_hess is None:
+            print("⚠️ First iteration: use projected identity inverse Hessian")
+            self.inv_hess = P.copy()
+        else:
+            H = self.inv_hess
+            H = P @ H @ P
+            self.inv_hess = 0.5 * (H + H.T)
 
         if self.last_structure is not None and self.last_gradient is not None:
-            dx = (x_k - self.last_structure).reshape(-1, 1)  # s_k
-            dg = (g_k - self.last_gradient).reshape(-1, 1)  # y_k
+            dx_full = (x_k - self.last_structure).reshape(-1, 1)  # s_k 原始步长
+            dg_full = (g_k - self.last_gradient).reshape(-1, 1)  # y_k 全梯度差
+
+            # 只取切向分量参与 BFGS
+            dx = P @ dx_full  # s_tan
+            dg = P @ dg_full  # y_tan
 
             dxdg = float(dx.T @ dg)  # s^T y
 
@@ -144,8 +186,9 @@ class mecp(object):
                 H = self.inv_hess
                 I = np.eye(nvar)
 
-
                 rho = 1.0 / dxdg
+
+                # 标准 BFGS 逆 Hessian 更新公式（在切空间）
                 syT = dx @ dg.T
                 ysT = dg @ dx.T
 
@@ -153,17 +196,24 @@ class mecp(object):
                 term2 = I - rho * ysT
                 H_new = term1 @ H @ term2 + rho * (dx @ dx.T)
 
-
+                # 再投影回切空间并对称化
+                H_new = P @ H_new @ P
                 self.inv_hess = 0.5 * (H_new + H_new.T)
             else:
-                print("BFGS update skipped: s^T y too small, reset inverse Hessian")
-                self.inv_hess = np.eye(nvar)
+                print("BFGS update skipped: s^T y too small, reset inverse Hessian in tangent space.")
+                self.inv_hess = P.copy()
         else:
             print("⚠️  BFGS update skipped: first step (no previous x,g)")
 
 
-        step_vec = -self.inv_hess @ g_k  # (3N,)
-        step_vec = step_vec.reshape((3, natom))  # (3, natom)
+        g_par_vec_tan = P @ g_par_vec
+        step_tan = -self.inv_hess @ g_par_vec_tan  # 切向 Newton 步
+
+        step_orth = -g_orth_vec
+
+
+        step_vec = step_tan + step_orth  # (3N,)
+        step_vec = step_vec.reshape((3, natom))
 
 
         step_norm = np.linalg.norm(step_vec)
@@ -173,10 +223,12 @@ class mecp(object):
             print(f"🔻 Step clipped from {step_norm:.4f} Å to {max_step:.4f} Å")
             step_vec *= max_step / step_norm
 
-        new_structure = structure + step_vec
+
+        new_structure = structure + step_vec  # (3, N)
 
         self.state_1.inp.molecule.replace_new_xyz(new_structure)
         self.state_2.inp.molecule.carti = self.state_1.inp.molecule.carti
+
 
         self.last_structure = x_k
         self.last_gradient = g_k
