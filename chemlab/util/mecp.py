@@ -69,8 +69,8 @@ class mecp(object):
             path = self.out_path
         self.state_1.out = qchem_out_force()
         self.state_2.out = qchem_out_force()
-        self.state_1.job_name = "{}{}_job{}.inp.out".format(self.prefix,self.state_1._spin,self.job_num)
-        self.state_2.job_name = "{}{}_job{}.inp.out".format(self.prefix,self.state_2._spin,self.job_num)
+        self.state_1.job_name = "{}{}_job{}.out".format(self.prefix,self.state_1._spin,self.job_num)
+        self.state_2.job_name = "{}{}_job{}.out".format(self.prefix,self.state_2._spin,self.job_num)
         print(f"Reading Qchem outpur file:{os.path.join(path,self.state_1.job_name)},{os.path.join(path,self.state_2.job_name)}, gradient_type={self.different_type}")
         self.state_1.out.read_file(os.path.join(path, self.state_1.job_name),self_check=False,different_type=self.different_type)
         self.state_2.out.read_file(os.path.join(path, self.state_2.job_name),self_check=False,different_type=self.different_type)

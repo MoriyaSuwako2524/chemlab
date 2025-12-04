@@ -70,7 +70,7 @@ struct MOpair {
     mat effect_C_v_beta;
     mat E_a;
     mat E_b;
-
+    double Ms;
     vector<int> flips;
 
     size_t n_svd,n_ao,n_occ_a,n_occ_b,n_vir_a,n_vir_b;
@@ -117,7 +117,8 @@ struct OrbitalPair {
     double phase_alpha,phase_beta; 
 
     // gradients
-
+    size_t n_svd1,n_ao,n_occ_a2,n_occ_b2,n_vir_a2,n_vir_b2;
+    size_t n_svd2,n_occ_a1,n_occ_b1,n_vir_a1,n_vir_b1;
     mat deriv_explicit_lxy;
     mat deriv_explicit_lz;
     mat deriv_explicit_s;

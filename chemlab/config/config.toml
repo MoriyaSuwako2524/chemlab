@@ -137,7 +137,7 @@ stepsize = 0.1
 max_steps = 80
 conv = 1e-5
 
-[FPFD]
+[FD]
 path = "./"
 outpath = "./out/"
 ref = "ref.in"
