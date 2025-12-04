@@ -209,7 +209,7 @@ class mecp(object):
         g_par_vec_tan = P @ g_par_vec
         step_tan = -self.inv_hess @ g_par_vec_tan  # 切向 Newton 步
 
-        step_orth = -g_orth_vec
+        step_orth = g_orth_vec
 
 
         step_vec = step_tan + step_orth  # (3N,)
