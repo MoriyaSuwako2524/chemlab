@@ -1352,6 +1352,9 @@ mat sigma_u(MOpair& block) {
                             if (lp == l){
                                 continue;
                             }
+                            if (block.lambda(l) == block.lambda(l)){
+                                continue;
+                            }
                             double dl2 = (block.lambda(l) * block.lambda(l));
                             double dlp2 = (block.lambda(lp) * block.lambda(lp));
                             double denom = dl2 - dlp2;

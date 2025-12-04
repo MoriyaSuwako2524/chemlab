@@ -139,11 +139,11 @@ class FivePointMethod(FDMethod):
 
         return grad
 
-class ThreePointFiniteDifference(QchemBaseScript):
+class FivePointFiniteDifference(QchemBaseScript):
 
-    name = "TPFD"
+    name = "FPFD"
     config = FDConfig
-    method_class = ThreePointMethod
+    method_class = FivePointMethod
 
     def run(self, cfg):
 
