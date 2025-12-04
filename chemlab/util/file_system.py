@@ -1057,10 +1057,11 @@ class qchem_out_force(qchem_out):
         i = lines.index(' Gradient of SCF Energy')
         total = self.molecule.natom
         j = 1
+
         x_grad = np.array([])
         y_grad = np.array([])
         z_grad = np.array([])
-        while j < (total//6+1)*4 +1 :
+        while j < ((total-1)//6+1)*4 +1 :
             ln = lines[i+j]
             if j%4 ==1:
                 j+=1
