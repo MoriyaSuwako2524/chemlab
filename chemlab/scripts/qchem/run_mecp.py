@@ -9,7 +9,7 @@ from IPython.display import clear_output
 from chemlab.scripts.base import Script
 from chemlab.config.config_loader import ConfigBase,QchemEnvConfig
 from chemlab.util.mecp import mecp, mecp_soc
-
+from chemlab.util.file_system import Hartree_to_kcal
 
 
 class RunMecpConfig(ConfigBase):
@@ -120,16 +120,33 @@ qchem -nt {cfg.nthreads // 2} {inp} {out}
 
             e1 = test_mecp.state_1.out.ene
             e2 = test_mecp.state_2.out.ene
+
             if e1 and e2:
                 energies.append((e1, e2))
-                diffs.append(abs(e1 - e2))
 
-            clear_output(wait=True)
-            ax.clear()
-            ax.plot(range(len(energies)), [e[0] for e in energies])
-            ax.plot(range(len(energies)), [e[1] for e in energies])
-            ax.plot(range(len(diffs)), diffs, "--")
-            plt.pause(0.1)
+                # difference in kcal
+                diffs.append(abs(e1 - e2) * Hartree_to_kcal)
+
+                # --- reference energy: take the minimum from first step ---
+                ref = min(energies[0])
+                e1_rel = [(x[0] - ref) * Hartree_to_kcal for x in energies]
+                e2_rel = [(x[1] - ref) * Hartree_to_kcal for x in energies]
+
+                clear_output(wait=True)
+                ax.clear()
+
+                # ---------- plotting ----------
+                ax.plot(e1_rel, "o-", label="State 1 energy")
+                ax.plot(e2_rel, "s-", label="State 2 energy")
+                ax.plot(diffs, "--", label="|E1 − E2| (gap)")
+
+                ax.set_xlabel("MECP Iteration")
+                ax.set_ylabel("Energy (kcal/mol)")
+                ax.set_title("MECP Optimization Progress")
+                ax.legend()
+                ax.grid(True, alpha=0.3)
+
+                plt.pause(0.1)
 
             if test_mecp.check_convergence():
                 print(f"\n>>> Converged at step {step}")
@@ -142,4 +159,3 @@ qchem -nt {cfg.nthreads // 2} {inp} {out}
 
         log.close()
         print("MECP optimization finished.")
-        return test_mecp
