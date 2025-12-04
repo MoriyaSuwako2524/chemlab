@@ -100,7 +100,7 @@ class mecp(object):
         else:
             unit_delta_gradient = delta_gradient / norm_dg
 
-        self.orthogonal_gradient = delta_E * unit_delta_gradient
+        self.orthogonal_gradient = 2 * delta_E * delta_gradient
         projection_scalar = np.sum(gradient_1 * unit_delta_gradient)
         projection_vector = projection_scalar * unit_delta_gradient
         self.parallel_gradient = gradient_1 - projection_vector
@@ -114,13 +114,12 @@ class mecp(object):
                 self.parallel_gradient += grad
 
     def update_structure(self):
-        """Update molecular structure using BFGS quasi-Newton step,
-        following BAGEL BFGS + MaxStep 思路（但存的是 inverse Hessian）."""
+
 
         structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
         natom = self.state_1.inp.molecule.natom
 
-        x_k = structure.flatten()  # (3N,)
+        x_k = structure.flatten()
         g_tot = (self.parallel_gradient + self.orthogonal_gradient)
         if g_tot.shape[0] != 3 and g_tot.shape[1] == 3:
             g_tot = g_tot.T

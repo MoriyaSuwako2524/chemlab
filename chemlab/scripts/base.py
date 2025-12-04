@@ -29,7 +29,15 @@ class QchemBaseScript(Script):
             return False
         with open(out_file) as f:
             return "Thank you very much for using Q-Chem" in f.read()
-
+    @staticmethod
+    def check_qchem_error(self):
+        if not os.path.exists(out_file):
+            return None
+        with open(out_file) as f:
+            if "Thank you very much for using Q-Chem" in f.read():
+                return 0
+            elif "Error in gen_scfman" in f.read():
+                return 1
     def wait_for_jobs(self, out_files, log=None, interval=30):
         while True:
             if all(self.check_qchem_success(f) for f in out_files):
