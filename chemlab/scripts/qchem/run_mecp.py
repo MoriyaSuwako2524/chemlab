@@ -148,13 +148,13 @@ qchem -nt {cfg.nthreads // 2} {inp} {out}
 
                 plt.pause(0.1)
 
+
+
+            test_mecp.update_structure()
             if test_mecp.check_convergence():
                 print(f"\n>>> Converged at step {step}")
                 log.write(f"\nConverged at step {step}\n")
                 break
-
-            test_mecp.update_structure()
-
             plt.savefig(os.path.join(test_mecp.out_path, "mecp_progress.png"))
 
         log.close()
