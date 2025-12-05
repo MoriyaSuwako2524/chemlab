@@ -56,7 +56,7 @@ class ENERGY(unit_type):
 
     def __init__(self, value, unit="hartree"):
         super().__init__(value, unit)
-        self.DICT = {"hartree": 1, "kcal/mol": 627.51, "kcal": 627.51, "ev": 27.2113863, "kj": 2625.5}
+        self.DICT = {"Hartree":1,"hartree": 1, "kcal/mol": 627.51, "kcal": 627.51, "ev": 27.2113863, "kj": 2625.5}
 
 
 class DISTANCE(unit_type):
@@ -66,7 +66,7 @@ class DISTANCE(unit_type):
 
     def __init__(self, value, unit="ang"):
         super().__init__(value, unit)
-        self.DICT = {"ang": 1, "bohr": 1 / 0.529177, "nm": 10}
+        self.DICT = {"Ang":1, "ang": 1, "bohr": 1 / 0.529177, "nm": 10}
 
 
 class MASS(unit_type):

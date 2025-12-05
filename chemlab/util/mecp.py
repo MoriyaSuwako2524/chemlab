@@ -1,5 +1,5 @@
 import os
-from chemlab.util.file_system import qchem_file,qchem_out_force,molecule,SPIN_REF
+from chemlab.util.file_system import qchem_file, qchem_out_force, molecule, SPIN_REF, Hartree_to_kcal
 import numpy as np
 
 class mecp(object):
@@ -89,6 +89,9 @@ class mecp(object):
         """
         grad_1 = self.state_1.out.force
         grad_2 = self.state_2.out.force
+        from chemlab.util.unit import GRADIENT
+        grad_1 = GRADIENT(grad_1).convert_to({"energy":("Hartree",1),"distance":("Ang",-1)})
+        grad_2 = GRADIENT(grad_2).convert_to({"energy": ("Hartree", 1), "distance": ("Ang", -1)})
 
         # 保存梯度供 update_structure 使用
         self.grad_1 = grad_1
@@ -194,6 +197,8 @@ class mecp(object):
         total_step = -self.step_size*(step_tan + step_orth)
 
         step_norm = np.linalg.norm(total_step)
+        if abs(delta_E) < 1/Hartree_to_kcal:
+            self.max_stepsize = 0.005
         if step_norm > self.max_stepsize:
             scale = self.max_stepsize / step_norm
             print(f"🔻 步长过大 ({step_norm:.4f} Å)，缩放比例: {scale:.4f}")
