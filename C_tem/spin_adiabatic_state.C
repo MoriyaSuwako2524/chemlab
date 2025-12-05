@@ -1413,7 +1413,9 @@ mat sigma_v(MOpair& block) {
 
                         for (size_t lp = 0; lp < block.n_svd; ++lp) {
                             if (lp == l) continue;
-
+                            if (block.lambda(l) == block.lambda(l)){
+                                continue;
+                            }
                             double numer =
                                 block.V(j, lp) *
                                 (block.lambda(lp) * block.U(ip, lp) * block.V(jp, l)

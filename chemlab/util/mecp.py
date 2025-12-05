@@ -82,84 +82,70 @@ class mecp(object):
         self.state_2.gradient_list.append(self.state_2.out.force)
 
     def calc_new_gradient(self):
-        E1 = self.state_1.out.ene
-        E2 = self.state_2.out.ene
-        gradient_1 = self.state_1.out.force
-        gradient_2 = self.state_2.out.force
-        # Difference vector between the two gradients
-        delta_gradient = gradient_1 - gradient_2
-        norm_dg = np.linalg.norm(delta_gradient)
+        grad_1 = self.state_1.out.force
+        grad_2 = self.state_2.out.force
 
-        # Handle degenerate case
-        if norm_dg < 1e-8:
-            print("⚠️ Warning: gradient difference norm is near zero!")
-            unit_delta_gradient = delta_gradient
-        else:
-            unit_delta_gradient = delta_gradient / norm_dg
-        delta_E = E1 - E2
-        if np.sign(delta_E) != np.sign(np.sum(gradient_1 * delta_gradient)):
-            delta_gradient = -delta_gradient
+        self.grad_1 = grad_1
+        self.grad_2 = grad_2
 
-        # Orthogonal gradient component (perpendicular to crossing surface)
-        self.orthogonal_gradient = (E1 - E2) * unit_delta_gradient
-
-        # Project gradient_1 onto unit direction
-        projection_scalar = np.sum(gradient_1 * unit_delta_gradient)
-        projection_vector = projection_scalar * unit_delta_gradient
-
-        # Parallel gradient component (tangent to crossing surface)
-        self.parallel_gradient = gradient_1 - projection_vector
-        if self.different_type == "smd":
-            self.parallel_gradient = self.parallel_gradient.T
-            self.orthogonal_gradient = self.orthogonal_gradient.T
-        if self.restrain:
-            for restrain in self.restrain_list:
-                grad = self.restrain_force(restrain[0], restrain[1], restrain[2], restrain[3])
-                self.parallel_gradient += grad
+        self.d_grad = grad_1 - grad_2
+        self.target_grad = grad_1.copy()
 
     def update_structure(self):
-        # Update molecular structure using BFGS quasi-Newton step.
-        # Get current structure and flatten
         structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
         natom = self.state_1.inp.molecule.natom
         x_k = structure.flatten()
-        g_k = (self.parallel_gradient + self.orthogonal_gradient).flatten()
+        nvar = 3 * natom
 
-        # Apply BFGS update if past first iteration
-        if self.last_structure is not None:
-            dx = x_k - self.last_structure
-            dg = g_k - self.last_gradient
-            dxdg = np.dot(dx, dg)
+        dg_vec = self.d_grad.flatten()  # x vector
+        g_target_vec = self.target_grad.flatten()
 
-            if dxdg > 1e-10:
-                dx = dx[:, np.newaxis]
-                dg = dg[:, np.newaxis]
-                I = np.eye(len(dx))
-                term1 = I - dx @ dg.T / dxdg
-                term2 = I - dg @ dx.T / dxdg
-                term3 = dx @ dx.T / dxdg
-                self.inv_hess = term1 @ self.inv_hess @ term2 + term3
-            else:
-                print(" BFGS update skipped: small dot product")
-                self.inv_hess = np.eye(len(g_k))
+        norm_dg = np.linalg.norm(dg_vec)
+        norm_dg_sq = norm_dg ** 2
+
+        if norm_dg < 1e-8:
+            print("⚠️ Gradient difference is too small。")
+            P = np.eye(nvar)
         else:
-            self.inv_hess = np.eye(len(g_k))
-            print("⚠️  BFGS update skipped: first step")
-        # Calculate Newton step
-        step_vector = -self.inv_hess @ g_k
-        step_vector = step_vector.reshape((3, natom))
-        step_norm = np.linalg.norm(step_vector)
-        max_step = self.stepsize
+            u = dg_vec / norm_dg
+            P = np.eye(nvar) - np.outer(u, u)
 
-        if step_norm > max_step:
-            print(f"🔻 Step clipped from {step_norm:.4f} Å to {max_step:.4f} Å")
-            step_vector *= max_step / step_norm
-        # Update structure
-        new_structure = structure + step_vector
+
+        g_tan = P @ g_target_vec
+
+
+
+        E1 = self.state_1.out.ene
+        E2 = self.state_2.out.ene
+        delta_E = E1 - E2
+
+        if norm_dg < 1e-8:
+            step_orth = np.zeros(nvar)
+        else:
+            # 注意负号：我们要逆着梯度差方向走以减小能差
+            step_orth = - (delta_E / norm_dg_sq) * dg_vec
+
+
+        step_tan = - self.inv_hess @ g_tan
+
+
+        total_step = step_tan + step_orth
+
+
+        step_norm = np.linalg.norm(total_step)
+        if step_norm > self.stepsize:
+            scale = self.stepsize / step_norm
+            print(f"Too big step ({step_norm:.4f})，shift rate: {scale:.4f}")
+            total_step *= scale
+
+        # 6. 更新坐标
+        new_structure_vec = x_k + total_step
+        new_structure = new_structure_vec.reshape((3, natom))
+
         self.state_1.inp.molecule.replace_new_xyz(new_structure)
         self.state_2.inp.molecule.carti = self.state_1.inp.molecule.carti
 
-        # Save history for next BFGS update
+
         self.last_structure = x_k
         self.last_gradient = g_k
 
