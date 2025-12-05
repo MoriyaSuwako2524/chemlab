@@ -102,7 +102,7 @@ class mecp(object):
         self.d_grad = grad_1 - grad_2
 
         # 目标梯度：通常使用 State 1 的梯度或平均梯度在缝上最小化能量
-        self.target_grad = grad_1.copy()
+        self.target_grad = 0.5*(grad_1+grad_2).copy()
 
     def update_structure(self):
         """
