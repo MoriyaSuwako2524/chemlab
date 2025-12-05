@@ -184,12 +184,12 @@ class mecp(object):
         if norm_dg >= 1e-8:
             # 负号至关重要：逆着梯度差方向走
             step_orth = - (delta_E / norm_dg_sq) * dg_vec
-
+        self.orthogonal_gradient = step_orth
         # --- B. 切向步长 (Tangent Step) ---
         # 目的：在缝上寻找能量极小值
         # 使用 Quasi-Newton: dx = - H^-1 * g_tan
         step_tan = - self.inv_hess @ g_tan
-
+        self.parallel_gradient = step_tan
         # 7. 合并总步长与限幅
         total_step = step_tan + step_orth
 
