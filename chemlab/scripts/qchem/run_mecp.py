@@ -74,7 +74,6 @@ class RunMecp(Script):
 
         test_mecp.state_1.spin = cfg.spin1
         test_mecp.state_2.spin = cfg.spin2
-        test_mecp.stepsize = cfg.stepsize
         test_mecp.converge_limit = cfg.conv
 
         test_mecp.read_init_structure()
