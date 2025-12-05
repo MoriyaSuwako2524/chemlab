@@ -1352,15 +1352,13 @@ mat sigma_u(MOpair& block) {
                             if (lp == l){
                                 continue;
                             }
-                            if (block.lambda(l) == block.lambda(l)){
+                            if abs((block.lambda(l) - block.lambda(l)) < 1e-7){
                                 continue;
                             }
                             double dl2 = (block.lambda(l) * block.lambda(l));
                             double dlp2 = (block.lambda(lp) * block.lambda(lp));
                             double denom = dl2 - dlp2;
-                            if (std::abs(denom) < 1e-8){
-                                denom = (denom >= 0 ? +1 : -1) * 1e-8;
-                            }
+
 
 
                             sigma(i * block.n_occ_a +l, ip + jp *block.n_occ_a) += block.U(i,lp) *(block.U(ip,lp) * block.V(jp,l) * block.lambda(l) + block.U(ip,l) * block.V(jp,lp) * block.lambda(lp) )/denom;
@@ -1548,7 +1546,7 @@ void spin_adiabatic_state::sigma_overlap(MOpair& block) {
                     double val = block.effect_C_v_beta(mu, b) * block.V(j, l);
                     for (size_t jp = 0; jp < block.n_occ_b; ++jp) {
                         double Coj = block.effect_C_o_beta(mu, jp);
-                        if (Coj == 0.0) continue;
+                        if (abs(Coj) < 1e-7) continue;
                         for (size_t i = 0; i < block.n_occ_a; ++i) {
                             double sv = block.sigma_v(j * block.n_occ_b + l,i + jp * block.n_occ_a);
                             if (sv == 0.0) continue;

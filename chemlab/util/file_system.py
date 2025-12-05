@@ -939,7 +939,7 @@ class qchem_out_force(qchem_out):
                     force_key_word = "zheng adiabatic surface gradient"
                     force_key_word_e1 = "zheng ASG first state"
                     force_key_word_e2 = "zheng ASG second state"
-                elif different_type == "numercial":
+                elif different_type == "numerical":
                     force_key_word = "FINAL TENSOR RESULT"
                 elif different_type == "analytical":
                     force_key_word = "Gradient of SCF Energy"
@@ -1033,6 +1033,7 @@ class qchem_out_force(qchem_out):
         elif force_key_word == "FINAL TENSOR RESULT":
             # Numerical tensor result; drop empty rows and the first two header lines,
             # then drop the first column (atom index)
+
             while [] in force:
                 force.remove([])
             arr = np.array(force[2:], dtype=float)
