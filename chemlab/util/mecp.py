@@ -189,9 +189,9 @@ class mecp(object):
         # 目的：在缝上寻找能量极小值
         # 使用 Quasi-Newton: dx = - H^-1 * g_tan
         step_tan = - self.inv_hess @ g_tan
-        self.parallel_gradient = step_tan
+        self.parallel_gradient = g_tan
         # 7. 合并总步长与限幅
-        total_step = step_tan + step_orth
+        total_step = -(step_tan + step_orth)
 
         step_norm = np.linalg.norm(total_step)
         if step_norm > self.stepsize:
