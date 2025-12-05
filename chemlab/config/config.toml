@@ -133,7 +133,8 @@ gradient = "analytical"
 spin1 = 1
 spin2 = 3
 nthreads = 16
-stepsize = 0.1
+max_stepsize = 0.1
+step_size = 0.01
 max_steps = 80
 conv = 1e-5
 

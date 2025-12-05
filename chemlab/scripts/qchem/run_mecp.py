@@ -67,7 +67,8 @@ class RunMecp(Script):
         test_mecp.ref_filename = os.path.basename(cfg.file)
         test_mecp.out_path = os.path.dirname(cfg.out)
         os.makedirs(test_mecp.out_path, exist_ok=True)
-
+        test_mecp.step_size = cfg.stepsize
+        test_mecp.max_stepsize = cfg.max_stepsize
         log_path = os.path.join(test_mecp.out_path, "mecp.log")
         log = open(log_path, "a", buffering=1)
 

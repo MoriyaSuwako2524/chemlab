@@ -22,7 +22,7 @@ class mecp(object):
         self.different_type="analytical"
         self.job_num = 0
         self.job_max = 100
-        self.stepsize = 1
+        self.max_stepsize = 1
         self.out_path=""
         self.converge_limit = 1e-4
         self.inv_hess = None
@@ -30,7 +30,8 @@ class mecp(object):
         self.last_gradient = None
         self.restrain = False
         self.restrain_list = []
-        self.hessian_coefficient = 0.01  
+        self.hessian_coefficient = 0.01
+        self.step_size = 0.01
 
     @property
     def energy_tol(self):
@@ -190,12 +191,11 @@ class mecp(object):
         # 使用 Quasi-Newton: dx = - H^-1 * g_tan
         step_tan = - self.inv_hess @ g_tan
         self.parallel_gradient = g_tan
-        # 7. 合并总步长与限幅
-        total_step = -(step_tan + step_orth)
+        total_step = -self.step_size*(step_tan + step_orth)
 
         step_norm = np.linalg.norm(total_step)
-        if step_norm > self.stepsize:
-            scale = self.stepsize / step_norm
+        if step_norm > self.max_stepsize:
+            scale = self.max_stepsize / step_norm
             print(f"🔻 步长过大 ({step_norm:.4f} Å)，缩放比例: {scale:.4f}")
             total_step *= scale
 
