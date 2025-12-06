@@ -149,6 +149,7 @@ class FivePointFiniteDifference(QchemBaseScript):
 
         ref = qchem_file()
         ref.molecule_check = True
+        print(cfg.path + cfg.ref)
         ref.read_from_file(cfg.path + cfg.ref)
         mol = ref.molecule
 
