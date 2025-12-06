@@ -8,7 +8,7 @@ from typing import Optional, List, Dict
 from chemlab.scripts.base import QchemBaseScript, run_qchem_job_async
 from chemlab.util.file_system import qchem_file, qchem_out_geomene
 from chemlab.config.config_loader import QchemEnvConfig, ConfigBase
-
+from chemlab.util.modify_inp import check_list,ex_match_check
 
 # ========== Config class ==========
 class FDConfig(ConfigBase):
@@ -148,8 +148,10 @@ class FivePointFiniteDifference(QchemBaseScript):
     def run(self, cfg):
 
         ref = qchem_file()
+        ex_match_check(check_list, ref)
         ref.read_from_file(cfg.path + cfg.ref)
         mol = ref.molecule
+
         print(mol.carti)
         method = self.method_class()
         jobs = method.generate_jobs(mol, cfg)
