@@ -148,7 +148,8 @@ class FivePointFiniteDifference(QchemBaseScript):
     def run(self, cfg):
 
         ref = qchem_file()
-        ex_match_check(check_list, ref)
+        self.check_list = check_list()
+        ex_match_check(self.check_list, ref)
         ref.read_from_file(cfg.path + cfg.ref)
         mol = ref.molecule
 
