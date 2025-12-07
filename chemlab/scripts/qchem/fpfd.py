@@ -148,12 +148,10 @@ class FivePointFiniteDifference(QchemBaseScript):
     def run(self, cfg):
 
         ref = qchem_file()
-        ref.molecule_check = True
+        ref.molecule.check = True
         print(cfg.path + cfg.ref)
         ref.read_from_file(cfg.path + cfg.ref)
         mol = ref.molecule
-
-        print(mol.carti)
         method = self.method_class()
         jobs = method.generate_jobs(mol, cfg)
 
