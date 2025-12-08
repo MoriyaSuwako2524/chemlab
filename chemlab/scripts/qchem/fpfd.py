@@ -167,14 +167,18 @@ class FivePointFiniteDifference(QchemBaseScript):
 
         results = {}
         for j in jobs:
-            out = qchem_out_geomene(j.out_file)
+            if cfg.project == "soc":
+                from chemlab.util.file_system import qchem_out_soc
+                out = qchem_out_soc(j.out_file)
+            else:
+                out = qchem_out_geomene(j.out_file)
             out.read_file(j.out_file)
             results[(j.idx, j.sign)] = out.ene
 
-        # (5) assemble gradient
         grad = method.assemble_gradient(results, mol, cfg)
 
         np.save(f"{cfg.path}/fd_gradient.npy", grad)
+        print(f"Gradient(Hartree/Bohr): {grad}")
         print("Gradient saved!")
 
         return grad
