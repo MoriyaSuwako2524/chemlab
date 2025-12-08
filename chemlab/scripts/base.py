@@ -61,7 +61,21 @@ class QchemBaseScript(Script):
         njob          = cfg.njob
 
         running: Dict[int, object] = {}
-
+        print("Checking for already finished Q-Chem jobs (resume mode)...")
+        for job in jobs:
+            if os.path.exists(job.out_file):
+                if self.check_qchem_success(job.out_file):
+                    # job successfully completed earlier
+                    job.started = True
+                    job.finished = True
+                    print(f"[Resume] Job {job.idx}{job.sign} already finished.")
+                else:
+                    # output exists but failed or incomplete
+                    job.started = False
+                    job.finished = False
+            else:
+                job.started = False
+                job.finished = False
         while True:
             # ---- Poll running jobs ----
             completed_ids = []
