@@ -8,7 +8,7 @@ from typing import Optional, List, Dict
 from chemlab.scripts.base import QchemBaseScript, run_qchem_job_async
 from chemlab.util.file_system import qchem_file, qchem_out_geomene
 from chemlab.config.config_loader import QchemEnvConfig, ConfigBase
-
+from chemlab.util.unit import DISTANCE
 # ========== Config class ==========
 class FDConfig(ConfigBase):
     section_name = "FD"
@@ -121,7 +121,7 @@ class FivePointMethod(FDMethod):
 
 
     def assemble_gradient(self, results, mol, cfg):
-        h = cfg.distance
+        h = DISTANCE(cfg.distance,"ang").convert_to("bohr")
         natom = mol.xyz.shape[0]
         grad = np.zeros((natom,3))
 
