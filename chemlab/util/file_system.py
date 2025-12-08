@@ -378,6 +378,9 @@ class molecule(qchem_inp_block):
         combined = np.vstack([atom_type, xyz])
         self.carti = combined.T
         return combined.T
+    def replace_new_carti(self,carti):
+        self.carti = carti
+        return carti
 
     def return_output_format(self):
         if self.read:

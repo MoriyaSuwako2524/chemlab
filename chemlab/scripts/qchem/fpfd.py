@@ -158,7 +158,7 @@ class FivePointFiniteDifference(QchemBaseScript):
         os.makedirs(cfg.outpath, exist_ok=True)
         for j in jobs:
             inp = qchem_file()
-            ref.molecule.check = True
+            inp.molecule.check = True
             inp.read_from_file(cfg.path + cfg.ref)
             inp.molecule.replace_new_xyz(j.xyz_perturbed)
             inp.generate_inp(j.inp_file)
