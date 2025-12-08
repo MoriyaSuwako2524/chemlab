@@ -75,7 +75,7 @@ class FivePointMethod(FDMethod):
         xyz0 = mol.xyz.copy()
         natom = xyz0.shape[0]
         h = cfg.distance
-
+        xyz0 = np.ascontiguousarray(xyz0,dtype=np.float64)
         idx_global = 0
         for i in range(natom):
             for j in range(3):
