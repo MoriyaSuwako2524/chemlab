@@ -148,4 +148,5 @@ distance = 0.001
 ncore = 32
 njob = 8
 launcher = "srun"
+project = "soc"
 
