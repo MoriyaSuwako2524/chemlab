@@ -1,6 +1,8 @@
 import os
 import time
-
+from chemlab.config.config_loader import QchemEnvConfig
+from typing import Dict
+import subprocess
 class Script:
     """
     Base class for all scripts used by CLI.
@@ -30,7 +32,7 @@ class QchemBaseScript(Script):
         with open(out_file) as f:
             return "Thank you very much for using Q-Chem" in f.read()
     @staticmethod
-    def check_qchem_error(self):
+    def check_qchem_error(out_file):
         if not os.path.exists(out_file):
             return None
         with open(out_file) as f:
