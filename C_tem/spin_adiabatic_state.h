@@ -22,7 +22,9 @@
 //#include <cassert>
 #include "gen_scfman_overlap.h"
 //#include "rohf.h"
-
+#include <omp.h>
+#include <cstring>
+#include <chrono>
 #include "qchem.h"
 #include "BSetMgr.hh"
 #include "BasisSet.hh"
@@ -253,6 +255,8 @@ class spin_adiabatic_state {
     void gradient_implicit_rhs_Ms();
 
     void sigma_overlap(MOpair& block);
+    void sigma_matrix(MOpair& block);
+    void sigma_matrix_test(MOpair& block);
     void pi_matrix(OrbitalPair& pair);
     void k_matrix_null(OrbitalPair& pair); //  +- vsoc
     void k_matrix_last(OrbitalPair& pair); //  0 vsoc

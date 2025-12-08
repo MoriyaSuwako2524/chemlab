@@ -59,7 +59,7 @@ class QchemBaseScript(Script):
         poll_interval = getattr(cfg, "poll_interval", 20)
         max_attempts  = getattr(cfg, "max_attempts", 2)
         njob          = cfg.njob
-
+        ncore = inr(cfg.ncore/njob)
         running: Dict[int, object] = {}
         print("Checking for already finished Q-Chem jobs (resume mode)...")
         for job in jobs:
@@ -104,7 +104,7 @@ class QchemBaseScript(Script):
                 job.popen = run_qchem_job_async(
                     job.inp_file,
                     job.out_file,
-                    cfg.ncore,
+                    ncore,
                     env_script,
                     launcher=cfg.launcher
                 )

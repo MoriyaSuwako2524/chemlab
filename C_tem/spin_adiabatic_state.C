@@ -405,8 +405,8 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
    // construct biorthonal alpha-beta orbital for state 1 and state 2
    mat S1_oo = C1_o_alpha.t()  * AOS * C1_o_beta;
    mat S2_oo = C2_o_alpha.t()  * AOS * C2_o_beta;
-   matrix_print_2d(S1_oo.memptr(),S1_oo.n_rows,S1_oo.n_cols,"S1_oo");
-   matrix_print_2d(S2_oo.memptr(),S2_oo.n_rows,S2_oo.n_cols,"S2_oo");
+   //matrix_print_2d(S1_oo.memptr(),S1_oo.n_rows,S1_oo.n_cols,"S1_oo");
+   //matrix_print_2d(S2_oo.memptr(),S2_oo.n_rows,S2_oo.n_cols,"S2_oo");
    
    svd(U1,lambda1,V1,S1_oo);
    svd(U2,lambda2,V2,S2_oo);
@@ -1352,7 +1352,7 @@ mat sigma_u(MOpair& block) {
                             if (lp == l){
                                 continue;
                             }
-                            if abs((block.lambda(l) - block.lambda(l)) < 1e-7){
+                            if (abs(block.lambda(l) - block.lambda(l)) < 1e-7){
                                 continue;
                             }
                             double dl2 = (block.lambda(l) * block.lambda(l));
@@ -1575,6 +1575,212 @@ void spin_adiabatic_state::sigma_overlap(MOpair& block) {
 
 
 
+
+void spin_adiabatic_state::sigma_matrix(MOpair& block) {
+    DBG("===== sigma_overlap START (Optimized) =====");
+
+    // 1. Setup Dimensions
+    block.n_svd = block.lambda.n_elem;
+    block.n_ao = block.effect_C_o_alpha.n_rows;
+    block.n_occ_a = block.effect_C_o_alpha.n_cols;
+    block.n_occ_b = block.effect_C_o_beta.n_cols;
+    block.n_vir_a = block.n_ao - block.n_occ_a;
+    block.n_vir_b = block.n_ao - block.n_occ_b;
+
+    size_t na = block.n_occ_a;
+    size_t nb = block.n_occ_b;
+    size_t nva = block.n_vir_a;
+    size_t nvb = block.n_vir_b;
+    size_t nao = block.n_ao;
+
+    // 2. Initialize Output Matrices
+    mat sigma_aa(nao * na, nva * na, fill::zeros);
+    mat sigma_ab(nao * na, nvb * nb, fill::zeros);
+    mat sigma_ba(nao * nb, nva * na, fill::zeros);
+    mat sigma_bb(nao * nb, nvb * nb, fill::zeros);
+
+    // 3. Precompute Intermediate Matrices
+    mat s_vo_ab = block.effect_C_v_alpha.t() * AOS * block.effect_C_o_beta; // (nva, nb)
+    mat s_ov_ab = block.effect_C_o_alpha.t() * AOS * block.effect_C_v_beta; // (na, nvb)
+    mat s_vo_ab_t = s_vo_ab.t(); // (nb, nva)
+    mat s_ov_ab_t = s_ov_ab.t(); // (nvb, na)
+
+    block.sigma_u = sigma_u(block);
+    block.sigma_v = sigma_v(block);
+
+    mat st_u = block.sigma_u.t();
+    mat st_v = block.sigma_v.t();
+
+
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t l = 0; l < na; ++l) {
+        for (size_t i = 0; i < na; ++i) {
+            double u_val = block.U(i, l);
+            if (std::abs(u_val) > 1e-12) {
+                for (size_t mu = 0; mu < nao; ++mu) {
+                    for (size_t a = 0; a < nva; ++a) {
+                         sigma_aa(mu * na + l, i * nva + a) = block.effect_C_v_alpha(mu, a) * u_val;
+                    }
+                }
+            }
+        }
+
+
+        mat T_mat(na, na * nva, fill::zeros);
+
+        for (size_t ip = 0; ip < na; ++ip) {
+            mat M(st_u.colptr(ip * na + l), na, nb, false, true);
+
+            mat Res = M * s_vo_ab_t;
+
+            T_mat.row(ip) = vectorise(Res.t()).t();
+        }
+
+        mat FinalBlock = block.effect_C_o_alpha * T_mat; // (nao, na*nva)
+
+        for (size_t mu = 0; mu < nao; ++mu) {
+             sigma_aa.row(mu * na + l) += FinalBlock.row(mu);
+        }
+    }
+
+
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t l = 0; l < na; ++l) {
+        for (size_t j = 0; j < nb; ++j) {
+            mat M_u(na, na);
+            for(size_t i=0; i<na; ++i) {
+                const double* col_ptr = st_u.colptr(i * na + l);
+                std::memcpy(M_u.colptr(i), col_ptr + j * na, na * sizeof(double));
+            }
+
+            mat Z = M_u.t() * s_ov_ab;
+
+            mat R = block.effect_C_o_alpha * Z;
+
+            for(size_t mu=0; mu<nao; ++mu) {
+                sigma_ab(mu * na + l, span(j * nvb, (j + 1) * nvb - 1)) = R.row(mu);
+            }
+        }
+    }
+
+    // ==========================================
+    // Block BA: beta-alpha
+    // ==========================================
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t l = 0; l < nb; ++l) {
+        for (size_t i = 0; i < na; ++i) {
+            mat K(nb, nb); // (j, jp)
+            for(size_t j=0; j<nb; ++j) {
+                const double* src_col = st_v.colptr(j * nb + l);
+                for(size_t jp=0; jp<nb; ++jp) {
+                    K(j, jp) = src_col[i + jp * na];
+                }
+            }
+            mat Z = K * s_vo_ab_t;
+
+            mat R = block.effect_C_o_beta * Z;
+
+            for(size_t mu=0; mu<nao; ++mu) {
+                sigma_ba(mu * nb + l, span(i * nva, (i + 1) * nva - 1)) = R.row(mu);
+            }
+        }
+    }
+
+    // ==========================================
+    // Block BB: beta-beta
+    // ==========================================
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t l = 0; l < nb; ++l) {
+        // Direct Term
+        for (size_t j = 0; j < nb; ++j) {
+            double v_val = block.V(j, l);
+            if (std::abs(v_val) > 1e-12) {
+                for (size_t mu = 0; mu < nao; ++mu) {
+                    for (size_t b = 0; b < nvb; ++b) {
+                        sigma_bb(mu * nb + l, j * nvb + b) = block.effect_C_v_beta(mu, b) * v_val;
+                    }
+                }
+            }
+        }
+
+        // Contraction Term
+        for (size_t j = 0; j < nb; ++j) {
+            // 【修复 4】使用 colptr 构造无拷贝矩阵
+            // st_v col data (fixed j, l): i + jp*na
+            // Maps to Matrix (na, nb) -> Rows i, Cols jp
+            mat M(st_v.colptr(j * nb + l), na, nb, false, true);
+
+            // Contract i: M.t() * s_ov_ab -> (nb, na) * (na, nvb) = (nb, nvb) -> (jp, b)
+            mat Res = M.t() * s_ov_ab;
+
+            // Contract jp: C_o_beta * Res -> (nao, nb) * (nb, nvb) = (nao, nvb)
+            mat Block_Res = block.effect_C_o_beta * Res;
+
+            for(size_t mu=0; mu<nao; ++mu) {
+                sigma_bb(mu * nb + l, span(j * nvb, (j + 1) * nvb - 1)) += Block_Res.row(mu);
+            }
+        }
+    }
+
+    block.sigma_aa = sigma_aa;
+    block.sigma_ba = sigma_ba;
+    block.sigma_ab = sigma_ab;
+    block.sigma_bb = sigma_bb;
+
+    DBG("sigma_aa max abs =" << sigma_aa.max());
+    DBG("sigma_ba max abs =" << sigma_ba.max());
+    DBG("sigma_ab max abs =" << sigma_ab.max());
+    DBG("sigma_bb max abs =" << sigma_bb.max());
+    DBG("===== sigma_overlap END (Optimized) =====");
+}
+/*
+void spin_adiabatic_state::sigma_matrix_test(MOpair& block){
+
+    DBG("===== sigma_overlap TEST MODE START =====");
+    mat sigma_aa_orig, sigma_ab_orig, sigma_ba_orig, sigma_bb_orig;
+
+    auto t1 = std::chrono::high_resolution_clock::now();
+    sigma_overlap(block);
+    sigma_aa_orig = block.sigma_aa;
+    sigma_ab_orig = block.sigma_ab;
+    sigma_ba_orig = block.sigma_ba;
+    sigma_bb_orig = block.sigma_bb;
+    auto t2 = std::chrono::high_resolution_clock::now();
+    double t_original = std::chrono::duration<double>(t2 - t1).count();
+    DBG("[TIME] original sigma_overlap = " << t_original << " sec");
+
+    mat sigma_aa_fast, sigma_ab_fast, sigma_ba_fast, sigma_bb_fast;
+
+    auto t3 = std::chrono::high_resolution_clock::now();
+    sigma_matrix(block);
+    sigma_aa_fast = block.sigma_aa;
+    sigma_ab_fast = block.sigma_ab;
+    sigma_ba_fast = block.sigma_ba;
+    sigma_bb_fast = block.sigma_bb;
+    auto t4 = std::chrono::high_resolution_clock::now();
+    double t_fast = std::chrono::duration<double>(t4 - t3).count();
+    DBG("[TIME] fast sigma_overlap     = " << t_fast << " sec");
+    DBG("[SPEEDUP] = " << t_original / t_fast << " × faster");
+    double diff_aa = abs(sigma_aa_orig - sigma_aa_fast).max();
+    double diff_ab = abs(sigma_ab_orig - sigma_ab_fast).max();
+    double diff_ba = abs(sigma_ba_orig - sigma_ba_fast).max();
+    double diff_bb = abs(sigma_bb_orig - sigma_bb_fast).max();
+    DBG("===== Consistency check =====");
+    DBG("diff σ_aa max abs = " << diff_aa);
+    DBG("diff σ_ab max abs = " << diff_ab);
+    DBG("diff σ_ba max abs = " << diff_ba);
+    DBG("diff σ_bb max abs = " << diff_bb);
+    double diff_max = std::max({diff_aa, diff_ab, diff_ba, diff_bb});
+    if (diff_max < 1e-10)
+        DBG(">>> sigma_overlap FAST VERSION VALID (diff < 1e-10)");
+    else
+        DBG(">>> WARNING: sigma_overlap fast and original differ! max diff = "
+            << diff_max);
+    DBG("===== sigma_overlap TEST MODE END =====");
+
+}
+
+
 void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
 
     DBG("===== pi_matrix START =====");
@@ -1745,7 +1951,8 @@ void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
     DBG("Pi_bb_2 max abs =" << pi_bb_2.max());
     DBG("===== pi_matrix END =====");
 }
-
+*/
+/*
 void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
 {
 
@@ -1959,8 +2166,6 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
     pair.L_b_2 = k_b_2 * scaling_factor + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_ab_2 + Sooinvb * pair.pi_bb_2);
     DBG("===== k_matrix_null END =====");
 }
-
-
 
 void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
 {
@@ -2477,6 +2682,635 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
 
 
 
+*/
+
+
+static void compute_intermediate_T(
+    const mat& E, size_t n_occ_top, size_t n_occ_bot,
+    const mat& Sigma_top_full, const mat& Sigma_bot_full,
+    size_t mu, size_t n_occ_sigma_top, size_t n_occ_sigma_bot,
+    mat& T_out)
+{
+    uword start_row_top = mu * n_occ_sigma_top;
+    uword end_row_top = start_row_top + n_occ_sigma_top - 1;
+
+    uword start_row_bot = mu * n_occ_sigma_bot;
+    uword end_row_bot = start_row_bot + n_occ_sigma_bot - 1;
+
+    // T = E(top).t() * Sigma(block_top)
+    T_out = E.rows(0, n_occ_top - 1).t() * Sigma_top_full.rows(start_row_top, end_row_top);
+
+    if (n_occ_bot > 0) {
+        T_out += E.rows(n_occ_top, n_occ_top + n_occ_bot - 1).t() * Sigma_bot_full.rows(start_row_bot, end_row_bot);
+    }
+}
+
+void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
+    DBG("===== pi_matrix START (Optimized & Fixed) =====");
+
+    MOpair& b1 = S1_orthonal;
+    MOpair& b2 = S2_orthonal;
+
+    pair.n_ao = b1.n_ao;
+    pair.n_occ_a1 = pair.C1_flipped_alpha.n_cols;
+    pair.n_occ_b1 = pair.C1_flipped_beta.n_cols;
+    pair.n_vir_b1 = pair.n_ao - pair.n_occ_b1;
+    pair.n_vir_a1 = pair.n_ao - pair.n_occ_a1;
+    pair.n_occ_a2 = pair.C2_flipped_alpha.n_cols;
+    pair.n_occ_b2 = pair.C2_flipped_beta.n_cols;
+    pair.n_vir_b2 = pair.n_ao - pair.n_occ_b2;
+    pair.n_vir_a2 = pair.n_ao - pair.n_occ_a2;
+
+    size_t na1 = pair.n_occ_a1;
+    size_t nb1 = pair.n_occ_b1;
+    size_t na2 = pair.n_occ_a2;
+    size_t nb2 = pair.n_occ_b2;
+    size_t nao = pair.n_ao;
+
+    mat pi_aa_1(na1 * na2, b1.n_vir_a * b1.n_occ_a, fill::zeros);
+    mat pi_ab_1(na1 * na2, b1.n_vir_b * b1.n_occ_b, fill::zeros);
+    mat pi_ba_1(nb1 * nb2, b1.n_vir_a * b1.n_occ_a, fill::zeros);
+    mat pi_bb_1(nb1 * nb2, b1.n_vir_b * b1.n_occ_b, fill::zeros);
+
+    mat pi_aa_2(na1 * na2, b2.n_vir_a * b2.n_occ_a, fill::zeros);
+    mat pi_ab_2(na1 * na2, b2.n_vir_b * b2.n_occ_b, fill::zeros);
+    mat pi_ba_2(nb1 * nb2, b2.n_vir_a * b2.n_occ_a, fill::zeros);
+    mat pi_bb_2(nb1 * nb2, b2.n_vir_b * b2.n_occ_b, fill::zeros);
+
+    mat S_Cpa = AOS * pair.C2_flipped_alpha;
+    mat S_Cpb = AOS * pair.C2_flipped_beta;
+    mat CaT_S = pair.C1_flipped_alpha.t() * AOS;
+    mat CbT_S = pair.C1_flipped_beta.t() * AOS;
+
+    mat S_Cpa_t = S_Cpa.t();
+    mat S_Cpb_t = S_Cpb.t();
+
+    mat T_aa, T_ab;
+    mat T_ba, T_bb;
+    mat T2_aa, T2_ab;
+    mat T2_ba, T2_bb;
+
+    #pragma omp parallel
+    {
+        for (size_t mu = 0; mu < nao; ++mu) {
+            #pragma omp single
+            {
+                compute_intermediate_T(
+                    pair.block1.E_a, b1.n_occ_a, b1.n_occ_b,
+                    b1.sigma_aa, b1.sigma_ba,
+                    mu, b1.n_occ_a, b1.n_occ_b,
+                    T_aa
+                );
+                compute_intermediate_T(
+                    pair.block1.E_a, b1.n_occ_a, b1.n_occ_b,
+                    b1.sigma_ab, b1.sigma_bb,
+                    mu, b1.n_occ_a, b1.n_occ_b,
+                    T_ab
+                );
+            }
+
+            vec s_vec = S_Cpa_t.col(mu);
+
+            #pragma omp for schedule(static)
+            for (size_t i = 0; i < na1; ++i) {
+                pi_aa_1.rows(i * na2, (i + 1) * na2 - 1) += s_vec * T_aa.row(i);
+                pi_ab_1.rows(i * na2, (i + 1) * na2 - 1) += s_vec * T_ab.row(i);
+            }
+        }
+
+        // ---------------------------------------------------------
+        // Group 2: Pi_ba_1 & Pi_bb_1
+        // ---------------------------------------------------------
+        for (size_t mu = 0; mu < nao; ++mu) {
+            #pragma omp single
+            {
+                compute_intermediate_T(
+                    pair.block1.E_b, b1.n_occ_a, b1.n_occ_b,
+                    b1.sigma_aa, b1.sigma_ba,
+                    mu, b1.n_occ_a, b1.n_occ_b,
+                    T_ba
+                );
+                compute_intermediate_T(
+                    pair.block1.E_b, b1.n_occ_a, b1.n_occ_b,
+                    b1.sigma_ab, b1.sigma_bb,
+                    mu, b1.n_occ_a, b1.n_occ_b,
+                    T_bb
+                );
+            }
+
+            vec s_vec = S_Cpb_t.col(mu);
+
+            #pragma omp for schedule(static)
+            for (size_t i = 0; i < nb1; ++i) {
+                pi_ba_1.rows(i * nb2, (i + 1) * nb2 - 1) += s_vec * T_ba.row(i);
+                pi_bb_1.rows(i * nb2, (i + 1) * nb2 - 1) += s_vec * T_bb.row(i);
+            }
+        }
+
+        // ---------------------------------------------------------
+        // Group 3: Pi_aa_2 & Pi_ab_2
+        // ---------------------------------------------------------
+        for (size_t mu = 0; mu < nao; ++mu) {
+            #pragma omp single
+            {
+                compute_intermediate_T(
+                    pair.block2.E_a, b2.n_occ_a, b2.n_occ_b,
+                    b2.sigma_aa, b2.sigma_ba,
+                    mu, b2.n_occ_a, b2.n_occ_b,
+                    T2_aa
+                );
+                compute_intermediate_T(
+                    pair.block2.E_a, b2.n_occ_a, b2.n_occ_b,
+                    b2.sigma_ab, b2.sigma_bb,
+                    mu, b2.n_occ_a, b2.n_occ_b,
+                    T2_ab
+                );
+            }
+
+            #pragma omp for schedule(static)
+            for (size_t i = 0; i < na1; ++i) {
+                double val = CaT_S(i, mu); // CaT_S is shared/const, safe
+                if (std::abs(val) > 1e-12) {
+                    pi_aa_2.rows(i * na2, (i + 1) * na2 - 1) += val * T2_aa;
+                    pi_ab_2.rows(i * na2, (i + 1) * na2 - 1) += val * T2_ab;
+                }
+            }
+        }
+
+        // ---------------------------------------------------------
+        // Group 4: Pi_ba_2 & Pi_bb_2
+        // ---------------------------------------------------------
+        for (size_t mu = 0; mu < nao; ++mu) {
+            #pragma omp single
+            {
+                compute_intermediate_T(
+                    pair.block2.E_b, b2.n_occ_a, b2.n_occ_b,
+                    b2.sigma_aa, b2.sigma_ba,
+                    mu, b2.n_occ_a, b2.n_occ_b,
+                    T2_ba
+                );
+                compute_intermediate_T(
+                    pair.block2.E_b, b2.n_occ_a, b2.n_occ_b,
+                    b2.sigma_ab, b2.sigma_bb,
+                    mu, b2.n_occ_a, b2.n_occ_b,
+                    T2_bb
+                );
+            }
+
+            #pragma omp for schedule(static)
+            for (size_t i = 0; i < nb1; ++i) {
+                double val = CbT_S(i, mu);
+                if (std::abs(val) > 1e-12) {
+                    pi_ba_2.rows(i * nb2, (i + 1) * nb2 - 1) += val * T2_ba;
+                    pi_bb_2.rows(i * nb2, (i + 1) * nb2 - 1) += val * T2_bb;
+                }
+            }
+        }
+
+    } // End parallel
+
+    pair.pi_aa_1 = pi_aa_1;
+    pair.pi_ab_1 = pi_ab_1;
+    pair.pi_aa_2 = pi_aa_2;
+    pair.pi_ab_2 = pi_ab_2;
+    pair.pi_ba_1 = pi_ba_1;
+    pair.pi_bb_1 = pi_bb_1;
+    pair.pi_ba_2 = pi_ba_2;
+    pair.pi_bb_2 = pi_bb_2;
+
+    DBG("===== pi_matrix END (Optimized & Fixed) =====");
+}
+
+static mat compute_k_block(
+    const mat& sigma_aa, const mat& sigma_ba, // 或者 ab/bb
+    const mat& pi_cross, const mat& pi_diag,  // Pi matrices
+    const mat& E_block,                       // E matrix (E_b or E_a)
+    const vec& scale_vec,                     // L_psi2 or psi1_L
+    const vec& u_vec,                         // U vector for E contraction
+    const vec& w_pi_cross,                    // Precomputed kron weights for Pi term 2
+    const vec& w_pi_diag,                     // Precomputed kron weights for Pi term 3
+    size_t n_occ_top, size_t n_occ_bot,       // Dimensions for E split
+    size_t n_vir, size_t n_occ                // Dimensions for reshape
+) {
+
+    vec e_top = E_block.rows(0, n_occ_top - 1) * u_vec;
+
+    vec e_bot;
+    if (n_occ_bot > 0) {
+        e_bot = E_block.rows(n_occ_top, n_occ_top + n_occ_bot - 1) * u_vec;
+    }
+
+
+    vec w_aa = kron(scale_vec, e_top);
+
+    rowvec res_vec = w_aa.t() * sigma_aa;
+
+    if (n_occ_bot > 0) {
+        vec w_ba = kron(scale_vec, e_bot);
+        res_vec += w_ba.t() * sigma_ba;
+    }
+
+    res_vec -= w_pi_cross.t() * pi_cross;
+
+    res_vec -= w_pi_diag.t() * pi_diag;
+
+    return reshape(res_vec, n_vir, n_occ);
+}
+
+void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
+{
+    pi_matrix(pair);
+
+    DBG("===== k_matrix_null START (Optimized) =====");
+
+    MOpair& b1 = S1_orthonal;
+    MOpair& b2 = S2_orthonal;
+    size_t n_ao = b1.n_ao;
+
+    // 2. Prepare Dimensions and Output
+    mat k_a_1(b1.n_vir_a, b1.n_occ_a, fill::zeros);
+    mat k_b_1(b1.n_vir_b, b1.n_occ_b, fill::zeros);
+    mat k_a_2(b2.n_vir_a, b2.n_occ_a, fill::zeros);
+    mat k_b_2(b2.n_vir_b, b2.n_occ_b, fill::zeros);
+
+    // 3. Prepare Intermediate Vectors/Matrices
+    vec lambda_a_inv = 1.0 / pair.lambda_a;
+    vec lambda_b_inv = 1.0 / pair.lambda_b;
+    mat Sooinva = pair.V_a * diagmat(lambda_a_inv) * pair.U_a.t();
+    mat Sooinvb = pair.V_b * diagmat(lambda_b_inv) * pair.U_b.t();
+
+    mat L_vsocxy = L_AO.slice(0) + L_AO.slice(1);
+    vec tem_L_psi2 = L_vsocxy * pair.psi2;          // (n_ao, 1)
+    vec tem_psi1_L = (pair.psi1.t() * L_vsocxy).t(); // Transpose to col vec (n_ao, 1)
+
+    vec U_null_b   = pair.U_b.tail_cols(1);
+    vec V_null_a   = pair.V_a.tail_cols(1);
+    vec C1bT_L_psi2 = pair.C1_flipped_beta.t() * tem_L_psi2; // (nb1, 1)
+    vec psi1_L_C2a = pair.C2_flipped_alpha.t() * tem_psi1_L; // Note: psi1_L * C2a -> (1, nao)*(nao, na2) -> (1, na2). Transpose for vec.
+
+    vec tem_psi1_L_C2a_vec = (tem_psi1_L.t() * pair.C2_flipped_alpha).t(); // (na2, 1)
+
+    vec tem_Sooinvb_C1bT_L_psi2 = Sooinvb * C1bT_L_psi2; // (nb2, 1)
+    vec tem_psi1_L_C2a_Sooinva = (tem_psi1_L_C2a_vec.t() * Sooinva).t(); // (na1, 1) - because Sooinva is (nva, na1)? Check dims.
+
+    vec w_term2_b1b2 = kron(U_null_b, tem_Sooinvb_C1bT_L_psi2);
+
+    vec w_term3_a1a2 = kron(tem_psi1_L_C2a_Sooinva, V_null_a);
+
+
+    // 5. Parallel Computation of 4 Blocks
+    #pragma omp parallel sections
+    {
+        // ============ K^α (block1) ============
+        #pragma omp section
+        {
+            // Term 1 specific: Scale=tem_L_psi2, U=U_null_b, E=block1.E_b
+            // Term 2 specific: Pi = pi_ba_1 (indices ip*nb2+j)
+            // Term 3 specific: Pi = pi_aa_1 (indices ip*na2+j)
+            k_a_1 = compute_k_block(
+                b1.sigma_aa, b1.sigma_ba,
+                pair.pi_ba_1, pair.pi_aa_1,
+                pair.block1.E_b,
+                tem_L_psi2, U_null_b,
+                w_term2_b1b2, w_term3_a1a2,
+                b1.n_occ_a, b1.n_occ_b,
+                b1.n_vir_a, b1.n_occ_a
+            );
+        }
+
+        // ============ K^β (block1) ============
+        #pragma omp section
+        {
+            k_b_1 = compute_k_block(
+                b1.sigma_ab, b1.sigma_bb,
+                pair.pi_bb_1, pair.pi_ab_1,
+                pair.block1.E_b,
+                tem_L_psi2, U_null_b,
+                w_term2_b1b2, w_term3_a1a2,
+                b1.n_occ_a, b1.n_occ_b,
+                b1.n_vir_b, b1.n_occ_b
+            );
+        }
+
+        // ============ K'^α (block2) ============
+        #pragma omp section
+        {
+            // Term 1 specific: Scale=tem_psi1_L, U=V_null_a, E=block2.E_b
+            // Term 2: Pi = pi_ba_2
+            // Term 3: Pi = pi_aa_2
+            k_a_2 = compute_k_block(
+                b2.sigma_aa, b2.sigma_ba,
+                pair.pi_ba_2, pair.pi_aa_2,
+                pair.block2.E_b,
+                tem_psi1_L, V_null_a,
+                w_term2_b1b2, w_term3_a1a2,
+                b2.n_occ_a, b2.n_occ_b,
+                b2.n_vir_a, b2.n_occ_a
+            );
+        }
+
+        // ============ K'^β (block2) ============
+        #pragma omp section
+        {
+            k_b_2 = compute_k_block(
+                b2.sigma_ab, b2.sigma_bb,
+                pair.pi_bb_2, pair.pi_ab_2,
+                pair.block2.E_b,
+                tem_psi1_L, V_null_a,
+                w_term2_b1b2, w_term3_a1a2,
+                b2.n_occ_a, b2.n_occ_b,
+                b2.n_vir_b, b2.n_occ_b
+            );
+        }
+    }
+
+    DBG("||k_a_1|| = " << norm(k_a_1, "fro"));
+    DBG("||k_b_1|| = " << norm(k_b_1, "fro"));
+    DBG("||k_a_2|| = " << norm(k_a_2, "fro"));
+    DBG("||k_b_2|| = " << norm(k_b_2, "fro"));
+
+    // Final Assembly (Keep Original Logic)
+    // Note: Ensure Sooinva/b dimensions are compatible with pi matrices logic in original code
+    // Assuming original code's multiplication logic was correct for these objects.
+    pair.L_a_1 = k_a_1 * scaling_factor + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_aa_1 + Sooinvb * pair.pi_ba_1);
+    pair.L_b_1 = k_b_1 * scaling_factor + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_ab_1 + Sooinvb * pair.pi_bb_1);
+    pair.L_a_2 = k_a_2 * scaling_factor + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_aa_2 + Sooinvb * pair.pi_ba_2);
+    pair.L_b_2 = k_b_2 * scaling_factor + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_ab_2 + Sooinvb * pair.pi_bb_2);
+
+    DBG("===== k_matrix_null END (Optimized) =====");
+}
+
+
+static uvec get_strided_indices(size_t stride, size_t count) {
+    uvec indices(count);
+    for(size_t i = 0; i < count; ++i) {
+        // 原逻辑: (ipp+1) * stride - 1
+        indices(i) = (i + 1) * stride - 1;
+    }
+    return indices;
+}
+
+// 辅助函数：计算 Term 2/3 的权重向量
+// W = C_vec^T * Sigma_subset
+static vec compute_sigma_weight(const mat& sigma_full, const vec& c_vec, const uvec& row_indices) {
+    // 1. 提取特定行 (Rows extraction)
+    // Sigma_full 很大，但我们只取其中一部分行。
+    // dim(sub_sigma) = (c_vec.n_elem, n_cols_sigma)
+    mat sub_sigma = sigma_full.rows(row_indices);
+
+    // 2. 缩并得到权重向量
+    // (1, n_rows) * (n_rows, n_cols) -> (1, n_cols) -> transpose -> (n_cols, 1)
+    return (c_vec.t() * sub_sigma).t();
+}
+
+// 通用计算核心：计算单个 K 块
+// Res = Term1 + Term2 + Term3
+static mat compute_k_last_block(
+    const mat& sigma_top, const mat& sigma_bot, // Term 1 Sigmas
+    const mat& pi_matrix,                       // Pi Matrix
+    const mat& E_block,                         // Term 1 E
+    const vec& scale_vec_t1,                    // Term 1 Scale (L vector)
+    const vec& u_vec_t1,                        // Term 1 U vector
+    const vec& w_vec_t2,                        // Term 2 Precomputed Weight
+    const vec& w_vec_t3,                        // Term 3 Precomputed Weight
+    size_t n_occ_top, size_t n_occ_bot,         // Term 1 E split
+    size_t n_vir, size_t n_occ                  // Output Shape
+) {
+    // --- Term 1 ---
+    vec e_top = E_block.rows(0, n_occ_top - 1) * u_vec_t1;
+    vec w_top = kron(scale_vec_t1, e_top);
+
+    // w^T * Sigma -> RowVec
+    rowvec res_vec = w_top.t() * sigma_top;
+
+    if (n_occ_bot > 0) {
+        vec e_bot = E_block.rows(n_occ_top, n_occ_top + n_occ_bot - 1) * u_vec_t1;
+        vec w_bot = kron(scale_vec_t1, e_bot);
+        res_vec += w_bot.t() * sigma_bot;
+    }
+
+    // --- Term 2 ---
+    // Formula: sum ... Pi * Sigma_u * C
+    // Simplified: w_vec_t2^T * Pi
+    // 注意原公式是 +=
+    res_vec += w_vec_t2.t() * pi_matrix;
+
+    // --- Term 3 ---
+    // Formula: sum ... Pi * Sigma_v * C
+    // Simplified: w_vec_t3^T * Pi
+    res_vec += w_vec_t3.t() * pi_matrix;
+
+    // --- Reshape ---
+    return reshape(res_vec, n_vir, n_occ);
+}
+
+void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
+{
+    DBG("Notice: For Ms<0, the alpha-beta should exchange here:===== k_matrix_last START (Optimized) =====");
+
+    // 1. Compute Pi Matrix first
+    pi_matrix(pair);
+
+    MOpair b1 = S1_orthonal;
+    MOpair b2 = S2_orthonal; // Copy is intentional as per original code structure, though ref is better if possible.
+    size_t n_ao = b1.n_ao;
+
+    // 2. Prepare Outputs
+    mat k_aa_1(b1.n_vir_a, b1.n_occ_a, fill::zeros);
+    mat k_ba_1(b1.n_vir_a, b1.n_occ_a, fill::zeros);
+    mat k_ab_1(b1.n_vir_b, b1.n_occ_b, fill::zeros);
+    mat k_bb_1(b1.n_vir_b, b1.n_occ_b, fill::zeros);
+
+    mat k_aa_2(b2.n_vir_a, b2.n_occ_a, fill::zeros);
+    mat k_ba_2(b2.n_vir_a, b2.n_occ_a, fill::zeros);
+    mat k_ab_2(b2.n_vir_b, b2.n_occ_b, fill::zeros);
+    mat k_bb_2(b2.n_vir_b, b2.n_occ_b, fill::zeros);
+
+    // 3. Prepare Intermediate Vectors (Term 1)
+    mat L_vsocz = L_AO.slice(2);
+    vec tem_L_psi2a = L_vsocz * pair.psi2_alpha;
+    vec tem_psi1aT_L = (pair.psi1_alpha.t() * L_vsocz).t(); // Col vec
+    vec tem_L_psi2b = L_vsocz * pair.psi2_beta;
+    vec tem_psi1bT_L = (pair.psi1_beta.t() * L_vsocz).t(); // Col vec
+
+    vec U_last_b = pair.U_b.tail_cols(1);
+    vec V_last_a = pair.V_a.tail_cols(1);
+    vec U_last_a = pair.U_a.tail_cols(1);
+    vec V_last_b = pair.V_b.tail_cols(1);
+
+    // 4. Prepare Intermediate Vectors (Term 2/3 Weights Inputs)
+    vec C1bT_L_psi2b = pair.C1_flipped_beta.t() * tem_L_psi2b;
+    vec C1aT_L_psi2a = pair.C1_flipped_alpha.t() * tem_L_psi2a;
+    // Transpose to make them column vectors for consistent dot product logic
+    vec psi1a_L_C2a = (pair.psi1_alpha.t() * L_vsocz * pair.C2_flipped_alpha).t();
+    vec psi1b_L_C2b = (pair.psi1_beta.t() * L_vsocz * pair.C2_flipped_beta).t();
+
+    // 5. Setup Temporary Blocks and Compute Sigma U/V
+    // Note: This part involves SVD and is kept as is (assuming it's necessary logic)
+    MOpair temblocka, temblockb;
+    temblocka.U = pair.U_a;
+    temblocka.V = pair.V_a;
+    temblockb.U = pair.U_b;
+    temblockb.V = pair.V_b;
+    temblocka.lambda = pair.lambda_a;
+    temblockb.lambda = pair.lambda_b;
+    temblocka.n_ao = n_ao;
+    temblockb.n_ao = n_ao;
+    // Careful with assignments matching original code
+    temblocka.n_occ_a = pair.n_occ_a1;
+    temblocka.n_occ_b = pair.n_occ_a2;
+    temblocka.n_svd = pair.lambda_a.size();
+    temblockb.n_occ_a = pair.n_occ_b1;
+    temblockb.n_occ_b = pair.n_occ_b2;
+    temblockb.n_svd = pair.lambda_b.size();
+
+    // Potentially expensive, parallelize if sigma_u internally supports it or run in sections
+    pair.sigma_ua = sigma_u(temblocka);
+    pair.sigma_va = sigma_v(temblocka);
+    pair.sigma_ub = sigma_u(temblockb);
+    pair.sigma_vb = sigma_v(temblockb);
+
+    // 6. Precompute Weights for Term 2 and Term 3
+    // These weights are reused across different K blocks
+
+    // Indices for extracting rows from sigma_u/v
+    uvec idx_ua = get_strided_indices(pair.n_occ_a1, pair.n_occ_a1); // stride=n_occ_a1, count=n_occ_a1
+    uvec idx_va = get_strided_indices(pair.n_occ_a2, pair.n_occ_a2);
+    uvec idx_ub = get_strided_indices(pair.n_occ_b1, pair.n_occ_b1);
+    uvec idx_vb = get_strided_indices(pair.n_occ_b2, pair.n_occ_b2);
+
+    // Compute Weights W = C^T * Sigma_subset
+    vec w_ua = compute_sigma_weight(pair.sigma_ua, C1aT_L_psi2a, idx_ua);
+    vec w_va = compute_sigma_weight(pair.sigma_va, psi1a_L_C2a,  idx_va);
+    vec w_ub = compute_sigma_weight(pair.sigma_ub, C1bT_L_psi2b, idx_ub);
+    vec w_vb = compute_sigma_weight(pair.sigma_vb, psi1b_L_C2b,  idx_vb);
+
+    // 7. Parallel Computation of 8 K-Blocks
+    #pragma omp parallel sections
+    {
+        // --- Group 1 (Block 1) ---
+        #pragma omp section
+        {
+            // K_aa_1
+            k_aa_1 = compute_k_last_block(
+                b1.sigma_aa, b1.sigma_ba, pair.pi_aa_1,
+                pair.block1.E_a, tem_L_psi2a, U_last_a,
+                w_ua, w_va, // Weights for pi_aa
+                b1.n_occ_a, b1.n_occ_b, b1.n_vir_a, b1.n_occ_a
+            );
+        }
+        #pragma omp section
+        {
+            // K_ba_1 (Uses sigma_ub/vb weights with pi_ba)
+            k_ba_1 = compute_k_last_block(
+                b1.sigma_aa, b1.sigma_ba, pair.pi_ba_1,
+                pair.block1.E_b, tem_L_psi2b, U_last_b,
+                w_ub, w_vb, // Weights for pi_ba
+                b1.n_occ_a, b1.n_occ_b, b1.n_vir_a, b1.n_occ_a
+            );
+        }
+        #pragma omp section
+        {
+            // K_ab_1 (Uses sigma_ua/va weights with pi_ab)
+            k_ab_1 = compute_k_last_block(
+                b1.sigma_ab, b1.sigma_bb, pair.pi_ab_1,
+                pair.block1.E_a, tem_L_psi2a, U_last_a,
+                w_ua, w_va, // Weights for pi_ab
+                b1.n_occ_a, b1.n_occ_b, b1.n_vir_b, b1.n_occ_b
+            );
+        }
+        #pragma omp section
+        {
+            // K_bb_1 (Uses sigma_ub/vb weights with pi_bb)
+            k_bb_1 = compute_k_last_block(
+                b1.sigma_ab, b1.sigma_bb, pair.pi_bb_1,
+                pair.block1.E_b, tem_L_psi2b, U_last_b,
+                w_ub, w_vb, // Weights for pi_bb
+                b1.n_occ_a, b1.n_occ_b, b1.n_vir_b, b1.n_occ_b
+            );
+        }
+
+        // --- Group 2 (Block 2) ---
+        #pragma omp section
+        {
+            // K_aa_2
+            k_aa_2 = compute_k_last_block(
+                b2.sigma_aa, b2.sigma_ba, pair.pi_aa_2,
+                pair.block2.E_a, tem_psi1aT_L, V_last_a,
+                w_ua, w_va,
+                b2.n_occ_a, b2.n_occ_b, b2.n_vir_a, b2.n_occ_a
+            );
+        }
+        #pragma omp section
+        {
+            // K_ba_2
+            k_ba_2 = compute_k_last_block(
+                b2.sigma_aa, b2.sigma_ba, pair.pi_ba_2,
+                pair.block2.E_b, tem_psi1bT_L, V_last_b,
+                w_ub, w_vb,
+                b2.n_occ_a, b2.n_occ_b, b2.n_vir_a, b2.n_occ_a
+            );
+        }
+        #pragma omp section
+        {
+            // K_ab_2
+            k_ab_2 = compute_k_last_block(
+                b2.sigma_ab, b2.sigma_bb, pair.pi_ab_2,
+                pair.block2.E_a, tem_psi1aT_L, V_last_a,
+                w_ua, w_va,
+                b2.n_occ_a, b2.n_occ_b, b2.n_vir_b, b2.n_occ_b
+            );
+        }
+        #pragma omp section
+        {
+            // K_bb_2
+            k_bb_2 = compute_k_last_block(
+                b2.sigma_ab, b2.sigma_bb, pair.pi_bb_2,
+                pair.block2.E_b, tem_psi1bT_L, V_last_b,
+                w_ub, w_vb,
+                b2.n_occ_a, b2.n_occ_b, b2.n_vir_b, b2.n_occ_b
+            );
+        }
+    }
+
+    // 8. Debug Output
+    DBG("||K_aa_1|| = " << norm(k_aa_1, "fro"));
+    DBG("||K_ba_1|| = " << norm(k_ba_1, "fro"));
+    DBG("||K_ab_1|| = " << norm(k_ab_1, "fro"));
+    DBG("||K_bb_1|| = " << norm(k_bb_1, "fro"));
+    DBG("||K_aa_2|| = " << norm(k_aa_2, "fro"));
+    DBG("||K_ba_2|| = " << norm(k_ba_2, "fro"));
+    DBG("||K_ab_2|| = " << norm(k_ab_2, "fro"));
+    DBG("||K_bb_2|| = " << norm(k_bb_2, "fro"));
+
+    // 9. Final Assembly
+    mat Vca = pair.V_a.cols(0, pair.lambda_a.size() - 1);
+    mat Vcb = pair.V_b.cols(0, pair.lambda_b.size() - 1);
+    mat Uca = pair.U_a.cols(0, pair.lambda_a.size() - 1);
+    mat Ucb = pair.U_b.cols(0, pair.lambda_b.size() - 1);
+
+    vec lambda_a_m1_inv = 1.0 / pair.lambda_a;
+    vec lambda_b_m1_inv = 1.0 / pair.lambda_b;
+    lambda_a_m1_inv(lambda_a_m1_inv.n_elem - 1) = 0.0;
+    lambda_b_m1_inv(lambda_b_m1_inv.n_elem - 1) = 0.0;
+
+    mat Sooinva = Vca * diagmat(lambda_a_m1_inv) * Uca.t();
+    mat Sooinvb = Vcb * diagmat(lambda_b_m1_inv) * Ucb.t();
+
+    // Vectorized linear combinations
+    pair.L_aa_1 = k_aa_1 * scaling_factor + (pair.val_a) * (Sooinva * pair.pi_aa_1 + Sooinvb * pair.pi_ba_1);
+    pair.L_ba_1 = k_ba_1 * scaling_factor + (pair.val_b) * (Sooinvb * pair.pi_ba_1 + Sooinva * pair.pi_aa_1);
+    pair.L_ab_1 = k_ab_1 * scaling_factor + (pair.val_a) * (Sooinva * pair.pi_ab_1 + Sooinvb * pair.pi_bb_1);
+    pair.L_bb_1 = k_bb_1 * scaling_factor + (pair.val_b) * (Sooinvb * pair.pi_bb_1 + Sooinva * pair.pi_ab_1);
+    pair.L_aa_2 = k_aa_2 * scaling_factor + (pair.val_a) * (Sooinva * pair.pi_aa_2 + Sooinvb * pair.pi_ba_2);
+    pair.L_ba_2 = k_ba_2 * scaling_factor + (pair.val_b) * (Sooinvb * pair.pi_ba_2 + Sooinva * pair.pi_aa_2);
+    pair.L_ab_2 = k_ab_2 * scaling_factor + (pair.val_a) * (Sooinva * pair.pi_ab_2 + Sooinvb * pair.pi_bb_2);
+    pair.L_bb_2 = k_bb_2 * scaling_factor + (pair.val_b) * (Sooinvb * pair.pi_bb_2 + Sooinva * pair.pi_ab_2);
+
+    DBG("===== k_matrix_last END (Optimized) =====");
+}
+
+
 
 
 
@@ -2499,9 +3333,9 @@ void spin_adiabatic_state::gradient_implicit_rhs_Ms()
    DBG("y1_vo_beta size = " << y1_vo_beta.n_rows << " x " << y1_vo_beta.n_cols);
    DBG("y2_ov_alpha size = " << y2_ov_alpha.n_rows << " x " << y2_ov_alpha.n_cols);
    DBG("y2_ov_beta size = " << y2_ov_beta.n_rows << " x " << y2_ov_beta.n_cols);
-   sigma_overlap(S1_orthonal);
-   sigma_overlap(S2_orthonal);
-
+   sigma_matrix(S1_orthonal);
+   sigma_matrix(S2_orthonal);
+   //sigma_matrix_test(S1_orthonal);
    for (double Ms1 = -S1; Ms1 <= S1; Ms1 += 1.0) {
       for (int dir = 0; dir < 3; ++dir) {
          double delta_Ms = (dir == 0) ? +1 :
