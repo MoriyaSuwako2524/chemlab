@@ -160,7 +160,7 @@ class FivePointFiniteDifference(QchemBaseScript):
             inp = qchem_file()
             inp.molecule.check = True
             inp.read_from_file(cfg.path + cfg.ref)
-            inp.molecule.replace_new_xyz(j.xyz_perturbed)
+            inp.molecule.replace_new_xyz(j.xyz_perturbed.T)
             inp.generate_inp(j.inp_file)
 
         self.run_jobs(jobs, cfg, print_status_func=print_status)
