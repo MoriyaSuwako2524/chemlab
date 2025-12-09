@@ -187,7 +187,7 @@ chemlab <module> my_script --param value
 
 - Python >= 3.11
 - numpy
-- matplotlib (for MECP visualization)
+- matplotlib (for visualization)
 
 ## License
 
