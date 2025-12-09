@@ -1579,7 +1579,7 @@ void spin_adiabatic_state::sigma_overlap(MOpair& block) {
 void spin_adiabatic_state::sigma_matrix(MOpair& block) {
     DBG("===== sigma_overlap START (Optimized) =====");
 
-    // 1. Setup Dimensions
+
     block.n_svd = block.lambda.n_elem;
     block.n_ao = block.effect_C_o_alpha.n_rows;
     block.n_occ_a = block.effect_C_o_alpha.n_cols;
@@ -1593,13 +1593,12 @@ void spin_adiabatic_state::sigma_matrix(MOpair& block) {
     size_t nvb = block.n_vir_b;
     size_t nao = block.n_ao;
 
-    // 2. Initialize Output Matrices
+
     mat sigma_aa(nao * na, nva * na, fill::zeros);
     mat sigma_ab(nao * na, nvb * nb, fill::zeros);
     mat sigma_ba(nao * nb, nva * na, fill::zeros);
     mat sigma_bb(nao * nb, nvb * nb, fill::zeros);
 
-    // 3. Precompute Intermediate Matrices
     mat s_vo_ab = block.effect_C_v_alpha.t() * AOS * block.effect_C_o_beta; // (nva, nb)
     mat s_ov_ab = block.effect_C_o_alpha.t() * AOS * block.effect_C_v_beta; // (na, nvb)
     mat s_vo_ab_t = s_vo_ab.t(); // (nb, nva)
@@ -1611,7 +1610,7 @@ void spin_adiabatic_state::sigma_matrix(MOpair& block) {
     mat st_u = block.sigma_u.t();
     mat st_v = block.sigma_v.t();
 
-
+//sigma_aa
     #pragma omp parallel for schedule(dynamic)
     for (size_t l = 0; l < na; ++l) {
         for (size_t i = 0; i < na; ++i) {
@@ -1643,7 +1642,7 @@ void spin_adiabatic_state::sigma_matrix(MOpair& block) {
         }
     }
 
-
+//sigma_ab
     #pragma omp parallel for schedule(dynamic)
     for (size_t l = 0; l < na; ++l) {
         for (size_t j = 0; j < nb; ++j) {
@@ -1663,13 +1662,11 @@ void spin_adiabatic_state::sigma_matrix(MOpair& block) {
         }
     }
 
-    // ==========================================
-    // Block BA: beta-alpha
-    // ==========================================
+//sigma_ba
     #pragma omp parallel for schedule(dynamic)
     for (size_t l = 0; l < nb; ++l) {
         for (size_t i = 0; i < na; ++i) {
-            mat K(nb, nb); // (j, jp)
+            mat K(nb, nb);
             for(size_t j=0; j<nb; ++j) {
                 const double* src_col = st_v.colptr(j * nb + l);
                 for(size_t jp=0; jp<nb; ++jp) {
@@ -1686,12 +1683,9 @@ void spin_adiabatic_state::sigma_matrix(MOpair& block) {
         }
     }
 
-    // ==========================================
-    // Block BB: beta-beta
-    // ==========================================
+    // sigma_bb
     #pragma omp parallel for schedule(dynamic)
     for (size_t l = 0; l < nb; ++l) {
-        // Direct Term
         for (size_t j = 0; j < nb; ++j) {
             double v_val = block.V(j, l);
             if (std::abs(v_val) > 1e-12) {
@@ -1703,17 +1697,15 @@ void spin_adiabatic_state::sigma_matrix(MOpair& block) {
             }
         }
 
-        // Contraction Term
+
         for (size_t j = 0; j < nb; ++j) {
-            // 【修复 4】使用 colptr 构造无拷贝矩阵
-            // st_v col data (fixed j, l): i + jp*na
-            // Maps to Matrix (na, nb) -> Rows i, Cols jp
+
             mat M(st_v.colptr(j * nb + l), na, nb, false, true);
 
-            // Contract i: M.t() * s_ov_ab -> (nb, na) * (na, nvb) = (nb, nvb) -> (jp, b)
+
             mat Res = M.t() * s_ov_ab;
 
-            // Contract jp: C_o_beta * Res -> (nao, nb) * (nb, nvb) = (nao, nvb)
+
             mat Block_Res = block.effect_C_o_beta * Res;
 
             for(size_t mu=0; mu<nao; ++mu) {
@@ -2680,8 +2672,6 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
 
 }
 
-
-
 */
 
 
@@ -2697,7 +2687,6 @@ static void compute_intermediate_T(
     uword start_row_bot = mu * n_occ_sigma_bot;
     uword end_row_bot = start_row_bot + n_occ_sigma_bot - 1;
 
-    // T = E(top).t() * Sigma(block_top)
     T_out = E.rows(0, n_occ_top - 1).t() * Sigma_top_full.rows(start_row_top, end_row_top);
 
     if (n_occ_bot > 0) {
@@ -2706,7 +2695,7 @@ static void compute_intermediate_T(
 }
 
 void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
-    DBG("===== pi_matrix START (Optimized & Fixed) =====");
+    DBG("===== pi_matrix START (Optimize) =====");
 
     MOpair& b1 = S1_orthonal;
     MOpair& b2 = S2_orthonal;
@@ -2778,9 +2767,7 @@ void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
             }
         }
 
-        // ---------------------------------------------------------
-        // Group 2: Pi_ba_1 & Pi_bb_1
-        // ---------------------------------------------------------
+        //Pi_ba_1 & Pi_bb_1
         for (size_t mu = 0; mu < nao; ++mu) {
             #pragma omp single
             {
@@ -2806,10 +2793,7 @@ void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
                 pi_bb_1.rows(i * nb2, (i + 1) * nb2 - 1) += s_vec * T_bb.row(i);
             }
         }
-
-        // ---------------------------------------------------------
-        // Group 3: Pi_aa_2 & Pi_ab_2
-        // ---------------------------------------------------------
+        //  Pi_aa_2 & Pi_ab_2
         for (size_t mu = 0; mu < nao; ++mu) {
             #pragma omp single
             {
@@ -2829,7 +2813,7 @@ void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
 
             #pragma omp for schedule(static)
             for (size_t i = 0; i < na1; ++i) {
-                double val = CaT_S(i, mu); // CaT_S is shared/const, safe
+                double val = CaT_S(i, mu);
                 if (std::abs(val) > 1e-12) {
                     pi_aa_2.rows(i * na2, (i + 1) * na2 - 1) += val * T2_aa;
                     pi_ab_2.rows(i * na2, (i + 1) * na2 - 1) += val * T2_ab;
@@ -2837,9 +2821,7 @@ void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
             }
         }
 
-        // ---------------------------------------------------------
-        // Group 4: Pi_ba_2 & Pi_bb_2
-        // ---------------------------------------------------------
+        //: Pi_ba_2 & Pi_bb_2
         for (size_t mu = 0; mu < nao; ++mu) {
             #pragma omp single
             {
@@ -2867,7 +2849,7 @@ void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
             }
         }
 
-    } // End parallel
+    }
 
     pair.pi_aa_1 = pi_aa_1;
     pair.pi_ab_1 = pi_ab_1;
@@ -2882,15 +2864,15 @@ void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
 }
 
 static mat compute_k_block(
-    const mat& sigma_aa, const mat& sigma_ba, // 或者 ab/bb
-    const mat& pi_cross, const mat& pi_diag,  // Pi matrices
-    const mat& E_block,                       // E matrix (E_b or E_a)
-    const vec& scale_vec,                     // L_psi2 or psi1_L
-    const vec& u_vec,                         // U vector for E contraction
-    const vec& w_pi_cross,                    // Precomputed kron weights for Pi term 2
-    const vec& w_pi_diag,                     // Precomputed kron weights for Pi term 3
-    size_t n_occ_top, size_t n_occ_bot,       // Dimensions for E split
-    size_t n_vir, size_t n_occ                // Dimensions for reshape
+    const mat& sigma_aa, const mat& sigma_ba,
+    const mat& pi_cross, const mat& pi_diag,
+    const mat& E_block,
+    const vec& scale_vec,
+    const vec& u_vec,
+    const vec& w_pi_cross,
+    const vec& w_pi_diag,
+    size_t n_occ_top, size_t n_occ_bot,
+    size_t n_vir, size_t n_occ
 ) {
 
     vec e_top = E_block.rows(0, n_occ_top - 1) * u_vec;
@@ -2926,39 +2908,34 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
     MOpair& b1 = S1_orthonal;
     MOpair& b2 = S2_orthonal;
     size_t n_ao = b1.n_ao;
-
-    // 2. Prepare Dimensions and Output
     mat k_a_1(b1.n_vir_a, b1.n_occ_a, fill::zeros);
     mat k_b_1(b1.n_vir_b, b1.n_occ_b, fill::zeros);
     mat k_a_2(b2.n_vir_a, b2.n_occ_a, fill::zeros);
     mat k_b_2(b2.n_vir_b, b2.n_occ_b, fill::zeros);
 
-    // 3. Prepare Intermediate Vectors/Matrices
     vec lambda_a_inv = 1.0 / pair.lambda_a;
     vec lambda_b_inv = 1.0 / pair.lambda_b;
     mat Sooinva = pair.V_a * diagmat(lambda_a_inv) * pair.U_a.t();
     mat Sooinvb = pair.V_b * diagmat(lambda_b_inv) * pair.U_b.t();
 
     mat L_vsocxy = L_AO.slice(0) + L_AO.slice(1);
-    vec tem_L_psi2 = L_vsocxy * pair.psi2;          // (n_ao, 1)
-    vec tem_psi1_L = (pair.psi1.t() * L_vsocxy).t(); // Transpose to col vec (n_ao, 1)
+    vec tem_L_psi2 = L_vsocxy * pair.psi2;
+    vec tem_psi1_L = (pair.psi1.t() * L_vsocxy).t();
 
     vec U_null_b   = pair.U_b.tail_cols(1);
     vec V_null_a   = pair.V_a.tail_cols(1);
-    vec C1bT_L_psi2 = pair.C1_flipped_beta.t() * tem_L_psi2; // (nb1, 1)
-    vec psi1_L_C2a = pair.C2_flipped_alpha.t() * tem_psi1_L; // Note: psi1_L * C2a -> (1, nao)*(nao, na2) -> (1, na2). Transpose for vec.
+    vec C1bT_L_psi2 = pair.C1_flipped_beta.t() * tem_L_psi2;
+    vec psi1_L_C2a = pair.C2_flipped_alpha.t() * tem_psi1_L;
 
-    vec tem_psi1_L_C2a_vec = (tem_psi1_L.t() * pair.C2_flipped_alpha).t(); // (na2, 1)
+    vec tem_psi1_L_C2a_vec = (tem_psi1_L.t() * pair.C2_flipped_alpha).t();
 
-    vec tem_Sooinvb_C1bT_L_psi2 = Sooinvb * C1bT_L_psi2; // (nb2, 1)
-    vec tem_psi1_L_C2a_Sooinva = (tem_psi1_L_C2a_vec.t() * Sooinva).t(); // (na1, 1) - because Sooinva is (nva, na1)? Check dims.
+    vec tem_Sooinvb_C1bT_L_psi2 = Sooinvb * C1bT_L_psi2;
+    vec tem_psi1_L_C2a_Sooinva = (tem_psi1_L_C2a_vec.t() * Sooinva).t();
 
     vec w_term2_b1b2 = kron(U_null_b, tem_Sooinvb_C1bT_L_psi2);
 
     vec w_term3_a1a2 = kron(tem_psi1_L_C2a_Sooinva, V_null_a);
 
-
-    // 5. Parallel Computation of 4 Blocks
     #pragma omp parallel sections
     {
         // ============ K^α (block1) ============
@@ -3029,9 +3006,7 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
     DBG("||k_a_2|| = " << norm(k_a_2, "fro"));
     DBG("||k_b_2|| = " << norm(k_b_2, "fro"));
 
-    // Final Assembly (Keep Original Logic)
-    // Note: Ensure Sooinva/b dimensions are compatible with pi matrices logic in original code
-    // Assuming original code's multiplication logic was correct for these objects.
+
     pair.L_a_1 = k_a_1 * scaling_factor + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_aa_1 + Sooinvb * pair.pi_ba_1);
     pair.L_b_1 = k_b_1 * scaling_factor + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_ab_1 + Sooinvb * pair.pi_bb_1);
     pair.L_a_2 = k_a_2 * scaling_factor + (pair.vsoc_x +pair.vsoc_y) * (Sooinva * pair.pi_aa_2 + Sooinvb * pair.pi_ba_2);
@@ -3044,43 +3019,35 @@ void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
 static uvec get_strided_indices(size_t stride, size_t count) {
     uvec indices(count);
     for(size_t i = 0; i < count; ++i) {
-        // 原逻辑: (ipp+1) * stride - 1
         indices(i) = (i + 1) * stride - 1;
     }
     return indices;
 }
 
-// 辅助函数：计算 Term 2/3 的权重向量
-// W = C_vec^T * Sigma_subset
+
 static vec compute_sigma_weight(const mat& sigma_full, const vec& c_vec, const uvec& row_indices) {
-    // 1. 提取特定行 (Rows extraction)
-    // Sigma_full 很大，但我们只取其中一部分行。
-    // dim(sub_sigma) = (c_vec.n_elem, n_cols_sigma)
+
     mat sub_sigma = sigma_full.rows(row_indices);
 
-    // 2. 缩并得到权重向量
-    // (1, n_rows) * (n_rows, n_cols) -> (1, n_cols) -> transpose -> (n_cols, 1)
     return (c_vec.t() * sub_sigma).t();
 }
 
-// 通用计算核心：计算单个 K 块
-// Res = Term1 + Term2 + Term3
+
 static mat compute_k_last_block(
-    const mat& sigma_top, const mat& sigma_bot, // Term 1 Sigmas
-    const mat& pi_matrix,                       // Pi Matrix
-    const mat& E_block,                         // Term 1 E
-    const vec& scale_vec_t1,                    // Term 1 Scale (L vector)
-    const vec& u_vec_t1,                        // Term 1 U vector
-    const vec& w_vec_t2,                        // Term 2 Precomputed Weight
-    const vec& w_vec_t3,                        // Term 3 Precomputed Weight
-    size_t n_occ_top, size_t n_occ_bot,         // Term 1 E split
-    size_t n_vir, size_t n_occ                  // Output Shape
+    const mat& sigma_top, const mat& sigma_bot,
+    const mat& pi_matrix,
+    const mat& E_block,
+    const vec& scale_vec_t1,
+    const vec& u_vec_t1,
+    const vec& w_vec_t2,
+    const vec& w_vec_t3,
+    size_t n_occ_top, size_t n_occ_bot,
+    size_t n_vir, size_t n_occ
 ) {
-    // --- Term 1 ---
+
     vec e_top = E_block.rows(0, n_occ_top - 1) * u_vec_t1;
     vec w_top = kron(scale_vec_t1, e_top);
 
-    // w^T * Sigma -> RowVec
     rowvec res_vec = w_top.t() * sigma_top;
 
     if (n_occ_bot > 0) {
@@ -3089,18 +3056,13 @@ static mat compute_k_last_block(
         res_vec += w_bot.t() * sigma_bot;
     }
 
-    // --- Term 2 ---
-    // Formula: sum ... Pi * Sigma_u * C
-    // Simplified: w_vec_t2^T * Pi
-    // 注意原公式是 +=
+
     res_vec += w_vec_t2.t() * pi_matrix;
 
-    // --- Term 3 ---
-    // Formula: sum ... Pi * Sigma_v * C
-    // Simplified: w_vec_t3^T * Pi
+
     res_vec += w_vec_t3.t() * pi_matrix;
 
-    // --- Reshape ---
+
     return reshape(res_vec, n_vir, n_occ);
 }
 
@@ -3108,14 +3070,12 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
 {
     DBG("Notice: For Ms<0, the alpha-beta should exchange here:===== k_matrix_last START (Optimized) =====");
 
-    // 1. Compute Pi Matrix first
     pi_matrix(pair);
 
     MOpair b1 = S1_orthonal;
-    MOpair b2 = S2_orthonal; // Copy is intentional as per original code structure, though ref is better if possible.
+    MOpair b2 = S2_orthonal;
     size_t n_ao = b1.n_ao;
 
-    // 2. Prepare Outputs
     mat k_aa_1(b1.n_vir_a, b1.n_occ_a, fill::zeros);
     mat k_ba_1(b1.n_vir_a, b1.n_occ_a, fill::zeros);
     mat k_ab_1(b1.n_vir_b, b1.n_occ_b, fill::zeros);
@@ -3126,27 +3086,26 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
     mat k_ab_2(b2.n_vir_b, b2.n_occ_b, fill::zeros);
     mat k_bb_2(b2.n_vir_b, b2.n_occ_b, fill::zeros);
 
-    // 3. Prepare Intermediate Vectors (Term 1)
+
     mat L_vsocz = L_AO.slice(2);
     vec tem_L_psi2a = L_vsocz * pair.psi2_alpha;
-    vec tem_psi1aT_L = (pair.psi1_alpha.t() * L_vsocz).t(); // Col vec
+    vec tem_psi1aT_L = (pair.psi1_alpha.t() * L_vsocz).t();
     vec tem_L_psi2b = L_vsocz * pair.psi2_beta;
-    vec tem_psi1bT_L = (pair.psi1_beta.t() * L_vsocz).t(); // Col vec
+    vec tem_psi1bT_L = (pair.psi1_beta.t() * L_vsocz).t();
 
     vec U_last_b = pair.U_b.tail_cols(1);
     vec V_last_a = pair.V_a.tail_cols(1);
     vec U_last_a = pair.U_a.tail_cols(1);
     vec V_last_b = pair.V_b.tail_cols(1);
 
-    // 4. Prepare Intermediate Vectors (Term 2/3 Weights Inputs)
+
     vec C1bT_L_psi2b = pair.C1_flipped_beta.t() * tem_L_psi2b;
     vec C1aT_L_psi2a = pair.C1_flipped_alpha.t() * tem_L_psi2a;
-    // Transpose to make them column vectors for consistent dot product logic
+
     vec psi1a_L_C2a = (pair.psi1_alpha.t() * L_vsocz * pair.C2_flipped_alpha).t();
     vec psi1b_L_C2b = (pair.psi1_beta.t() * L_vsocz * pair.C2_flipped_beta).t();
 
-    // 5. Setup Temporary Blocks and Compute Sigma U/V
-    // Note: This part involves SVD and is kept as is (assuming it's necessary logic)
+
     MOpair temblocka, temblockb;
     temblocka.U = pair.U_a;
     temblocka.V = pair.V_a;
@@ -3156,7 +3115,7 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
     temblockb.lambda = pair.lambda_b;
     temblocka.n_ao = n_ao;
     temblockb.n_ao = n_ao;
-    // Careful with assignments matching original code
+
     temblocka.n_occ_a = pair.n_occ_a1;
     temblocka.n_occ_b = pair.n_occ_a2;
     temblocka.n_svd = pair.lambda_a.size();
@@ -3164,64 +3123,59 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
     temblockb.n_occ_b = pair.n_occ_b2;
     temblockb.n_svd = pair.lambda_b.size();
 
-    // Potentially expensive, parallelize if sigma_u internally supports it or run in sections
     pair.sigma_ua = sigma_u(temblocka);
     pair.sigma_va = sigma_v(temblocka);
     pair.sigma_ub = sigma_u(temblockb);
     pair.sigma_vb = sigma_v(temblockb);
 
-    // 6. Precompute Weights for Term 2 and Term 3
-    // These weights are reused across different K blocks
 
-    // Indices for extracting rows from sigma_u/v
-    uvec idx_ua = get_strided_indices(pair.n_occ_a1, pair.n_occ_a1); // stride=n_occ_a1, count=n_occ_a1
+    uvec idx_ua = get_strided_indices(pair.n_occ_a1, pair.n_occ_a1);
     uvec idx_va = get_strided_indices(pair.n_occ_a2, pair.n_occ_a2);
     uvec idx_ub = get_strided_indices(pair.n_occ_b1, pair.n_occ_b1);
     uvec idx_vb = get_strided_indices(pair.n_occ_b2, pair.n_occ_b2);
 
-    // Compute Weights W = C^T * Sigma_subset
+
     vec w_ua = compute_sigma_weight(pair.sigma_ua, C1aT_L_psi2a, idx_ua);
     vec w_va = compute_sigma_weight(pair.sigma_va, psi1a_L_C2a,  idx_va);
     vec w_ub = compute_sigma_weight(pair.sigma_ub, C1bT_L_psi2b, idx_ub);
     vec w_vb = compute_sigma_weight(pair.sigma_vb, psi1b_L_C2b,  idx_vb);
 
-    // 7. Parallel Computation of 8 K-Blocks
+
     #pragma omp parallel sections
     {
-        // --- Group 1 (Block 1) ---
         #pragma omp section
         {
             // K_aa_1
             k_aa_1 = compute_k_last_block(
                 b1.sigma_aa, b1.sigma_ba, pair.pi_aa_1,
                 pair.block1.E_a, tem_L_psi2a, U_last_a,
-                w_ua, w_va, // Weights for pi_aa
+                w_ua, w_va,
                 b1.n_occ_a, b1.n_occ_b, b1.n_vir_a, b1.n_occ_a
             );
         }
         #pragma omp section
         {
-            // K_ba_1 (Uses sigma_ub/vb weights with pi_ba)
+            // K_ba_1
             k_ba_1 = compute_k_last_block(
                 b1.sigma_aa, b1.sigma_ba, pair.pi_ba_1,
                 pair.block1.E_b, tem_L_psi2b, U_last_b,
-                w_ub, w_vb, // Weights for pi_ba
+                w_ub, w_vb,
                 b1.n_occ_a, b1.n_occ_b, b1.n_vir_a, b1.n_occ_a
             );
         }
         #pragma omp section
         {
-            // K_ab_1 (Uses sigma_ua/va weights with pi_ab)
+            // K_ab_1
             k_ab_1 = compute_k_last_block(
                 b1.sigma_ab, b1.sigma_bb, pair.pi_ab_1,
                 pair.block1.E_a, tem_L_psi2a, U_last_a,
-                w_ua, w_va, // Weights for pi_ab
+                w_ua, w_va,
                 b1.n_occ_a, b1.n_occ_b, b1.n_vir_b, b1.n_occ_b
             );
         }
         #pragma omp section
         {
-            // K_bb_1 (Uses sigma_ub/vb weights with pi_bb)
+            // K_bb_1
             k_bb_1 = compute_k_last_block(
                 b1.sigma_ab, b1.sigma_bb, pair.pi_bb_1,
                 pair.block1.E_b, tem_L_psi2b, U_last_b,
@@ -3230,7 +3184,6 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
             );
         }
 
-        // --- Group 2 (Block 2) ---
         #pragma omp section
         {
             // K_aa_2
@@ -3273,7 +3226,7 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
         }
     }
 
-    // 8. Debug Output
+
     DBG("||K_aa_1|| = " << norm(k_aa_1, "fro"));
     DBG("||K_ba_1|| = " << norm(k_ba_1, "fro"));
     DBG("||K_ab_1|| = " << norm(k_ab_1, "fro"));
@@ -3283,7 +3236,7 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
     DBG("||K_ab_2|| = " << norm(k_ab_2, "fro"));
     DBG("||K_bb_2|| = " << norm(k_bb_2, "fro"));
 
-    // 9. Final Assembly
+
     mat Vca = pair.V_a.cols(0, pair.lambda_a.size() - 1);
     mat Vcb = pair.V_b.cols(0, pair.lambda_b.size() - 1);
     mat Uca = pair.U_a.cols(0, pair.lambda_a.size() - 1);
@@ -3297,7 +3250,7 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
     mat Sooinva = Vca * diagmat(lambda_a_m1_inv) * Uca.t();
     mat Sooinvb = Vcb * diagmat(lambda_b_m1_inv) * Ucb.t();
 
-    // Vectorized linear combinations
+
     pair.L_aa_1 = k_aa_1 * scaling_factor + (pair.val_a) * (Sooinva * pair.pi_aa_1 + Sooinvb * pair.pi_ba_1);
     pair.L_ba_1 = k_ba_1 * scaling_factor + (pair.val_b) * (Sooinvb * pair.pi_ba_1 + Sooinva * pair.pi_aa_1);
     pair.L_ab_1 = k_ab_1 * scaling_factor + (pair.val_a) * (Sooinva * pair.pi_ab_1 + Sooinvb * pair.pi_bb_1);
@@ -3318,14 +3271,10 @@ void spin_adiabatic_state::k_matrix_last(OrbitalPair& pair)
 
 void spin_adiabatic_state::gradient_implicit_rhs_Ms()
 {
-   //test_sigma_UV();
-   // build CPKS equation
    S_MO_alpha = C1_alpha.t() * AOS * C2_alpha;
    S_MO_beta  = C1_beta.t() * AOS * C2_beta;
-   // first low-spin state
    y1_vo_alpha = zeros<mat>(nvir1_a, nalpha1);
    y1_vo_beta  = zeros<mat>(nvir1_b, nbeta1);
-   // second high-spin state
    y2_ov_alpha = zeros<mat>(nvir2_a, nalpha2); // (D+S)*V
    y2_ov_beta  = zeros<mat>(nvir2_b,  nbeta2); // D*(S+V)
    DBG("Zexuan Wei gradient_implicit_rhs start");
@@ -3351,7 +3300,7 @@ void spin_adiabatic_state::gradient_implicit_rhs_Ms()
 
          for (auto& pair : pair_list) {;
 
-            if (dir != 2){ // vsoc value is inplemented in k_matrix_null(pair), where it's multiplied to L matrix
+            if (dir != 2){
                k_matrix_null(pair);
                int vsoc_idx = get_index(Ms1, Ms2);
                DBG("pair.L_a_1 size = " << pair.L_a_1.n_rows << " x " << pair.L_a_1.n_cols);
