@@ -1,53 +1,194 @@
-# Chemlab
+# chemlab
 
-This is a private repository for storing my scripts, tools, and other code-related resources.
+:I This readme is written by Claude
 
-## How to Use
+A quantum chemistry automation toolkit focused on Q-Chem workflow automation, machine learning data preparation, and potential energy surface scanning.
 
-1. Clone the repository:
-   ```bash
-   git clone <repo_url>
-   cd chemlab
-2. Install in editable mode:
-   ```bash
-    pip install -e .
-3. Once installed, you can access the provided scripts directly.
-Example scripts can be found under:
-   ```bash
-    chemlab/scripts/examples
+## Features
 
-## Utility Modules
+- **Auto CLI Discovery** - Scripts automatically registered as CLI commands
+- **Q-Chem Integration** - Input/output file parsing, job management, parallel execution
+- **ML Data Processing** - TDDFT data export, trajectory splitting, format conversion
+- **PES Scanning** - 1D/2D constrained optimization scans
+- **MECP Optimization** - Minimum Energy Crossing Point search
+- **Finite Difference** - Numerical gradient calculation (3-point/5-point)
+
+## Installation
 
 ```bash
-file_system
+git clone <repo_url>
+cd chemlab
+pip install -e .
 ```
 
+## Project Structure
 
-This module provides tools to **read, write, and analyze Q-Chem input/output files**.
+```
+chemlab/
+├── cli/                    # CLI entry and command registration
+│   └── base.py            # CLICommand base class, script discovery
+├── config/                 # Configuration management
+│   ├── config.toml        # Default configuration file
+│   └── config_loader.py   # ConfigBase class
+├── scripts/               # All CLI scripts
+│   ├── base.py           # Script / QchemBaseScript base classes
+│   ├── ml_data/          # Machine learning data processing
+│   ├── qchem/            # Q-Chem utilities
+│   └── scan/             # PES scanning
+└── util/                  # Utility library
+    ├── file_system.py    # Q-Chem file parsing
+    ├── modify_inp.py     # Input file generation/modification
+    ├── ml_data.py        # MLData dataset class
+    ├── mecp.py           # MECP optimizer
+    └── unit.py           # Unit conversion
+```
 
-#### Main Features
+## Quick Start
 
-- **Unit conversion**
-  - Classes for `ENERGY`, `DISTANCE`, `FORCE`, `DIPOLE`, etc.
-  - Supports conversions between Hartree, kcal/mol, eV, Å, bohr, fs, and more.
+### Basic Usage
 
-- **Q-Chem input handling**
-  - `qchem_file` reads or generates standard `.inp` files.
-  - Includes `$molecule`, `$rem`, `$opt`, `$opt2`, and other sections.
+```bash
+chemlab <module> <script> [options]
+```
 
-- **Molecule operations**
-  - Parse and modify geometries.
-  - Compute bond lengths, angles, and dihedrals.
+### Common Examples
 
-- **Q-Chem output parsing**
-  - Classes like:
-    - `qchem_out_opt` – geometry optimization
-    - `qchem_out_scan` – PES scan
-    - `qchem_out_force` – forces and gradients
-    - `qchem_out_excite` – excited-state analysis
-    - `qchem_out_aimd` – AIMD trajectory
-  - Extracts energies, gradients, geometries, ESP charges, etc.
+```bash
+# Export TDDFT data to numpy format
+chemlab ml_data export_numpy --data ./raw_data/ --out ./npy/
 
-- **Batch & multi-job support**
-  - `multiple_qchem_jobs` for multi-`@@@` inputs.
-  - `qchem_out_multi` for reading and summarizing multiple outputs.
+# Convert optimization output to single-point input
+chemlab qchem convert_out_to_inp --file opt.out
+
+# Generate multi-spin-state inputs
+chemlab qchem multi_states --file mol.xyz --spins 1,3,5
+
+# 1D potential energy surface scan
+chemlab scan scan1d --ref ref.in --row_max 40
+
+# MECP optimization
+chemlab qchem run_mecp --file ref.in --spin1 1 --spin2 3
+```
+
+## Modules
+
+### ml_data - Machine Learning Data
+
+| Script | Function |
+|--------|----------|
+| `export_numpy` | TDDFT output → numpy arrays |
+| `traj_split` | Split trajectory into train/val/test |
+| `prepare_tddft_inp` | MD trajectory → TDDFT inputs |
+
+### qchem - Q-Chem Utilities
+
+| Script | Function |
+|--------|----------|
+| `convert_out_to_inp` | Optimization output → single-point input |
+| `multi_states` | Generate multi-spin-state inputs |
+| `run_mecp` | MECP optimization |
+| `fpfd` / `tpfd` | Finite difference gradient |
+
+### scan - PES Scanning
+
+| Script | Function |
+|--------|----------|
+| `scan1d` | 1D constrained optimization scan |
+
+## Configuration System
+
+Configuration file located at `chemlab/config/config.toml`, supporting:
+
+- **Default Inheritance** - `use_defaults = "qchem"`
+- **CLI Override** - Command line arguments have highest priority
+- **Auto Type Inference** - Parameter types inferred from defaults
+
+### Configuration Example
+
+```toml
+[export_numpy]
+data = "./raw_data/"
+out = "./"
+state_idx = 1
+energy_unit = "kcal/mol"
+
+[qchem_env]
+use_defaults = "pete"
+
+[defaults.pete]
+env_script = """
+export QC=/path/to/qchem
+source $QC/bin/qchem.setup.sh
+"""
+```
+
+## Adding New Scripts
+
+1. Create a `.py` file under `chemlab/scripts/<module>/`
+
+2. Define a Script subclass:
+
+```python
+from chemlab.scripts.base import Script
+from chemlab.config.config_loader import ConfigBase
+
+class MyConfig(ConfigBase):
+    section_name = "my_script"
+
+class MyScript(Script):
+    name = "my_script"
+    config = MyConfig
+    
+    def run(self, cfg):
+        print(f"Running with: {cfg.param}")
+```
+
+3. Add configuration to `config.toml`:
+
+```toml
+[my_script]
+param = "default_value"
+```
+
+4. Use it:
+
+```bash
+chemlab <module> my_script --param value
+```
+
+## Utility Library
+
+### file_system.py
+
+- `qchem_file` - Q-Chem input file parsing/generation
+- `qchem_out_opt` - Optimization output parsing
+- `qchem_out_force` - Force/gradient output parsing
+- `molecule` - Molecular structure class
+
+### modify_inp.py
+
+- `qchem_out_excite_multi` - Multi-frame TDDFT output processing
+- `qchem_out_aimd_multi` - Multi-frame AIMD output processing
+- `single_spin_job` / `multi_spin_job` - Input file generators
+
+### ml_data.py
+
+- `MLData` - Machine learning dataset management
+- Supports train/val/test splitting
+- xyz file import/export
+
+### unit.py
+
+- `ENERGY` - Energy unit conversion
+- `DISTANCE` - Distance unit conversion
+- `GRADIENT` - Gradient unit conversion
+
+## Dependencies
+
+- Python >= 3.11
+- numpy
+- matplotlib (for MECP visualization)
+
+## License
+
+MIT
