@@ -461,18 +461,16 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
    for (auto it = MO_state1_by_Ms1.begin() ; it !=  MO_state1_by_Ms1.end(); ++it) {
       double Ms1 = it->first;
       const vector<MOpair>& blocks1 = it->second;        
-      cout << "Zexuan Wei vsoc Ms1 :" << Ms1 << endl;
+      cout << " vsoc Ms1 :" << Ms1 << endl;
       for (int dir = 0; dir < 3; ++dir) {
-         cout << "Zexuan Wei vsoc direction :" << dir << endl;
+         cout << " vsoc direction :" << dir << endl;
          double delta_Ms = (dir == 0) ? +1 :
          (dir == 1) ? -1 : 0;
          double Ms2 = Ms1 + delta_Ms;
          if (MO_state2_by_Ms2.count(Ms2) == 0) continue;
-
          const auto& blocks2 = MO_state2_by_Ms2[Ms2];
-
-	      cout << "Zexuan Wei Ms1 block size :" << blocks1.size() << endl;
-         cout << "Zexuan Wei Ms2 block size :" << blocks2.size() << endl;
+	      cout << "Ms1 block size :" << blocks1.size() << endl;
+         cout << "Ms2 block size :" << blocks2.size() << endl;
          double tem_x = 0;
          double tem_y = 0;
          double tem_z = 0;
@@ -596,15 +594,13 @@ vec spin_adiabatic_state::vsoc_vector_modular() {
                   pair.psi2_alpha = b2.C_alpha * Va.tail_cols(1);
                   pair.psi1_beta  = b1.C_beta  * Ub.tail_cols(1);
                   pair.psi2_beta  = b2.C_beta  * Vb.tail_cols(1);
-
-                  cout << "Zexuan Wei vsoc zpure alpha:" << dot(pair.psi1_alpha, L_AO.slice(2) * pair.psi2_alpha)  << endl;
+                  double val_a = pair.phase_alpha * dot(pair.psi1_alpha, L_AO.slice(2) * pair.psi2_alpha);
+                  double val_b = -pair.phase_beta * dot(pair.psi1_beta, L_AO.slice(2) * pair.psi2_beta);
+				  double val = val_a + val_b;
+				  cout << "Zexuan Wei vsoc zpure alpha:" << dot(pair.psi1_alpha, L_AO.slice(2) * pair.psi2_alpha)  << endl;
                   cout << "Zexuan Wei vsoc zpure beta:" << dot(pair.psi1_beta, L_AO.slice(2) * pair.psi2_beta)  << endl;
                   cout << "Zexuan Wei vsoc z phase alpha:" << pair.phase_alpha  << endl;
                   cout << "Zexuan Wei vsoc z phase beta:" << pair.phase_beta  << endl;
-
-                  double val_a = pair.phase_alpha * dot(pair.psi1_alpha, L_AO.slice(2) * pair.psi2_alpha)  * 0.5;
-                  double val_b = pair.phase_beta * dot(pair.psi1_beta, L_AO.slice(2) * pair.psi2_beta) * -0.5;
-				  double val = val_a + val_b;
                   cout << "Zexuan Wei vsoc val:" << val << endl;
                   val *= scaling_factor;
                   vsoc_idx = get_index(Ms1, Ms2);
@@ -896,10 +892,9 @@ void spin_adiabatic_state::run_two_states()
       rem_write(nalpha1, REM_NALPHA);
       rem_write(nbeta1, REM_NBETA);
    }
-
    // singlet state (Ms=0) or doublet state (Ms=+1/2)
    if (unrestricted){ // uks
-      cout << "Zexuan Wei check scf alpha" << REM_NALPHA << "beta" << REM_NBETA << endl;
+      cout <<  check scf alpha" << REM_NALPHA << "beta" << REM_NBETA << endl;
       myscf_1 = run_scf(E1, 1);
       myuhf_1 = dynamic_cast<uhf*>(myscf_1);
    }
@@ -1725,7 +1720,7 @@ void spin_adiabatic_state::sigma_matrix(MOpair& block) {
     DBG("sigma_bb max abs =" << sigma_bb.max());
     DBG("===== sigma_overlap END (Optimized) =====");
 }
-/*
+
 void spin_adiabatic_state::sigma_matrix_test(MOpair& block){
 
     DBG("===== sigma_overlap TEST MODE START =====");
@@ -1943,8 +1938,8 @@ void spin_adiabatic_state::pi_matrix(OrbitalPair& pair) {
     DBG("Pi_bb_2 max abs =" << pi_bb_2.max());
     DBG("===== pi_matrix END =====");
 }
-*/
-/*
+
+
 void spin_adiabatic_state::k_matrix_null(OrbitalPair& pair)
 {
 
@@ -3277,7 +3272,7 @@ void spin_adiabatic_state::gradient_implicit_rhs_Ms()
    y1_vo_beta  = zeros<mat>(nvir1_b, nbeta1);
    y2_ov_alpha = zeros<mat>(nvir2_a, nalpha2); // (D+S)*V
    y2_ov_beta  = zeros<mat>(nvir2_b,  nbeta2); // D*(S+V)
-   DBG("Zexuan Wei gradient_implicit_rhs start");
+   DBG("gradient_implicit_rhs start");
    DBG("y1_vo_alpha size = " << y1_vo_alpha.n_rows << " x " << y1_vo_alpha.n_cols);
    DBG("y1_vo_beta size = " << y1_vo_beta.n_rows << " x " << y1_vo_beta.n_cols);
    DBG("y2_ov_alpha size = " << y2_ov_alpha.n_rows << " x " << y2_ov_alpha.n_cols);
@@ -3290,16 +3285,11 @@ void spin_adiabatic_state::gradient_implicit_rhs_Ms()
          double delta_Ms = (dir == 0) ? +1 :
                            (dir == 1) ? -1 : 0;
          double Ms2 = Ms1 + delta_Ms;
-
          int idx = get_index(Ms1, Ms2);
-
-
          auto& pair_list = vsoc_pairs[idx];
          cout << "Processing Ms1 = " << Ms1 << ", Ms2 = " << Ms2
                << ", direction = " << dir << ", num pairs = " << pair_list.size() << endl;
-
          for (auto& pair : pair_list) {;
-
             if (dir != 2){
                k_matrix_null(pair);
                int vsoc_idx = get_index(Ms1, Ms2);
