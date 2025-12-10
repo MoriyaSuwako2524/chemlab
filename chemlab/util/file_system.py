@@ -952,10 +952,9 @@ class qchem_out_force(qchem_out):
                     force_key_word = different_type
                 force_key_word_checked = 1
 
-        # --- Scan blocks ---
+
         force_check = 0  # 0: none, 1: main, 2: e1, 3: e2
         force, force_e1, force_e2 = [], [], []
-
         for ln in lines:
             # SOC state switches
             if different_type == "soc" and force_key_word_e1 and force_key_word_e2:
