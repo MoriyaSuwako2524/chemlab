@@ -117,14 +117,12 @@ class mecp(object):
         g_tan = P @ g_target_vec
         g_k = g_tan
 
-        # ========== 修改1：更保守的初始化 ==========
         if getattr(self, 'inv_hess', None) is None:
             print("ℹ️ Initializing Inverse Hessian")
             # 使用较小的对角值，避免步长过大
-            H0 = 0.3 * np.eye(nvar)  # 或者用 1.0，但后面会限制步长
+            H0 = 0.3 * np.eye(nvar)
             self.inv_hess = P @ H0 @ P
 
-        # ========== 修改2：改进的 BFGS 更新 ==========
         if getattr(self, 'last_structure', None) is not None and \
                 getattr(self, 'last_gradient', None) is not None:
             s_k = (x_k - self.last_structure).reshape(-1, 1)
@@ -134,7 +132,6 @@ class mecp(object):
             y_tan = P @ y_k
             sty = float(s_tan.T @ y_tan)
 
-            # 检查 inv_hess 是否病态，如果是则重置
             eigvals = np.linalg.eigvalsh(self.inv_hess)
             condition_number = eigvals.max() / max(eigvals.min(), 1e-10)
             if condition_number > 100:
@@ -163,12 +160,10 @@ class mecp(object):
         else:
             step_orth = np.zeros(nvar)
 
-        # 切向步（沿 seam 优化）
         step_tan = -self.inv_hess @ g_tan
 
-        # ========== 修改3：分别限制两个步的大小 ==========
-        max_step_tan = 0.05  # 切向步最大 0.05 Å
-        max_step_orth = 0.1  # 正交步最大 0.1 Å
+        max_step_tan = 0.05
+        max_step_orth = 0.1
 
         norm_tan = np.linalg.norm(step_tan)
         norm_orth = np.linalg.norm(step_orth)
@@ -181,20 +176,10 @@ class mecp(object):
             step_orth = step_orth * (max_step_orth / norm_orth)
             print(f"🔻 step_orth 截断: {norm_orth:.4f} → {max_step_orth:.4f}")
 
-        # ========== 修改4：根据收敛情况调整权重 ==========
-        # 如果 gap 还很大，优先减小 gap
-        # 如果 gap 已经较小，增加切向优化的权重
         gap_threshold = 0.005  # 5 mHartree ≈ 3 kcal/mol
-
-        if abs(delta_E) > gap_threshold:
-            # gap 较大时，增加正交步权重
-            alpha_tan = 0.3
-            alpha_orth = 1.0
-        else:
-            # gap 较小时，增加切向步权重
-            alpha_tan = 1.0
-            alpha_orth = 0.5
-
+        ratio = min(abs(delta_E) / gap_threshold, 1.0)
+        alpha_orth = 0.5 + 0.5 * ratio
+        alpha_tan = 1.0 - 0.7 * ratio
         total_step = alpha_tan * step_tan + alpha_orth * step_orth
 
         # 最终步长限制
@@ -225,8 +210,8 @@ class mecp(object):
 
         self.last_structure = x_k.copy()
         self.last_gradient = g_k.copy()
-        self.orthogonal_gradient = g_tan
         self.parallel_gradient = g_tan
+        self.orthogonal_gradient = (np.eye(nvar) - P) @ g_target_vec
     def generate_new_inp(self):
         path = self.out_path
         self.state_1.job_name = "{}{}_job{}.inp".format(self.prefix,self.state_1._spin,self.job_num)
