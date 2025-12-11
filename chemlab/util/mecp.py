@@ -84,8 +84,8 @@ class mecp(object):
 
     def calc_new_gradient(self):
 
-        grad_1 = self.state_1.out.force
-        grad_2 = self.state_2.out.force
+        grad_1 = -self.state_1.out.force
+        grad_2 = -self.state_2.out.force
         from chemlab.util.unit import GRADIENT
         grad_1 = GRADIENT(grad_1).convert_to({"energy":("Hartree",1),"distance":("Ang",-1)})
         grad_2 = GRADIENT(grad_2).convert_to({"energy": ("Hartree", 1), "distance": ("Ang", -1)})
