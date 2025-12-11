@@ -127,26 +127,16 @@ class mecp(object):
                 getattr(self, 'last_gradient', None) is not None:
             s_k = (x_k - self.last_structure).reshape(-1, 1)
             y_k = (g_k - self.last_gradient).reshape(-1, 1)
+            sty = float(s_k.T @ y_k)
 
-            s_tan = P @ s_k
-            y_tan = P @ y_k
-            sty = float(s_tan.T @ y_tan)
-
-            eigvals = np.linalg.eigvalsh(self.inv_hess)
-            condition_number = eigvals.max() / max(eigvals.min(), 1e-10)
-            if condition_number > 100:
-                print(f"⚠️ inv_hess 病态 (条件数={condition_number:.1f})，重置")
-                self.inv_hess = P @ (0.3 * np.eye(nvar)) @ P
-
-            elif sty > 1e-10:
+            if sty > 1e-10:
                 rho = 1.0 / sty
                 I = np.eye(nvar)
                 H = self.inv_hess
-
-                term1 = I - rho * (s_tan @ y_tan.T)
-                term2 = I - rho * (y_tan @ s_tan.T)
-                H_new = term1 @ H @ term2 + rho * (s_tan @ s_tan.T)
-                self.inv_hess = 0.5 * (H_new + H_new.T)
+                term1 = I - rho * (s_k @ y_k.T)
+                term2 = I - rho * (y_k @ s_k.T)
+                H_new = term1 @ H @ term2 + rho * (s_k @ s_k.T)
+                self.inv_hess = P @ (0.5 * (H_new + H_new.T)) @ P
             else:
                 print("⚠️ s^T*y too small, skipping BFGS update.")
 
@@ -199,6 +189,15 @@ class mecp(object):
         print(f"权重: α_tan={alpha_tan}, α_orth={alpha_orth}")
         eigvals = np.linalg.eigvalsh(self.inv_hess)
         print(f"inv_hess 特征值范围: [{eigvals.min():.4f}, {eigvals.max():.4f}]")
+        # 检查step_tan的方向是否正确
+        cos_angle = np.dot(step_tan, -g_tan) / (np.linalg.norm(step_tan) * np.linalg.norm(g_tan) + 1e-10)
+        print(f"cos(step_tan, -g_tan) = {cos_angle:.4f}")  # 应该接近1
+
+        # 检查实际的能量变化
+        print(f"预测能量下降: {np.dot(g_tan, step_tan):.6f}")
+
+        # 检查s^T y的具体值
+        print(f"s^T y = {sty:.6e}, ||s|| = {np.linalg.norm(s_k):.4f}, ||y|| = {np.linalg.norm(y_k):.4f}")
         print("=" * 50)
 
         new_structure_vec = x_k + total_step
