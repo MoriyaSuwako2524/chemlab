@@ -225,6 +225,8 @@ class mecp(object):
 
         self.last_structure = x_k.copy()
         self.last_gradient = g_k.copy()
+        self.orthogonal_gradient = g_tan
+        self.parallel_gradient = g_tan
     def generate_new_inp(self):
         path = self.out_path
         self.state_1.job_name = "{}{}_job{}.inp".format(self.prefix,self.state_1._spin,self.job_num)
