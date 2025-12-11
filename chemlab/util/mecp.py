@@ -153,7 +153,7 @@ class mecp(object):
 
         step_tan = - self.inv_hess @ g_tan
         self.parallel_gradient = g_tan
-        total_step = self.step_size*(step_tan + step_orth)
+        total_step = self.step_size*(2 * step_tan + step_orth)
 
         step_norm = np.linalg.norm(total_step)
         if abs(delta_E) < 1 / Hartree_to_kcal:
@@ -173,7 +173,24 @@ class mecp(object):
 
         self.last_structure = x_k.copy()
         self.last_gradient = g_k.copy()
+        print("=" * 50)
+        print(f"E1 = {E1:.6f}, E2 = {E2:.6f}, ΔE = {delta_E:.6f}")
+        print(f"‖g_tan‖ = {np.linalg.norm(g_tan):.6f}")
+        print(f"‖step_tan‖ = {np.linalg.norm(step_tan):.6f}")
+        print(f"‖step_orth‖ = {np.linalg.norm(step_orth):.6f}")
 
+        # 关键检查：切向步是否在下降
+        dot_tan = np.dot(step_tan, g_tan)
+        print(f"step_tan · g_tan = {dot_tan:.6f}  (应为负数)")
+
+        # 检查 inv_hess 的特征值
+        eigvals = np.linalg.eigvalsh(self.inv_hess)
+        print(f"inv_hess 特征值范围: [{eigvals.min():.4f}, {eigvals.max():.4f}]")
+        print(f"负特征值数量: {np.sum(eigvals < 0)}")
+
+        # 检查 step_size
+        print(f"step_size = {self.step_size}")
+        print("=" * 50)
     def generate_new_inp(self):
         path = self.out_path
         self.state_1.job_name = "{}{}_job{}.inp".format(self.prefix,self.state_1._spin,self.job_num)
