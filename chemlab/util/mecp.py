@@ -128,7 +128,7 @@ class mecp(object):
             s_k = (x_k - self.last_structure).reshape(-1, 1)
             y_k = (g_k - self.last_gradient).reshape(-1, 1)
             sty = float(s_k.T @ y_k)
-
+            print(f"sty:{sty}")
             if sty > 1e-10:
                 rho = 1.0 / sty
                 I = np.eye(nvar)
@@ -196,8 +196,6 @@ class mecp(object):
         # 检查实际的能量变化
         print(f"预测能量下降: {np.dot(g_tan, step_tan):.6f}")
 
-        # 检查s^T y的具体值
-        print(f"s^T y = {sty:.6e}, ||s|| = {np.linalg.norm(s_k):.4f}, ||y|| = {np.linalg.norm(y_k):.4f}")
         print("=" * 50)
 
         new_structure_vec = x_k + total_step
