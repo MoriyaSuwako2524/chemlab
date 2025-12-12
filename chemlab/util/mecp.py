@@ -284,7 +284,6 @@ class mecp(object):
         new_structure = X_3.reshape((3, natom))
 
         print(f"self.grad_1:{self.grad_1},shape={self.state_1.out.force.shape}")
-        print(f"self.grad_1:{self.grad_1},shape={self.grad_1.shape}")
         print(f"X2:{X_2},shape={X_2.shape}")
         print(f"structure:{structure},shape={structure.shape}")
         print(f"new_structure:{new_structure},shape={new_structure.shape}")
