@@ -32,25 +32,71 @@ class mecp(object):
         self.restrain_list = []
         self.hessian_coefficient = 0.01
         self.step_size = 0.01
+        
+        # ========== Harvey MECP 相关参数 (来自 easymecp.py) ==========
+        self.nstep = 0           # 当前步数
+        self.ffile = 0           # 是否从ProgFile恢复 (0=否)
+        
+        # 收敛阈值 (与 easymecp.py 一致)
+        self.TDE = 5.0e-5        # 能量差阈值
+        self.TDXMax = 4.0e-3     # 最大位移阈值
+        self.TDXRMS = 2.5e-3     # RMS位移阈值
+        self.TGMax = 7.0e-4      # 最大梯度阈值
+        self.TGRMS = 5.0e-4      # RMS梯度阈值
+        
+        # Harvey有效梯度参数
+        self.facPP = 140.0       # 垂直梯度系数 (经验值)
+        self.facP = 1.0          # 平行梯度系数
+        self.STPMX = 0.1         # 单坐标最大步长 (Angstrom)
+        
+        # 历史数据存储 (用于BFGS)
+        self.X_1 = None          # 前前一步坐标
+        self.X_2 = None          # 前一步坐标
+        self.G_1 = None          # 前一步有效梯度
+        self.G_2 = None          # 当前有效梯度
+        self.HI_1 = None         # 前一步逆Hessian
+        self.HI_2 = None         # 当前逆Hessian
 
     @property
     def energy_tol(self):
-        return self.converge_limit
+        return self.TDE
     @property
     def grad_tol(self):
-        return self.converge_limit *5
+        return self.TGMax
     @property
     def disp_tol(self):
-        return self.converge_limit *10
+        return self.TDXMax
+        
     def initialize_bfgs(self):
-        """Initialize inverse Hessian for quasi-Newton update."""
+        """Initialize inverse Hessian for quasi-Newton update.
+        
+        按照 easymecp.py Fortran代码中的 Initialize 子程序:
+        逆Hessian对角元素初始化为0.7 (对应Hessian约1.4 Hartree/Angstrom^2)
+        """
         natom = self.state_1.inp.molecule.natom
-        self.inv_hess = np.eye(3 * natom)
+        nx = 3 * natom
+        
+        # 初始化逆Hessian (对角0.7)
+        self.inv_hess = np.zeros((nx, nx))
+        for i in range(nx):
+            self.inv_hess[i, i] = 0.7
+            
+        self.HI_1 = self.inv_hess.copy()
+        self.HI_2 = None
+        
         self.last_structure = None
         self.last_gradient = None
+        self.X_1 = None
+        self.X_2 = None
+        self.G_1 = None
+        self.G_2 = None
+        self.nstep = 0
+        self.ffile = 0
+        
     def add_restrain(self,atom_i, atom_j, R0, K=1000.0):
         self.restrain_list.append([atom_i,atom_j,R0,K])
         self.restrain = True
+        
     def read_init_structure(self):
         path = self.ref_path
         filename = self.ref_filename
@@ -63,6 +109,7 @@ class mecp(object):
         self.state_1.inp.molecule.multistate =   self.state_1.spin 
         self.state_2.inp.molecule.multistate =   self.state_2.spin 
         self.structure_list = [self.state_1.inp.molecule.return_xyz_list()]
+        
     def read_output(self):
         if self.out_path == "":
             path = self.ref_path
@@ -83,135 +130,191 @@ class mecp(object):
         self.state_2.gradient_list.append(self.state_2.out.force)
 
     def calc_new_gradient(self):
+        """
+        计算有效梯度 (Effective Gradient)
+        
+        按照 easymecp.py Fortran代码中的 Effective_Gradient 子程序:
+        G = (Ea - Eb) * facPP * PerpG + facP * ParG
+        
+        其中:
+        - PerpG = Ga - Gb (垂直于seam的梯度差)
+        - ParG = Ga - (PerpG/|PerpG|) * (Ga·PerpG/|PerpG|) (平行于seam的梯度)
+        """
+        # 读取梯度并转换单位
         grad_1 = self.state_1.out.force
         grad_2 = self.state_2.out.force
         from chemlab.util.unit import GRADIENT
         grad_1 = GRADIENT(grad_1).convert_to({"energy": ("Hartree", 1), "distance": ("Ang", -1)})
         grad_2 = GRADIENT(grad_2).convert_to({"energy": ("Hartree", 1), "distance": ("Ang", -1)})
-        self.grad_1 = grad_1.flatten()
-        self.grad_2 = grad_2.flatten()
-
-    def update_structure(self):
-        structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
-        natom = self.state_1.inp.molecule.natom
-        x_k = structure.flatten()
-        nvar = 3 * natom
-
-        E1 = self.state_1.out.ene
-        E2 = self.state_2.out.ene
-        Ga = self.grad_1  # 态1的梯度
-        Gb = self.grad_2  # 态2的梯度
-
-        # ==================== Harvey有效梯度 ====================
-        # facPP = 140 是Harvey的经验值，用于平衡两个方向的Hessian量级
-        facPP = 140.0
-        facP = 1.0
-
+        
+        # 展平为一维数组
+        Ga = grad_1.flatten()
+        Gb = grad_2.flatten()
+        
+        # 保存原始梯度
+        self.grad_1 = Ga
+        self.grad_2 = Gb
+        
+        # 获取能量
+        Ea = self.state_1.out.ene
+        Eb = self.state_2.out.ene
+        
+        n = len(Ga)
+        
+        # ========== Harvey有效梯度计算 (来自easymecp.py Fortran代码) ==========
         # PerpG = Ga - Gb (垂直于seam的梯度差)
         PerpG = Ga - Gb
-        npg = np.linalg.norm(PerpG)
-
-        if npg < 1e-10:
-            print("⚠️ 梯度差接近零，已接近MECP")
-            ParG = Ga.copy()
-            G_eff = ParG
-        else:
-            # pp = Ga在PerpG方向的投影长度
-            pp = np.dot(Ga, PerpG) / npg
-
-            # ParG = Ga减去其在PerpG方向的分量（Ga在seam上的投影）
+        
+        # npg = |PerpG|
+        npg = np.sqrt(np.sum(PerpG**2))
+        
+        # pp = Ga在PerpG方向的投影
+        pp = np.dot(Ga, PerpG)
+        
+        if npg > 1e-10:
+            pp = pp / npg
+            # ParG = Ga - (PerpG/npg) * pp (Ga在seam上的投影)
             ParG = Ga - (PerpG / npg) * pp
+            # 有效梯度 G = (Ea-Eb) * facPP * PerpG + facP * ParG
+            G_eff = (Ea - Eb) * self.facPP * PerpG + self.facP * ParG
+        else:
+            # 梯度差太小，已接近MECP
+            print("⚠️ 梯度差接近零 (npg < 1e-10)")
+            ParG = Ga.copy()
+            G_eff = self.facP * ParG
+        
+        # 保存结果
+        self.PerpG = PerpG      # 垂直梯度 (差分梯度)
+        self.ParG = ParG        # 平行梯度
+        self.G_eff = G_eff      # 有效梯度
+        self.npg = npg          # 梯度差范数
+        
+        # 用于兼容旧代码
+        self.orthogonal_gradient = PerpG
+        self.parallel_gradient = ParG
 
-            # 有效梯度 = 能量差项 + 切向项
-            G_eff = (E1 - E2) * facPP * PerpG + facP * ParG
-
-        # ==================== BFGS更新 ====================
-        if getattr(self, 'inv_hess', None) is None:
-            print("ℹ️ 初始化逆Hessian (对角0.7)")
-            self.inv_hess = 0.7 * np.eye(nvar)
-
-        if getattr(self, 'last_structure', None) is not None and \
-                getattr(self, 'last_G_eff', None) is not None:
-
-            DelX = x_k - self.last_structure
-            DelG = G_eff - self.last_G_eff
-
-            # 计算BFGS所需的量
-            fac = np.dot(DelG, DelX)
-            HDelG = self.inv_hess @ DelG
-            fae = np.dot(DelG, HDelG)
-
-            print(f"BFGS: fac={fac:.6e}, fae={fae:.6e}")
-
+    def update_structure(self):
+        """
+        更新分子结构
+        
+        按照 easymecp.py Fortran代码中的 UpdateX 子程序:
+        使用BFGS准牛顿方法更新坐标
+        """
+        # 获取当前结构
+        structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
+        natom = self.state_1.inp.molecule.natom
+        nx = 3 * natom
+        
+        # 当前坐标 (展平)
+        X_2 = structure.flatten()
+        
+        # 当前有效梯度
+        G_2 = self.G_eff.copy()
+        
+        # ========== BFGS更新 (来自easymecp.py Fortran代码 UpdateX子程序) ==========
+        
+        if (self.nstep == 0) and (self.ffile == 0):
+            # 第一步：简单的最速下降，步长因子0.7
+            ChgeX = -0.7 * G_2
+            
+            # 复制逆Hessian
+            if self.HI_1 is None:
+                self.HI_1 = np.eye(nx) * 0.7
+            self.HI_2 = self.HI_1.copy()
+            
+        else:
+            # 后续步骤：BFGS更新
+            
+            # 梯度差和坐标差
+            DelG = G_2 - self.G_1
+            DelX = X_2 - self.X_1
+            
+            # 计算 HDelG = H * DelG
+            HDelG = self.HI_1 @ DelG
+            
+            # 计算点积
+            fac = np.dot(DelG, DelX)      # DelG · DelX
+            fae = np.dot(DelG, HDelG)     # DelG · H · DelG
+            
             if abs(fac) > 1e-10 and abs(fae) > 1e-10:
                 fac_inv = 1.0 / fac
                 fad = 1.0 / fae
-
+                
                 # w向量
                 w = fac_inv * DelX - fad * HDelG
-
-                # BFGS公式 (DFP-BFGS混合)
-                H_new = self.inv_hess.copy()
-                for i in range(nvar):
-                    for j in range(nvar):
-                        H_new[i, j] += fac_inv * DelX[i] * DelX[j] \
-                                       - fad * HDelG[i] * HDelG[j] \
-                                       + fae * w[i] * w[j]
-
-                self.inv_hess = H_new
-                print("✓ BFGS更新成功")
+                
+                # BFGS逆Hessian更新公式:
+                # H_new = H + (DelX⊗DelX)/fac - (HDelG⊗HDelG)/fae + fae*(w⊗w)
+                self.HI_2 = self.HI_1.copy()
+                for i in range(nx):
+                    for j in range(nx):
+                        self.HI_2[i, j] += (fac_inv * DelX[i] * DelX[j] 
+                                           - fad * HDelG[i] * HDelG[j]
+                                           + fae * w[i] * w[j])
             else:
-                print("⚠️ BFGS跳过: fac或fae太小")
-
-        # ==================== 计算步长 ====================
-        if getattr(self, 'is_first_step', True):
-            # 第一步：简单的最速下降
-            ChgeX = -0.7 * G_eff
-            self.is_first_step = False
-        else:
-            # BFGS步
-            ChgeX = -self.inv_hess @ G_eff
-
-        # ==================== 步长限制 (Harvey方法) ====================
-        STPMX = 0.1  # 单个坐标最大位移
-        stpmax = STPMX * nvar  # 总步长限制
-
+                print(f"⚠️ BFGS跳过: fac={fac:.2e}, fae={fae:.2e}")
+                self.HI_2 = self.HI_1.copy()
+            
+            # 计算步长: ChgeX = -H * G
+            ChgeX = np.zeros(nx)
+            for i in range(nx):
+                for j in range(nx):
+                    ChgeX[i] -= self.HI_2[i, j] * G_2[j]
+        
+        # ========== 步长限制 (来自easymecp.py Fortran代码) ==========
+        stpmax = self.STPMX * nx  # 总步长限制
+        
+        # 计算总步长
+        stpl = np.sqrt(np.sum(ChgeX**2))
+        
         # 限制总步长
-        stpl = np.linalg.norm(ChgeX)
         if stpl > stpmax:
             ChgeX = ChgeX / stpl * stpmax
             print(f"🔻 总步长截断: {stpl:.4f} → {stpmax:.4f}")
-
-        # 限制单个坐标最大位移
+        
+        # 限制单坐标最大位移
         lgstst = np.max(np.abs(ChgeX))
-        if lgstst > STPMX:
-            ChgeX = ChgeX / lgstst * STPMX
-            print(f"🔻 单坐标截断: {lgstst:.4f} → {STPMX:.4f}")
-
-        # ==================== 更新结构 ====================
-        new_structure_vec = x_k + ChgeX
-        new_structure = new_structure_vec.reshape((3, natom))
-
+        if lgstst > self.STPMX:
+            ChgeX = ChgeX / lgstst * self.STPMX
+            print(f"🔻 单坐标截断: {lgstst:.4f} → {self.STPMX:.4f}")
+        
+        # ========== 更新坐标 ==========
+        X_3 = X_2 + ChgeX
+        new_structure = X_3.reshape((3, natom))
+        
+        # 写入新坐标
         self.state_1.inp.molecule.replace_new_xyz(new_structure)
         if hasattr(self.state_2.inp.molecule, 'carti'):
             self.state_2.inp.molecule.carti = self.state_1.inp.molecule.carti
-
-        # ==================== 保存历史 ====================
-        self.last_structure = x_k.copy()
-        self.last_G_eff = G_eff.copy()
-
+        
+        # ========== 保存历史数据 (用于下一步BFGS) ==========
+        self.X_1 = X_2.copy()       # 保存当前坐标为"前一步"
+        self.G_1 = G_2.copy()       # 保存当前梯度为"前一步"
+        self.HI_1 = self.HI_2.copy() if self.HI_2 is not None else self.HI_1.copy()
+        
+        # 更新步数
+        self.nstep += 1
+        
         # 保存用于收敛检查
-        self.ParG = ParG
-        self.PerpG = PerpG
-        self.G_eff = G_eff
         self.ChgeX = ChgeX
-
-        # ==================== 诊断输出 ====================
+        self.X_2 = X_2
+        self.X_3 = X_3
+        
+        # 兼容旧代码
+        self.last_structure = X_2.copy()
+        self.last_gradient = G_2.copy()
+        self.last_G_eff = G_2.copy()
+        
+        # ========== 诊断输出 ==========
+        E1 = self.state_1.out.ene
+        E2 = self.state_2.out.ene
         print("=" * 60)
-        print(f"E1 = {E1:.6f}, E2 = {E2:.6f}, ΔE = {E1 - E2:.6f}")
-        print(f"‖PerpG‖ = {npg:.6f} (梯度差)")
-        print(f"‖ParG‖ = {np.linalg.norm(ParG):.6f} (切向梯度)")
-        print(f"‖G_eff‖ = {np.linalg.norm(G_eff):.6f} (有效梯度)")
+        print(f"Step {self.nstep}")
+        print(f"E1 = {E1:.10f}, E2 = {E2:.10f}")
+        print(f"ΔE = {abs(E1 - E2):.6e} Hartree ({abs(E1 - E2) * Hartree_to_kcal:.4f} kcal/mol)")
+        print(f"‖PerpG‖ = {self.npg:.6f} (梯度差)")
+        print(f"‖ParG‖ = {np.linalg.norm(self.ParG):.6f} (切向梯度)")
+        print(f"‖G_eff‖ = {np.linalg.norm(G_2):.6f} (有效梯度)")
         print(f"‖ChgeX‖ = {np.linalg.norm(ChgeX):.6f} (位移)")
         print(f"max|ChgeX| = {np.max(np.abs(ChgeX)):.6f}")
         print("=" * 60)
@@ -226,50 +329,75 @@ class mecp(object):
             out.write(self.state_2.inp.molecule.return_output_format() + self.state_2.inp.remain_texts)
 
     def check_convergence(self):
+        """
+        检查收敛
+        
+        按照 easymecp.py Fortran代码中的 TestConvergence 子程序:
+        检查5个收敛标准 (全部满足才算收敛)
+        """
         E1 = self.state_1.out.ene
         E2 = self.state_2.out.ene
-        DE = abs(E1 - E2)
-
+        
         natom = self.state_1.inp.molecule.natom
-        nvar = 3 * natom
-
-        # Harvey收敛标准
-        G_eff = self.G_eff
-        ChgeX = self.ChgeX
-
-        GMax = np.max(np.abs(G_eff))
-        GRMS = np.sqrt(np.mean(G_eff ** 2))
-        DXMax = np.max(np.abs(ChgeX))
-        DXRMS = np.sqrt(np.mean(ChgeX ** 2))
-
-        # 默认阈值 (与easyMECP一致)
-        TDE = getattr(self, 'energy_tol', 5e-5)
-        TGMax = getattr(self, 'grad_tol', 7e-4)
-        TGRMS = 5e-4
-        TDXMax = 4e-3
-        TDXRMS = 2.5e-3
-
-        flags = [
-            DE < TDE,
-            GMax < TGMax,
-            GRMS < TGRMS,
-            DXMax < TDXMax,
-            DXRMS < TDXRMS
-        ]
-
-        is_converged = all(flags)
-
-        print(f"\n{'=' * 60}")
-        print(f"收敛检查:")
-        print(f"  Energy diff:  {DE:.6e}  ({'YES' if flags[0] else 'NO '}) (阈值: {TDE})")
-        print(f"  Max Gradient: {GMax:.6e}  ({'YES' if flags[1] else 'NO '}) (阈值: {TGMax})")
-        print(f"  RMS Gradient: {GRMS:.6e}  ({'YES' if flags[2] else 'NO '}) (阈值: {TGRMS})")
-        print(f"  Max Delta X:  {DXMax:.6e}  ({'YES' if flags[3] else 'NO '}) (阈值: {TDXMax})")
-        print(f"  RMS Delta X:  {DXRMS:.6e}  ({'YES' if flags[4] else 'NO '}) (阈值: {TDXRMS})")
-        print(f"  总体收敛: {'是 ✓' if is_converged else '否'}")
-        print(f"{'=' * 60}\n")
-
+        nx = 3 * natom
+        
+        # 获取有效梯度和位移
+        G = self.G_eff
+        DeltaX = self.ChgeX
+        
+        # ========== 计算收敛指标 (来自easymecp.py Fortran代码) ==========
+        
+        # 能量差
+        DE = abs(E1 - E2)
+        
+        # 位移统计
+        DXMax = np.max(np.abs(DeltaX))
+        DXRMS = np.sqrt(np.mean(DeltaX**2))
+        
+        # 梯度统计
+        GMax = np.max(np.abs(G))
+        GRMS = np.sqrt(np.mean(G**2))
+        
+        # 垂直/平行梯度统计 (用于诊断输出)
+        PpGRMS = np.sqrt(np.mean(self.PerpG**2))
+        PGRMS = np.sqrt(np.mean(self.ParG**2))
+        
+        # ========== 收敛判断 ==========
+        flags = {
+            'TGMax': GMax < self.TGMax,
+            'TGRMS': GRMS < self.TGRMS,
+            'TDXMax': DXMax < self.TDXMax,
+            'TDXRMS': DXRMS < self.TDXRMS,
+            'TDE': DE < self.TDE
+        }
+        
+        is_converged = all(flags.values())
+        
+        # ========== 输出收敛信息 ==========
+        print(f"\n{'=' * 70}")
+        print(f"Energy of First State:  {E1:.10f}")
+        print(f"Energy of Second State: {E2:.10f}")
+        print()
+        print("Convergence Check (Actual Value, then Threshold, then Status):")
+        print(f"Max Gradient El.: {GMax:11.6f} ({self.TGMax:8.6f})  {'YES' if flags['TGMax'] else ' NO'}")
+        print(f"RMS Gradient El.: {GRMS:11.6f} ({self.TGRMS:8.6f})  {'YES' if flags['TGRMS'] else ' NO'}")
+        print(f"Max Change of X:  {DXMax:11.6f} ({self.TDXMax:8.6f})  {'YES' if flags['TDXMax'] else ' NO'}")
+        print(f"RMS Change of X:  {DXRMS:11.6f} ({self.TDXRMS:8.6f})  {'YES' if flags['TDXRMS'] else ' NO'}")
+        print(f"Difference in E:  {DE:11.6f} ({self.TDE:8.6f})  {'YES' if flags['TDE'] else ' NO'}")
+        print()
+        print(f"Difference Gradient: (RMS * DE: {PpGRMS:.6f})")
+        print(f"Parallel Gradient: (RMS: {PGRMS:.6f})")
+        print()
+        
+        if is_converged:
+            print("The MECP Optimization has CONVERGED at that geometry !!!")
+            print("Goodbye and fly with us again...")
+        else:
+            print(f"Not converged. Proceeding to step {self.nstep + 1}...")
+        print(f"{'=' * 70}\n")
+        
         return is_converged
+
     def restrain_ene(self, atom_i, atom_j, R0, K=1000.0):
         R_vec = self.state_1.inp.molecule.calc_array_from_atom_1_to_atom_2(atom_i, atom_j)
         Rij = np.linalg.norm(R_vec)
