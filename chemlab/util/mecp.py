@@ -201,6 +201,7 @@ class mecp(object):
         使用BFGS准牛顿方法更新坐标
         """
         # 获取当前结构
+
         structure = self.state_1.inp.molecule.return_xyz_list().astype(float)
         natom = self.state_1.inp.molecule.natom
         nx = 3 * natom
@@ -281,10 +282,12 @@ class mecp(object):
         # ========== 更新坐标 ==========
         X_3 = X_2 + ChgeX
         new_structure = X_3.reshape((3, natom))
-        print(f"self.grad_1:{self.grad_1}")
-        print(f"X2:{X_2}")
-        print(f"structure:{structure}")
-        print(f"new_structure:{new_structure}")
+
+        print(f"self.grad_1:{self.grad_1},shape={self.state_1.out.force.shape}")
+        print(f"self.grad_1:{self.grad_1},shape={self.grad_1.shape}")
+        print(f"X2:{X_2},shape={X_2.shape}")
+        print(f"structure:{structure},shape={structure.shape}")
+        print(f"new_structure:{new_structure},shape={new_structure.shape}")
         # 写入新坐标
         self.state_1.inp.molecule.replace_new_xyz(new_structure)
         if hasattr(self.state_2.inp.molecule, 'carti'):
