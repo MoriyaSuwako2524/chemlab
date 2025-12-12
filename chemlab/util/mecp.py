@@ -132,8 +132,8 @@ class mecp(object):
     def calc_new_gradient(self):
         E1 = self.state_1.out.ene
         E2 = self.state_2.out.ene
-        gradient_1 = self.state_1.out.force
-        gradient_2 = self.state_2.out.force
+        gradient_1 = -self.state_1.out.force
+        gradient_2 = -self.state_2.out.force
 
         # Difference vector between the two gradients
         delta_gradient = gradient_1 - gradient_2
