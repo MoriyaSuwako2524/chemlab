@@ -173,6 +173,8 @@ class mecp(object):
 
         # === BFGS inverse Hessian update ===
         if self.last_structure is not None:
+            self.inv_hess = 0.7 * np.eye(len(g_k))  
+            ''' 
             x_km1 = self.last_structure.flatten()
             g_km1 = self.last_gradient.flatten()
 
@@ -202,6 +204,7 @@ class mecp(object):
                             - sigma * np.outer(Hdg, Hdg)
                             + dg_H_dg * np.outer(w, w)
                     )
+                    '''
         else:
             self.inv_hess = 0.7 * np.eye(len(g_k))
             print("⚠️  BFGS update skipped: first step")
