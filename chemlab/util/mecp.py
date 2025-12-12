@@ -201,7 +201,7 @@ class mecp(object):
         使用BFGS准牛顿方法更新坐标
         """
         # 获取当前结构
-        structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
+        structure = self.state_1.inp.molecule.return_xyz_list().astype(float)
         natom = self.state_1.inp.molecule.natom
         nx = 3 * natom
         
