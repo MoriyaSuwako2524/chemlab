@@ -87,6 +87,9 @@ class mecp(object):
         E2 = self.state_2.out.ene
         gradient_1 = self.state_1.out.force
         gradient_2 = self.state_2.out.force
+        from chemlab.util.unit import GRADIENT
+        gradient_1 = GRADIENT(gradient_1).convert_to({"energy":("hartree",1),"distance":("ang",-1)})
+        gradient_2 = GRADIENT(gradient_2).convert_to({"energy": ("hartree", 1), "distance": ("ang", -1)})
         # Difference vector between the two gradients
         delta_gradient = gradient_1 - gradient_2
         norm_dg = np.linalg.norm(delta_gradient)
@@ -119,12 +122,12 @@ class mecp(object):
                 self.parallel_gradient += grad
 
     def update_structure(self):
-        # Update molecular structure using BFGS quasi-Newton step.
+        #Update molecular structure using BFGS quasi-Newton step.
         # Get current structure and flatten
         structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
         natom = self.state_1.inp.molecule.natom
         x_k = structure.flatten()
-        g_k = (self.parallel_gradient + self.orthogonal_gradient).flatten()
+        g_k = (self.parallel_gradient+self.orthogonal_gradient).flatten()
 
         # Apply BFGS update if past first iteration
         if self.last_structure is not None:
@@ -150,7 +153,7 @@ class mecp(object):
         step_vector = -self.inv_hess @ g_k
         step_vector = step_vector.reshape((3, natom))
         step_norm = np.linalg.norm(step_vector)
-        max_step = self.stepsize
+        max_step = self.max_stepsize
 
         if step_norm > max_step:
             print(f"🔻 Step clipped from {step_norm:.4f} Å to {max_step:.4f} Å")
@@ -163,6 +166,7 @@ class mecp(object):
         # Save history for next BFGS update
         self.last_structure = x_k
         self.last_gradient = g_k
+
     def generate_new_inp(self):
         path = self.out_path
         self.state_1.job_name = "{}{}_job{}.inp".format(self.prefix, self.state_1._spin, self.job_num)
