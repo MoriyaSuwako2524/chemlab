@@ -207,6 +207,7 @@ class mecp(object):
             print("⚠️  BFGS update skipped: first step")
 
         # === Newton step ===
+        print(f"inv_hessian:{self.inv_hess}")
         step_vector = -self.inv_hess @ g_k
         step_vector = step_vector.reshape((natom, 3))
 
