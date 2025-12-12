@@ -83,223 +83,86 @@ class mecp(object):
         self.state_2.gradient_list.append(self.state_2.out.force)
 
     def calc_new_gradient(self):
-        grad_1 = self.state_1.out.force
-        grad_2 = self.state_2.out.force
-        from chemlab.util.unit import GRADIENT
-        grad_1 = GRADIENT(grad_1).convert_to({"energy": ("Hartree", 1), "distance": ("Ang", -1)})
-        grad_2 = GRADIENT(grad_2).convert_to({"energy": ("Hartree", 1), "distance": ("Ang", -1)})
-        self.grad_1 = grad_1
-        self.grad_2 = grad_2
-        # 注意：d_grad = grad_1 - grad_2，用于正交步方向
-        self.d_grad = grad_1 - grad_2
-        self.target_grad = 0.5 * (grad_1 + grad_2).copy()
+        E1 = self.state_1.out.ene
+        E2 = self.state_2.out.ene
+        gradient_1 = self.state_1.out.force
+        gradient_2 = self.state_2.out.force
+        # Difference vector between the two gradients
+        delta_gradient = gradient_1 - gradient_2
+        norm_dg = np.linalg.norm(delta_gradient)
+
+        # Handle degenerate case
+        if norm_dg < 1e-8:
+            print("⚠️ Warning: gradient difference norm is near zero!")
+            unit_delta_gradient = delta_gradient
+        else:
+            unit_delta_gradient = delta_gradient / norm_dg
+        delta_E = E1 - E2
+        if np.sign(delta_E) != np.sign(np.sum(gradient_1 * delta_gradient)):
+            delta_gradient = -delta_gradient
+
+        # Orthogonal gradient component (perpendicular to crossing surface)
+        self.orthogonal_gradient = (E1 - E2) * unit_delta_gradient
+
+        # Project gradient_1 onto unit direction
+        projection_scalar = np.sum(gradient_1 * unit_delta_gradient)
+        projection_vector = projection_scalar * unit_delta_gradient
+
+        # Parallel gradient component (tangent to crossing surface)
+        self.parallel_gradient = gradient_1 - projection_vector
+        if self.different_type == "smd":
+            self.parallel_gradient = self.parallel_gradient.T
+            self.orthogonal_gradient = self.orthogonal_gradient.T
+        if self.restrain:
+            for restrain in self.restrain_list:
+                grad = self.restrain_force(restrain[0], restrain[1], restrain[2], restrain[3])
+                self.parallel_gradient += grad
 
     def update_structure(self):
+        # Update molecular structure using BFGS quasi-Newton step.
+        # Get current structure and flatten
         structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
         natom = self.state_1.inp.molecule.natom
         x_k = structure.flatten()
-        nvar = 3 * natom
+        g_k = (self.parallel_gradient + self.orthogonal_gradient).flatten()
 
-        dg_vec = self.d_grad.flatten()
-        g_target_vec = self.target_grad.flatten()
+        # Apply BFGS update if past first iteration
+        if self.last_structure is not None:
+            dx = x_k - self.last_structure
+            dg = g_k - self.last_gradient
+            dxdg = np.dot(dx, dg)
 
-        norm_dg = np.linalg.norm(dg_vec)
-        norm_dg_sq = norm_dg ** 2
-
-        if norm_dg < 1e-8:
-            print("⚠️ Too small gradient difference")
-            P = np.eye(nvar)
-            u = np.zeros(nvar)
-        else:
-            u = dg_vec / norm_dg
-            P = np.eye(nvar) - np.outer(u, u)
-
-        g_tan = P @ g_target_vec
-        g_k = g_tan
-
-        E1 = self.state_1.out.ene
-        E2 = self.state_2.out.ene
-        delta_E = E1 - E2
-
-        # ==================== BFGS 更新 ====================
-        if getattr(self, 'inv_hess', None) is None:
-            print("ℹ️ Initializing Inverse Hessian")
-            H0 = 0.5 * np.eye(nvar)
-            self.inv_hess = P @ H0 @ P
-
-        if getattr(self, 'last_structure', None) is not None and \
-                getattr(self, 'last_gradient', None) is not None:
-
-            s_full = x_k - self.last_structure
-            y_full = g_k - self.last_gradient
-
-            # 关键修改：只使用切向分量
-            # 用当前的投影矩阵P投影位移向量
-            s_tan = P @ s_full
-            y_tan = y_full  # y已经是切向梯度的差
-
-            s_tan = s_tan.reshape(-1, 1)
-            y_tan = y_tan.reshape(-1, 1)
-
-            sty = float(s_tan.T @ y_tan)
-            s_tan_norm = np.linalg.norm(s_tan)
-            y_tan_norm = np.linalg.norm(y_tan)
-
-            print(f"BFGS诊断: sty={sty:.6e}, ||s_tan||={s_tan_norm:.4f}, ||y_tan||={y_tan_norm:.4f}")
-
-            # 检查Hessian条件数
-            eigvals = np.linalg.eigvalsh(self.inv_hess)
-            cond = eigvals.max() / max(eigvals.min(), 1e-10)
-
-            if cond > 1000:
-                print(f"⚠️ inv_hess 病态 (条件数={cond:.1f})，重置")
-                self.inv_hess = P @ (0.5 * np.eye(nvar)) @ P
-            elif sty > 1e-10 and s_tan_norm > 1e-4:
-                # 标准BFGS更新
-                rho = 1.0 / sty
-                I = np.eye(nvar)
-                H = self.inv_hess
-
-                term1 = I - rho * (s_tan @ y_tan.T)
-                term2 = I - rho * (y_tan @ s_tan.T)
-                H_new = term1 @ H @ term2 + rho * (s_tan @ s_tan.T)
-
-                # 对称化并投影到切空间
-                H_new = 0.5 * (H_new + H_new.T)
-                self.inv_hess = P @ H_new @ P
-                print("✓ BFGS 更新成功")
-            elif sty < -1e-10:
-                # sty为负，说明不满足曲率条件，可以尝试SR1更新或跳过
-                print(f"⚠️ sty < 0 ({sty:.2e})，尝试阻尼BFGS")
-                # 阻尼BFGS：修正y使sty > 0
-                theta = 0.8
-                Hs = self.inv_hess @ s_tan.flatten()
-                sHs = float(s_tan.T @ Hs.reshape(-1, 1))
-
-                if sty < theta * sHs:
-                    # Powell阻尼
-                    if abs(sHs - sty) > 1e-12:
-                        phi = (theta * sHs) / (sHs - sty + theta * sHs)
-                        y_damped = phi * y_tan.flatten() + (1 - phi) * Hs
-                        y_tan = y_damped.reshape(-1, 1)
-                        sty = float(s_tan.T @ y_tan)
-                        print(f"  阻尼后 sty={sty:.6e}")
-
-                        if sty > 1e-10:
-                            rho = 1.0 / sty
-                            I = np.eye(nvar)
-                            H = self.inv_hess
-                            term1 = I - rho * (s_tan @ y_tan.T)
-                            term2 = I - rho * (y_tan @ s_tan.T)
-                            H_new = term1 @ H @ term2 + rho * (s_tan @ s_tan.T)
-                            H_new = 0.5 * (H_new + H_new.T)
-                            self.inv_hess = P @ H_new @ P
-                            print("✓ 阻尼BFGS 更新成功")
+            if dxdg > 1e-10:
+                dx = dx[:, np.newaxis]
+                dg = dg[:, np.newaxis]
+                I = np.eye(len(dx))
+                term1 = I - dx @ dg.T / dxdg
+                term2 = I - dg @ dx.T / dxdg
+                term3 = dx @ dx.T / dxdg
+                self.inv_hess = term1 @ self.inv_hess @ term2 + term3
             else:
-                print(f"⚠️ sty太小或s_tan太小，跳过BFGS更新")
-
-        # ==================== 计算步长 ====================
-
-        # 正交步（减小能量差）
-        # step_orth 方向应该使 (E1-E2)^2 减小
-        # d/dx (E1-E2)^2 = 2(E1-E2)(g1-g2) = 2*delta_E*d_grad
-        # 所以下降方向是 -delta_E * d_grad
-        if norm_dg >= 1e-8:
-            step_orth = -(delta_E / norm_dg_sq) * dg_vec
+                print(" BFGS update skipped: small dot product")
+                self.inv_hess = np.eye(len(g_k))
         else:
-            step_orth = np.zeros(nvar)
+            self.inv_hess = np.eye(len(g_k))
+            print("⚠️  BFGS update skipped: first step")
+        # Calculate Newton step
+        step_vector = -self.inv_hess @ g_k
+        step_vector = step_vector.reshape((3, natom))
+        step_norm = np.linalg.norm(step_vector)
+        max_step = self.stepsize
 
-        # 切向步（最小化seam上的能量）
-        step_tan = -self.inv_hess @ g_tan
-
-        # ==================== 步长限制 ====================
-        # 根据当前状态动态调整最大步长
-        gap_threshold = 0.005  # 5 mHartree
-
-        if abs(delta_E) > 0.01:  # gap > 6 kcal/mol
-            max_step_tan = 0.08
-            max_step_orth = 0.15
-        elif abs(delta_E) > gap_threshold:
-            max_step_tan = 0.12
-            max_step_orth = 0.10
-        else:  # gap已经很小
-            max_step_tan = 0.15
-            max_step_orth = 0.05
-
-        norm_tan = np.linalg.norm(step_tan)
-        norm_orth = np.linalg.norm(step_orth)
-
-        if norm_tan > max_step_tan:
-            step_tan = step_tan * (max_step_tan / norm_tan)
-            print(f"🔻 step_tan 截断: {norm_tan:.4f} → {max_step_tan:.4f}")
-
-        if norm_orth > max_step_orth:
-            step_orth = step_orth * (max_step_orth / norm_orth)
-            print(f"🔻 step_orth 截断: {norm_orth:.4f} → {max_step_orth:.4f}")
-
-        # ==================== 权重调整 ====================
-        # 平滑过渡权重
-        ratio = min(abs(delta_E) / gap_threshold, 1.0)
-        alpha_orth = 0.5 + 0.5 * ratio
-        alpha_tan = 1.0 - 0.7 * ratio
-
-        # 如果能量差符号翻转（过零），减小正交步权重避免振荡
-        if getattr(self, 'last_delta_E', None) is not None:
-            if self.last_delta_E * delta_E < 0:
-                print("⚠️ 能量差符号翻转，减小正交步权重")
-                alpha_orth *= 0.5
-
-        total_step = alpha_tan * step_tan + alpha_orth * step_orth
-
-        # 最终步长限制
-        step_norm = np.linalg.norm(total_step)
-        final_max_step = 0.15
-
-        if step_norm > final_max_step:
-            total_step = total_step * (final_max_step / step_norm)
-            print(f"🔻 total_step 截断: {step_norm:.4f} → {final_max_step:.4f}")
-
-        # ==================== 诊断输出 ====================
-        print("=" * 50)
-        print(f"E1 = {E1:.6f}, E2 = {E2:.6f}, ΔE = {delta_E:.6f}")
-        print(f"‖g_tan‖ = {np.linalg.norm(g_tan):.6f}")
-        print(f"‖d_grad‖ = {norm_dg:.6f}")
-        print(f"‖step_tan‖ = {np.linalg.norm(step_tan):.6f}")
-        print(f"‖step_orth‖ = {np.linalg.norm(step_orth):.6f}")
-        print(f"‖total_step‖ = {np.linalg.norm(total_step):.6f}")
-        print(f"权重: α_tan={alpha_tan:.4f}, α_orth={alpha_orth:.4f}")
-
-        eigvals = np.linalg.eigvalsh(self.inv_hess)
-        print(f"inv_hess 特征值范围: [{eigvals.min():.4f}, {eigvals.max():.4f}]")
-
-        # 检查step_tan的方向
-        if np.linalg.norm(step_tan) > 1e-10 and np.linalg.norm(g_tan) > 1e-10:
-            cos_angle = np.dot(step_tan, -g_tan) / (np.linalg.norm(step_tan) * np.linalg.norm(g_tan))
-            print(f"cos(step_tan, -g_tan) = {cos_angle:.4f}")
-
-        # 检查正交步方向
-        if np.linalg.norm(step_orth) > 1e-10:
-            # step_orth应该使delta_E^2减小，即与delta_E*d_grad反向
-            expected_change = 2 * delta_E * np.dot(dg_vec, step_orth)
-            print(f"预测 Δ(E1-E2)² 变化: {expected_change:.6f} (应为负)")
-
-        print("=" * 50)
-
-        # ==================== 更新结构 ====================
-        new_structure_vec = x_k + total_step
-        new_structure = new_structure_vec.reshape((3, natom))
-
+        if step_norm > max_step:
+            print(f"🔻 Step clipped from {step_norm:.4f} Å to {max_step:.4f} Å")
+            step_vector *= max_step / step_norm
+        # Update structure
+        new_structure = structure + step_vector
         self.state_1.inp.molecule.replace_new_xyz(new_structure)
-        if hasattr(self.state_2.inp.molecule, 'carti'):
-            self.state_2.inp.molecule.carti = self.state_1.inp.molecule.carti
+        self.state_2.inp.molecule.carti = self.state_1.inp.molecule.carti
 
-        # ==================== 保存历史 ====================
-        self.last_structure = x_k.copy()
-        self.last_gradient = g_k.copy()
-        self.last_delta_E = delta_E
-        self.parallel_gradient = g_tan
-        self.orthogonal_gradient = (np.eye(nvar) - P) @ g_target_vec
-
+        # Save history for next BFGS update
+        self.last_structure = x_k
+        self.last_gradient = g_k
     def generate_new_inp(self):
         path = self.out_path
         self.state_1.job_name = "{}{}_job{}.inp".format(self.prefix, self.state_1._spin, self.job_num)
