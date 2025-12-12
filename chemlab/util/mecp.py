@@ -197,7 +197,7 @@ class mecp(object):
             self.inv_hess = 0.7 * np.eye(len(g_k))
             print("⚠️  BFGS update skipped: first step")
         # Calculate Newton step
-        step_vector = -self.inv_hess @ g_k
+        step_vector = self.inv_hess @ g_k
         step_vector = step_vector.reshape((natom, 3))
         step_norm = np.linalg.norm(step_vector)
         max_step = self.max_stepsize
