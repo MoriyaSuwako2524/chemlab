@@ -145,8 +145,6 @@ class mecp(object):
         else:
             unit_delta_gradient = delta_gradient / norm_dg
         delta_E = E1 - E2
-        if np.sign(delta_E) != np.sign(np.sum(gradient_1 * delta_gradient)):
-            delta_gradient = -delta_gradient
 
         # Orthogonal gradient component (perpendicular to crossing surface)
         self.orthogonal_gradient = 2 * (E1 - E2) * delta_gradient
