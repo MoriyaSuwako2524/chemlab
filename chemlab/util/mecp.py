@@ -129,6 +129,41 @@ class mecp(object):
         self.state_1.gradient_list.append(self.state_1.out.force)
         self.state_2.gradient_list.append(self.state_2.out.force)
 
+    def calc_new_gradient(self):
+        E1 = self.state_1.out.ene
+        E2 = self.state_2.out.ene
+        gradient_1 = self.state_1.out.force
+        gradient_2 = self.state_2.out.force
+
+        # Difference vector between the two gradients
+        delta_gradient = gradient_1 - gradient_2
+        norm_dg = np.linalg.norm(delta_gradient)
+
+        # Handle degenerate case
+        if norm_dg < 1e-8:
+            print("⚠️ Warning: gradient difference norm is near zero!")
+            unit_delta_gradient = delta_gradient
+        else:
+            unit_delta_gradient = delta_gradient / norm_dg
+        delta_E = E1 - E2
+
+        # Orthogonal gradient component (perpendicular to crossing surface)
+        self.orthogonal_gradient = 140 * (E1 - E2) * delta_gradient / norm_dg
+
+        # Project gradient_1 onto unit direction
+        projection_scalar = np.sum(gradient_1 * unit_delta_gradient)
+        projection_vector = projection_scalar * unit_delta_gradient
+
+        # Parallel gradient component (tangent to crossing surface)
+        self.parallel_gradient = gradient_1 - projection_vector
+        if self.different_type == "smd":
+            self.parallel_gradient = self.parallel_gradient.T
+            self.orthogonal_gradient = self.orthogonal_gradient.T
+        if self.restrain:
+            for restrain in self.restrain_list:
+                grad = self.restrain_force(restrain[0], restrain[1], restrain[2], restrain[3])
+                self.parallel_gradient += grad
+
     def update_structure(self):
         structure = self.state_1.inp.molecule.return_xyz_list().astype(float)
         natom = self.state_1.inp.molecule.natom
@@ -176,30 +211,22 @@ class mecp(object):
         step_vector = step_vector.reshape((natom, 3))
 
         step_norm = np.linalg.norm(step_vector)
-        if step_norm > self.max_stepsize:
-            step_vector *= self.max_stepsize / step_norm
+
 
         # 保存历史
         self.last_structure = x_k.reshape((natom, 3))
         self.last_gradient = g_k.reshape((natom, 3))
 
-        # 更新结构
-        new_structure = structure + step_vector
-        self.state_1.inp.molecule.update_xyz(new_structure)
 
         if step_norm > max_step:
             print(f"🔻 Step clipped from {step_norm:.4f} Å to {max_step:.4f} Å")
             step_vector *= max_step / step_norm
         # Update structure
-
         new_structure = structure + step_vector
         print(f"new structure: {new_structure},shape={new_structure.shape}")
         self.state_1.inp.molecule.replace_new_xyz(new_structure)
         self.state_2.inp.molecule.carti = self.state_1.inp.molecule.carti
 
-        # Save history for next BFGS update
-        self.last_structure = x_k
-        self.last_gradient = g_k
 
     def generate_new_inp(self):
         path = self.out_path
