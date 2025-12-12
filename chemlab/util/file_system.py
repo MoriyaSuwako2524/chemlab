@@ -374,7 +374,7 @@ class molecule(qchem_inp_block):
         return carti[:, 0]
 
     def replace_new_xyz(self, xyz):
-        atom_type = np.array(self.carti)[:, 0]
+        atom_type = np.array(self.carti)[:, 0].T
         combined = np.hstack([atom_type, xyz])
         self.carti = combined
         return combined

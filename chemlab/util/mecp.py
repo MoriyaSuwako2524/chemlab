@@ -287,7 +287,7 @@ class mecp(object):
         print(f"X2:{X_2},shape={X_2.shape}")
         print(f"structure:{structure},shape={structure.shape}")
         print(f"new_structure:{new_structure},shape={new_structure.shape}")
-        print(f"carti:{self.state_1.inp.molecule.carti}")
+        print(f"atoms:{self.state_1.inp.molecule.carti[:, 0].T.shape}")
         # 写入新坐标
         self.state_1.inp.molecule.replace_new_xyz(new_structure)
         if hasattr(self.state_2.inp.molecule, 'carti'):
