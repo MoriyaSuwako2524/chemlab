@@ -83,135 +83,191 @@ class mecp(object):
         self.state_2.gradient_list.append(self.state_2.out.force)
 
     def calc_new_gradient(self):
-        E1 = self.state_1.out.ene
-        E2 = self.state_2.out.ene
-        gradient_1 = self.state_1.out.force
-        gradient_2 = self.state_2.out.force
+        grad_1 = self.state_1.out.force
+        grad_2 = self.state_2.out.force
         from chemlab.util.unit import GRADIENT
-        gradient_1 = GRADIENT(gradient_1).convert_to({"energy":("hartree",1),"distance":("ang",-1)})
-        gradient_2 = GRADIENT(gradient_2).convert_to({"energy": ("hartree", 1), "distance": ("ang", -1)})
-        # Difference vector between the two gradients
-        delta_gradient = gradient_1 - gradient_2
-        norm_dg = np.linalg.norm(delta_gradient)
-
-        # Handle degenerate case
-        if norm_dg < 1e-8:
-            print("⚠️ Warning: gradient difference norm is near zero!")
-            unit_delta_gradient = delta_gradient
-        else:
-            unit_delta_gradient = delta_gradient / norm_dg
-        delta_E = E1 - E2
-        if np.sign(delta_E) != np.sign(np.sum(gradient_1 * delta_gradient)):
-            delta_gradient = -delta_gradient
-
-        # Orthogonal gradient component (perpendicular to crossing surface)
-        self.orthogonal_gradient = (E1 - E2) * unit_delta_gradient
-
-        # Project gradient_1 onto unit direction
-        projection_scalar = np.sum(gradient_1 * unit_delta_gradient)
-        projection_vector = projection_scalar * unit_delta_gradient
-
-        # Parallel gradient component (tangent to crossing surface)
-        self.parallel_gradient = gradient_1 - projection_vector
-        if self.different_type == "smd":
-            self.parallel_gradient = self.parallel_gradient.T
-            self.orthogonal_gradient = self.orthogonal_gradient.T
-        if self.restrain:
-            for restrain in self.restrain_list:
-                grad = self.restrain_force(restrain[0], restrain[1], restrain[2], restrain[3])
-                self.parallel_gradient += grad
+        grad_1 = GRADIENT(grad_1).convert_to({"energy": ("Hartree", 1), "distance": ("Ang", -1)})
+        grad_2 = GRADIENT(grad_2).convert_to({"energy": ("Hartree", 1), "distance": ("Ang", -1)})
+        self.grad_1 = grad_1.flatten()
+        self.grad_2 = grad_2.flatten()
 
     def update_structure(self):
-        #Update molecular structure using BFGS quasi-Newton step.
-        # Get current structure and flatten
         structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
         natom = self.state_1.inp.molecule.natom
         x_k = structure.flatten()
-        g_k = (self.parallel_gradient+self.orthogonal_gradient).flatten()
+        nvar = 3 * natom
 
-        # Apply BFGS update if past first iteration
-        if self.last_structure is not None:
-            dx = x_k - self.last_structure
-            dg = g_k - self.last_gradient
-            dxdg = np.dot(dx, dg)
+        E1 = self.state_1.out.ene
+        E2 = self.state_2.out.ene
+        Ga = self.grad_1  # 态1的梯度
+        Gb = self.grad_2  # 态2的梯度
 
-            if dxdg > 1e-10:
-                dx = dx[:, np.newaxis]
-                dg = dg[:, np.newaxis]
-                I = np.eye(len(dx))
-                term1 = I - dx @ dg.T / dxdg
-                term2 = I - dg @ dx.T / dxdg
-                term3 = dx @ dx.T / dxdg
-                self.inv_hess = term1 @ self.inv_hess @ term2 + term3
-            else:
-                print(" BFGS update skipped: small dot product")
-                self.inv_hess = np.eye(len(g_k))
+        # ==================== Harvey有效梯度 ====================
+        # facPP = 140 是Harvey的经验值，用于平衡两个方向的Hessian量级
+        facPP = 140.0
+        facP = 1.0
+
+        # PerpG = Ga - Gb (垂直于seam的梯度差)
+        PerpG = Ga - Gb
+        npg = np.linalg.norm(PerpG)
+
+        if npg < 1e-10:
+            print("⚠️ 梯度差接近零，已接近MECP")
+            ParG = Ga.copy()
+            G_eff = ParG
         else:
-            self.inv_hess = np.eye(len(g_k))
-            print("⚠️  BFGS update skipped: first step")
-        # Calculate Newton step
-        step_vector = -self.inv_hess @ g_k
-        step_vector = step_vector.reshape((3, natom))
-        step_norm = np.linalg.norm(step_vector)
-        max_step = self.max_stepsize
+            # pp = Ga在PerpG方向的投影长度
+            pp = np.dot(Ga, PerpG) / npg
 
-        if step_norm > max_step:
-            print(f"🔻 Step clipped from {step_norm:.4f} Å to {max_step:.4f} Å")
-            step_vector *= max_step / step_norm
-        # Update structure
-        new_structure = structure + step_vector
+            # ParG = Ga减去其在PerpG方向的分量（Ga在seam上的投影）
+            ParG = Ga - (PerpG / npg) * pp
+
+            # 有效梯度 = 能量差项 + 切向项
+            G_eff = (E1 - E2) * facPP * PerpG + facP * ParG
+
+        # ==================== BFGS更新 ====================
+        if getattr(self, 'inv_hess', None) is None:
+            print("ℹ️ 初始化逆Hessian (对角0.7)")
+            self.inv_hess = 0.7 * np.eye(nvar)
+
+        if getattr(self, 'last_structure', None) is not None and \
+                getattr(self, 'last_G_eff', None) is not None:
+
+            DelX = x_k - self.last_structure
+            DelG = G_eff - self.last_G_eff
+
+            # 计算BFGS所需的量
+            fac = np.dot(DelG, DelX)
+            HDelG = self.inv_hess @ DelG
+            fae = np.dot(DelG, HDelG)
+
+            print(f"BFGS: fac={fac:.6e}, fae={fae:.6e}")
+
+            if abs(fac) > 1e-10 and abs(fae) > 1e-10:
+                fac_inv = 1.0 / fac
+                fad = 1.0 / fae
+
+                # w向量
+                w = fac_inv * DelX - fad * HDelG
+
+                # BFGS公式 (DFP-BFGS混合)
+                H_new = self.inv_hess.copy()
+                for i in range(nvar):
+                    for j in range(nvar):
+                        H_new[i, j] += fac_inv * DelX[i] * DelX[j] \
+                                       - fad * HDelG[i] * HDelG[j] \
+                                       + fae * w[i] * w[j]
+
+                self.inv_hess = H_new
+                print("✓ BFGS更新成功")
+            else:
+                print("⚠️ BFGS跳过: fac或fae太小")
+
+        # ==================== 计算步长 ====================
+        if getattr(self, 'is_first_step', True):
+            # 第一步：简单的最速下降
+            ChgeX = -0.7 * G_eff
+            self.is_first_step = False
+        else:
+            # BFGS步
+            ChgeX = -self.inv_hess @ G_eff
+
+        # ==================== 步长限制 (Harvey方法) ====================
+        STPMX = 0.1  # 单个坐标最大位移
+        stpmax = STPMX * nvar  # 总步长限制
+
+        # 限制总步长
+        stpl = np.linalg.norm(ChgeX)
+        if stpl > stpmax:
+            ChgeX = ChgeX / stpl * stpmax
+            print(f"🔻 总步长截断: {stpl:.4f} → {stpmax:.4f}")
+
+        # 限制单个坐标最大位移
+        lgstst = np.max(np.abs(ChgeX))
+        if lgstst > STPMX:
+            ChgeX = ChgeX / lgstst * STPMX
+            print(f"🔻 单坐标截断: {lgstst:.4f} → {STPMX:.4f}")
+
+        # ==================== 更新结构 ====================
+        new_structure_vec = x_k + ChgeX
+        new_structure = new_structure_vec.reshape((3, natom))
+
         self.state_1.inp.molecule.replace_new_xyz(new_structure)
-        self.state_2.inp.molecule.carti = self.state_1.inp.molecule.carti
+        if hasattr(self.state_2.inp.molecule, 'carti'):
+            self.state_2.inp.molecule.carti = self.state_1.inp.molecule.carti
 
-        # Save history for next BFGS update
-        self.last_structure = x_k
-        self.last_gradient = g_k
+        # ==================== 保存历史 ====================
+        self.last_structure = x_k.copy()
+        self.last_G_eff = G_eff.copy()
+
+        # 保存用于收敛检查
+        self.ParG = ParG
+        self.PerpG = PerpG
+        self.G_eff = G_eff
+        self.ChgeX = ChgeX
+
+        # ==================== 诊断输出 ====================
+        print("=" * 60)
+        print(f"E1 = {E1:.6f}, E2 = {E2:.6f}, ΔE = {E1 - E2:.6f}")
+        print(f"‖PerpG‖ = {npg:.6f} (梯度差)")
+        print(f"‖ParG‖ = {np.linalg.norm(ParG):.6f} (切向梯度)")
+        print(f"‖G_eff‖ = {np.linalg.norm(G_eff):.6f} (有效梯度)")
+        print(f"‖ChgeX‖ = {np.linalg.norm(ChgeX):.6f} (位移)")
+        print(f"max|ChgeX| = {np.max(np.abs(ChgeX)):.6f}")
+        print("=" * 60)
 
     def generate_new_inp(self):
         path = self.out_path
         self.state_1.job_name = "{}{}_job{}.inp".format(self.prefix, self.state_1._spin, self.job_num)
         self.state_2.job_name = "{}{}_job{}.inp".format(self.prefix, self.state_2._spin, self.job_num)
-        out = open(os.path.join(path, self.state_1.job_name), "w")
-        out.write(self.state_1.inp.molecule.return_output_format() + self.state_1.inp.remain_texts)
-        out.close()
-        out = open(os.path.join(path, self.state_2.job_name), "w")
-        out.write(self.state_2.inp.molecule.return_output_format() + self.state_2.inp.remain_texts)
-        out.close()
+        with open(os.path.join(path, self.state_1.job_name), "w") as out:
+            out.write(self.state_1.inp.molecule.return_output_format() + self.state_1.inp.remain_texts)
+        with open(os.path.join(path, self.state_2.job_name), "w") as out:
+            out.write(self.state_2.inp.molecule.return_output_format() + self.state_2.inp.remain_texts)
 
     def check_convergence(self):
         E1 = self.state_1.out.ene
         E2 = self.state_2.out.ene
-        delta_E = abs(E1 - E2)
-
-        # 切向梯度范数（MECP点应该为0）
-        tan_grad_norm = np.linalg.norm(self.parallel_gradient)
-
-        # 正交梯度范数（可选监控）
-        orth_grad_norm = np.linalg.norm(self.orthogonal_gradient)
+        DE = abs(E1 - E2)
 
         natom = self.state_1.inp.molecule.natom
+        nvar = 3 * natom
 
-        # 结构位移
-        current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
-        if self.last_structure is not None:
-            last_structure = self.last_structure.reshape((3, natom))
-            displacement = np.linalg.norm(current_structure - last_structure)
-        else:
-            displacement = np.inf
+        # Harvey收敛标准
+        G_eff = self.G_eff
+        ChgeX = self.ChgeX
 
-        # 收敛判据
-        energy_converged = delta_E < self.energy_tol
-        grad_converged = tan_grad_norm < self.grad_tol
-        disp_converged = displacement < self.disp_tol
+        GMax = np.max(np.abs(G_eff))
+        GRMS = np.sqrt(np.mean(G_eff ** 2))
+        DXMax = np.max(np.abs(ChgeX))
+        DXRMS = np.sqrt(np.mean(ChgeX ** 2))
 
-        converged_flags = [energy_converged, grad_converged, disp_converged]
-        is_converged = sum(converged_flags) >= 2
+        # 默认阈值 (与easyMECP一致)
+        TDE = getattr(self, 'energy_tol', 5e-5)
+        TGMax = getattr(self, 'grad_tol', 7e-4)
+        TGRMS = 5e-4
+        TDXMax = 4e-3
+        TDXRMS = 2.5e-3
 
-        print(f"Energy gap: {delta_E:.5e}, Converged? {energy_converged}")
-        print(f"Tangent gradient norm: {tan_grad_norm:.5e}, Converged? {grad_converged}")
-        print(f"Orthogonal gradient norm: {orth_grad_norm:.5e} (for reference)")
-        print(f"Displacement: {displacement:.5e}, Converged? {disp_converged}")
-        print(f"Overall converged: {is_converged} ({sum(converged_flags)}/3 criteria met)\n")
+        flags = [
+            DE < TDE,
+            GMax < TGMax,
+            GRMS < TGRMS,
+            DXMax < TDXMax,
+            DXRMS < TDXRMS
+        ]
+
+        is_converged = all(flags)
+
+        print(f"\n{'=' * 60}")
+        print(f"收敛检查:")
+        print(f"  Energy diff:  {DE:.6e}  ({'YES' if flags[0] else 'NO '}) (阈值: {TDE})")
+        print(f"  Max Gradient: {GMax:.6e}  ({'YES' if flags[1] else 'NO '}) (阈值: {TGMax})")
+        print(f"  RMS Gradient: {GRMS:.6e}  ({'YES' if flags[2] else 'NO '}) (阈值: {TGRMS})")
+        print(f"  Max Delta X:  {DXMax:.6e}  ({'YES' if flags[3] else 'NO '}) (阈值: {TDXMax})")
+        print(f"  RMS Delta X:  {DXRMS:.6e}  ({'YES' if flags[4] else 'NO '}) (阈值: {TDXRMS})")
+        print(f"  总体收敛: {'是 ✓' if is_converged else '否'}")
+        print(f"{'=' * 60}\n")
 
         return is_converged
     def restrain_ene(self, atom_i, atom_j, R0, K=1000.0):
