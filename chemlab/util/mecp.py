@@ -281,7 +281,10 @@ class mecp(object):
         # ========== 更新坐标 ==========
         X_3 = X_2 + ChgeX
         new_structure = X_3.reshape((3, natom))
-        
+        print(f"self.grad_1:{self.grad_1}")
+        print(f"X2:{X_2}")
+        print(f"structure:{structure}")
+        print(f"new_structure:{new_structure}")
         # 写入新坐标
         self.state_1.inp.molecule.replace_new_xyz(new_structure)
         if hasattr(self.state_2.inp.molecule, 'carti'):
