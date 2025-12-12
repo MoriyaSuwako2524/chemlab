@@ -281,7 +281,7 @@ class mecp(object):
         
         # ========== 更新坐标 ==========
         X_3 = X_2 + ChgeX
-        new_structure = X_3.reshape((3, natom))
+        new_structure = X_3.reshape((natom, 3))
 
         print(f"self.grad_1:{self.grad_1},shape={self.state_1.out.force.shape}")
         print(f"X2:{X_2},shape={X_2.shape}")
