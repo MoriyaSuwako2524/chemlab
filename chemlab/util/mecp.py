@@ -170,14 +170,14 @@ class mecp(object):
 
         x_k = structure.flatten()
         g_k = (self.parallel_gradient + self.orthogonal_gradient).flatten()
-
+        g_bfgs =     self.parallel_gradient.flatten()
         # === BFGS inverse Hessian update ===
         if self.last_structure is not None:
             x_km1 = self.last_structure.flatten()
             g_km1 = self.last_gradient.flatten()
 
             dx = x_k - x_km1
-            dg = g_k - g_km1
+            dg = g_bfgs - g_km1
 
             dg_dx = np.dot(dg, dx)
             if abs(dg_dx) < 1e-12:
@@ -215,7 +215,7 @@ class mecp(object):
 
         # 保存历史
         self.last_structure = x_k.reshape((natom, 3))
-        self.last_gradient = g_k.reshape((natom, 3))
+        self.last_gradient = g_bfgs.reshape((natom, 3))
 
 
         if step_norm > self.max_stepsize:
