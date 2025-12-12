@@ -218,9 +218,9 @@ class mecp(object):
         self.last_gradient = g_k.reshape((natom, 3))
 
 
-        if step_norm > max_step:
-            print(f"🔻 Step clipped from {step_norm:.4f} Å to {max_step:.4f} Å")
-            step_vector *= max_step / step_norm
+        if step_norm > self.max_stepsize:
+            print(f"🔻 Step clipped from {step_norm:.4f} Å to {self.max_stepsize:.4f} Å")
+            step_vector *= self.max_stepsize / step_norm
         # Update structure
         new_structure = structure + step_vector
         print(f"new structure: {new_structure},shape={new_structure.shape}")
