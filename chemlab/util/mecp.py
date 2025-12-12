@@ -148,7 +148,7 @@ class mecp(object):
         delta_E = E1 - E2
 
         # Orthogonal gradient component (perpendicular to crossing surface)
-        self.orthogonal_gradient = 140 * (E1 - E2) * delta_gradient / norm_dg
+        self.orthogonal_gradient = 2 * (E1 - E2) * delta_gradient / norm_dg
 
         # Project gradient_1 onto unit direction
         projection_scalar = np.sum(gradient_1 * unit_delta_gradient)
@@ -175,6 +175,8 @@ class mecp(object):
 
         # Apply BFGS update if past first iteration
         if self.last_structure is not None:
+            self.inv_hess = 0.7 * np.eye(len(g_k))
+            '''
             dx = x_k - self.last_structure
             dg = g_k - self.last_gradient
             dxdg = np.dot(dx, dg)
@@ -190,8 +192,9 @@ class mecp(object):
             else:
                 print(" BFGS update skipped: small dot product")
                 self.inv_hess = np.eye(len(g_k))
+            '''
         else:
-            self.inv_hess = np.eye(len(g_k))
+            self.inv_hess = 0.7 * np.eye(len(g_k))
             print("⚠️  BFGS update skipped: first step")
         # Calculate Newton step
         step_vector = -self.inv_hess @ g_k
