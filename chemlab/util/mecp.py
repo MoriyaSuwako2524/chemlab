@@ -130,200 +130,89 @@ class mecp(object):
         self.state_2.gradient_list.append(self.state_2.out.force)
 
     def calc_new_gradient(self):
-        """
-        计算有效梯度 (Effective Gradient)
-        
-        按照 easymecp.py Fortran代码中的 Effective_Gradient 子程序:
-        G = (Ea - Eb) * facPP * PerpG + facP * ParG
-        
-        其中:
-        - PerpG = Ga - Gb (垂直于seam的梯度差)
-        - ParG = Ga - (PerpG/|PerpG|) * (Ga·PerpG/|PerpG|) (平行于seam的梯度)
-        """
-        # 读取梯度并转换单位
-        grad_1 = self.state_1.out.force
-        grad_2 = self.state_2.out.force
-        from chemlab.util.unit import GRADIENT
-        grad_1 = GRADIENT(grad_1).convert_to({"energy": ("Hartree", 1), "distance": ("Ang", -1)})
-        grad_2 = GRADIENT(grad_2).convert_to({"energy": ("Hartree", 1), "distance": ("Ang", -1)})
-        
-        # 展平为一维数组
-        Ga = grad_1.flatten()
-        Gb = grad_2.flatten()
-        
-        # 保存原始梯度
-        self.grad_1 = Ga
-        self.grad_2 = Gb
-        
-        # 获取能量
-        Ea = self.state_1.out.ene
-        Eb = self.state_2.out.ene
-        
-        n = len(Ga)
-        
-        # ========== Harvey有效梯度计算 (来自easymecp.py Fortran代码) ==========
-        # PerpG = Ga - Gb (垂直于seam的梯度差)
-        PerpG = Ga - Gb
-        
-        # npg = |PerpG|
-        npg = np.sqrt(np.sum(PerpG**2))
-        
-        # pp = Ga在PerpG方向的投影
-        pp = np.dot(Ga, PerpG)
-        
-        if npg > 1e-10:
-            pp = pp / npg
-            # ParG = Ga - (PerpG/npg) * pp (Ga在seam上的投影)
-            ParG = Ga - (PerpG / npg) * pp
-            # 有效梯度 G = (Ea-Eb) * facPP * PerpG + facP * ParG
-            G_eff = (Ea - Eb) * self.facPP * PerpG + self.facP * ParG
-        else:
-            # 梯度差太小，已接近MECP
-            print("⚠️ 梯度差接近零 (npg < 1e-10)")
-            ParG = Ga.copy()
-            G_eff = self.facP * ParG
-        
-        # 保存结果
-        self.PerpG = PerpG      # 垂直梯度 (差分梯度)
-        self.ParG = ParG        # 平行梯度
-        self.G_eff = G_eff      # 有效梯度
-        self.npg = npg          # 梯度差范数
-        
-        # 用于兼容旧代码
-        self.orthogonal_gradient = PerpG
-        self.parallel_gradient = ParG
-
-    def update_structure(self):
-        """
-        更新分子结构
-        
-        按照 easymecp.py Fortran代码中的 UpdateX 子程序:
-        使用BFGS准牛顿方法更新坐标
-        """
-        # 获取当前结构
-
-        structure = self.state_1.inp.molecule.return_xyz_list().astype(float)
-        natom = self.state_1.inp.molecule.natom
-        nx = 3 * natom
-        
-        # 当前坐标 (展平)
-        X_2 = structure.flatten()
-        
-        # 当前有效梯度
-        G_2 = self.G_eff.copy()
-        
-        # ========== BFGS更新 (来自easymecp.py Fortran代码 UpdateX子程序) ==========
-        
-        if (self.nstep == 0) and (self.ffile == 0):
-            # 第一步：简单的最速下降，步长因子0.7
-            ChgeX = -0.7 * G_2
-            
-            # 复制逆Hessian
-            if self.HI_1 is None:
-                self.HI_1 = np.eye(nx) * 0.7
-            self.HI_2 = self.HI_1.copy()
-            
-        else:
-            # 后续步骤：BFGS更新
-            
-            # 梯度差和坐标差
-            DelG = G_2 - self.G_1
-            DelX = X_2 - self.X_1
-            
-            # 计算 HDelG = H * DelG
-            HDelG = self.HI_1 @ DelG
-            
-            # 计算点积
-            fac = np.dot(DelG, DelX)      # DelG · DelX
-            fae = np.dot(DelG, HDelG)     # DelG · H · DelG
-            
-            if abs(fac) > 1e-10 and abs(fae) > 1e-10:
-                fac_inv = 1.0 / fac
-                fad = 1.0 / fae
-                
-                # w向量
-                w = fac_inv * DelX - fad * HDelG
-                
-                # BFGS逆Hessian更新公式:
-                # H_new = H + (DelX⊗DelX)/fac - (HDelG⊗HDelG)/fae + fae*(w⊗w)
-                self.HI_2 = self.HI_1.copy()
-                for i in range(nx):
-                    for j in range(nx):
-                        self.HI_2[i, j] += (fac_inv * DelX[i] * DelX[j] 
-                                           - fad * HDelG[i] * HDelG[j]
-                                           + fae * w[i] * w[j])
-            else:
-                print(f"⚠️ BFGS跳过: fac={fac:.2e}, fae={fae:.2e}")
-                self.HI_2 = self.HI_1.copy()
-            
-            # 计算步长: ChgeX = -H * G
-            ChgeX = np.zeros(nx)
-            for i in range(nx):
-                for j in range(nx):
-                    ChgeX[i] -= self.HI_2[i, j] * G_2[j]
-        
-        # ========== 步长限制 (来自easymecp.py Fortran代码) ==========
-        stpmax = self.STPMX * nx  # 总步长限制
-        
-        # 计算总步长
-        stpl = np.sqrt(np.sum(ChgeX**2))
-        
-        # 限制总步长
-        if stpl > stpmax:
-            ChgeX = ChgeX / stpl * stpmax
-            print(f"🔻 总步长截断: {stpl:.4f} → {stpmax:.4f}")
-        
-        # 限制单坐标最大位移
-        lgstst = np.max(np.abs(ChgeX))
-        if lgstst > self.STPMX:
-            ChgeX = ChgeX / lgstst * self.STPMX
-            print(f"🔻 单坐标截断: {lgstst:.4f} → {self.STPMX:.4f}")
-        
-        # ========== 更新坐标 ==========
-        X_3 = X_2 + ChgeX
-        new_structure = X_3.reshape((natom, 3))
-
-        print(f"self.grad_1:{self.grad_1},shape={self.state_1.out.force.shape}")
-        print(f"X2:{X_2},shape={X_2.shape}")
-        print(f"structure:{structure},shape={structure.shape}")
-        print(f"new_structure:{new_structure},shape={new_structure.shape}")
-        print(f"atoms:{np.array(self.state_1.inp.molecule.carti)[:, 0].T.shape}")
-        # 写入新坐标
-        self.state_1.inp.molecule.replace_new_xyz(new_structure)
-        if hasattr(self.state_2.inp.molecule, 'carti'):
-            self.state_2.inp.molecule.carti = self.state_1.inp.molecule.carti
-        
-        # ========== 保存历史数据 (用于下一步BFGS) ==========
-        self.X_1 = X_2.copy()       # 保存当前坐标为"前一步"
-        self.G_1 = G_2.copy()       # 保存当前梯度为"前一步"
-        self.HI_1 = self.HI_2.copy() if self.HI_2 is not None else self.HI_1.copy()
-        
-        # 更新步数
-        self.nstep += 1
-        
-        # 保存用于收敛检查
-        self.ChgeX = ChgeX
-        self.X_2 = X_2
-        self.X_3 = X_3
-        
-        # 兼容旧代码
-        self.last_structure = X_2.copy()
-        self.last_gradient = G_2.copy()
-        self.last_G_eff = G_2.copy()
-        
-        # ========== 诊断输出 ==========
         E1 = self.state_1.out.ene
         E2 = self.state_2.out.ene
-        print("=" * 60)
-        print(f"Step {self.nstep}")
-        print(f"E1 = {E1:.10f}, E2 = {E2:.10f}")
-        print(f"ΔE = {abs(E1 - E2):.6e} Hartree ({abs(E1 - E2) * Hartree_to_kcal:.4f} kcal/mol)")
-        print(f"‖PerpG‖ = {self.npg:.6f} (梯度差)")
-        print(f"‖ParG‖ = {np.linalg.norm(self.ParG):.6f} (切向梯度)")
-        print(f"‖G_eff‖ = {np.linalg.norm(G_2):.6f} (有效梯度)")
-        print(f"‖ChgeX‖ = {np.linalg.norm(ChgeX):.6f} (位移)")
-        print(f"max|ChgeX| = {np.max(np.abs(ChgeX)):.6f}")
-        print("=" * 60)
+        gradient_1 = self.state_1.out.force
+        gradient_2 = self.state_2.out.force
+        # Difference vector between the two gradients
+        delta_gradient = gradient_1 - gradient_2
+        norm_dg = np.linalg.norm(delta_gradient)
+
+        # Handle degenerate case
+        if norm_dg < 1e-8:
+            print("⚠️ Warning: gradient difference norm is near zero!")
+            unit_delta_gradient = delta_gradient
+        else:
+            unit_delta_gradient = delta_gradient / norm_dg
+        delta_E = E1 - E2
+        if np.sign(delta_E) != np.sign(np.sum(gradient_1 * delta_gradient)):
+            delta_gradient = -delta_gradient
+
+        # Orthogonal gradient component (perpendicular to crossing surface)
+        self.orthogonal_gradient = (E1 - E2) * unit_delta_gradient
+
+        # Project gradient_1 onto unit direction
+        projection_scalar = np.sum(gradient_1 * unit_delta_gradient)
+        projection_vector = projection_scalar * unit_delta_gradient
+
+        # Parallel gradient component (tangent to crossing surface)
+        self.parallel_gradient = gradient_1 - projection_vector
+        if self.different_type == "smd":
+            self.parallel_gradient = self.parallel_gradient.T
+            self.orthogonal_gradient = self.orthogonal_gradient.T
+        if self.restrain:
+            for restrain in self.restrain_list:
+                grad = self.restrain_force(restrain[0], restrain[1], restrain[2], restrain[3])
+                self.parallel_gradient += grad
+
+    def update_structure(self):
+        # Update molecular structure using BFGS quasi-Newton step.
+        # Get current structure and flatten
+        structure = self.state_1.inp.molecule.return_xyz_list().astype(float)
+        print(f"structure: {structure},shape={structure.shape}")
+        natom = self.state_1.inp.molecule.natom
+        x_k = structure.flatten()
+        g_k = (self.parallel_gradient + self.orthogonal_gradient).flatten()
+
+        # Apply BFGS update if past first iteration
+        if self.last_structure is not None:
+            dx = x_k - self.last_structure
+            dg = g_k - self.last_gradient
+            dxdg = np.dot(dx, dg)
+
+            if dxdg > 1e-10:
+                dx = dx[:, np.newaxis]
+                dg = dg[:, np.newaxis]
+                I = np.eye(len(dx))
+                term1 = I - dx @ dg.T / dxdg
+                term2 = I - dg @ dx.T / dxdg
+                term3 = dx @ dx.T / dxdg
+                self.inv_hess = term1 @ self.inv_hess @ term2 + term3
+            else:
+                print(" BFGS update skipped: small dot product")
+                self.inv_hess = np.eye(len(g_k))
+        else:
+            self.inv_hess = np.eye(len(g_k))
+            print("⚠️  BFGS update skipped: first step")
+        # Calculate Newton step
+        step_vector = -self.inv_hess @ g_k
+        step_vector = step_vector.reshape((natom, 3))
+        step_norm = np.linalg.norm(step_vector)
+        max_step = self.max_stepsize
+
+        if step_norm > max_step:
+            print(f"🔻 Step clipped from {step_norm:.4f} Å to {max_step:.4f} Å")
+            step_vector *= max_step / step_norm
+        # Update structure
+
+        new_structure = structure + step_vector
+        print(f"new structure: {new_structure},shape={new_structure.shape}")
+        self.state_1.inp.molecule.replace_new_xyz(new_structure)
+        self.state_2.inp.molecule.carti = self.state_1.inp.molecule.carti
+
+        # Save history for next BFGS update
+        self.last_structure = x_k
+        self.last_gradient = g_k
 
     def generate_new_inp(self):
         path = self.out_path
