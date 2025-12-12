@@ -224,73 +224,26 @@ class mecp(object):
             out.write(self.state_2.inp.molecule.return_output_format() + self.state_2.inp.remain_texts)
 
     def check_convergence(self):
-        """
-        检查收敛
-        
-        按照 easymecp.py Fortran代码中的 TestConvergence 子程序:
-        检查5个收敛标准 (全部满足才算收敛)
-        """
+
         E1 = self.state_1.out.ene
         E2 = self.state_2.out.ene
-        
+        delta_E = abs(E1 - E2)
+        # Norm of orthogonal gradient
+        grad_norm = np.linalg.norm(self.orthogonal_gradient + self.parallel_gradient)
         natom = self.state_1.inp.molecule.natom
-        nx = 3 * natom
-        
-        # 获取有效梯度和位移
-        G = self.G_eff
-        DeltaX = self.ChgeX
-        
-        # ========== 计算收敛指标 (来自easymecp.py Fortran代码) ==========
-        
-        # 能量差
-        DE = abs(E1 - E2)
-        
-        # 位移统计
-        DXMax = np.max(np.abs(DeltaX))
-        DXRMS = np.sqrt(np.mean(DeltaX**2))
-        
-        # 梯度统计
-        GMax = np.max(np.abs(G))
-        GRMS = np.sqrt(np.mean(G**2))
-        
-        # 垂直/平行梯度统计 (用于诊断输出)
-        PpGRMS = np.sqrt(np.mean(self.PerpG**2))
-        PGRMS = np.sqrt(np.mean(self.ParG**2))
-        
-        # ========== 收敛判断 ==========
-        flags = {
-            'TGMax': GMax < self.TGMax,
-            'TGRMS': GRMS < self.TGRMS,
-            'TDXMax': DXMax < self.TDXMax,
-            'TDXRMS': DXRMS < self.TDXRMS,
-            'TDE': DE < self.TDE
-        }
-        
-        is_converged = all(flags.values())
-        
-        # ========== 输出收敛信息 ==========
-        print(f"\n{'=' * 70}")
-        print(f"Energy of First State:  {E1:.10f}")
-        print(f"Energy of Second State: {E2:.10f}")
-        print()
-        print("Convergence Check (Actual Value, then Threshold, then Status):")
-        print(f"Max Gradient El.: {GMax:11.6f} ({self.TGMax:8.6f})  {'YES' if flags['TGMax'] else ' NO'}")
-        print(f"RMS Gradient El.: {GRMS:11.6f} ({self.TGRMS:8.6f})  {'YES' if flags['TGRMS'] else ' NO'}")
-        print(f"Max Change of X:  {DXMax:11.6f} ({self.TDXMax:8.6f})  {'YES' if flags['TDXMax'] else ' NO'}")
-        print(f"RMS Change of X:  {DXRMS:11.6f} ({self.TDXRMS:8.6f})  {'YES' if flags['TDXRMS'] else ' NO'}")
-        print(f"Difference in E:  {DE:11.6f} ({self.TDE:8.6f})  {'YES' if flags['TDE'] else ' NO'}")
-        print()
-        print(f"Difference Gradient: (RMS * DE: {PpGRMS:.6f})")
-        print(f"Parallel Gradient: (RMS: {PGRMS:.6f})")
-        print()
-        
-        if is_converged:
-            print("The MECP Optimization has CONVERGED at that geometry !!!")
-            print("Goodbye and fly with us again...")
+        # Structure shift
+        current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
+        if self.last_structure is not None:
+            last_structure = self.last_structure.reshape((3, natom))
+            displacement = np.linalg.norm(current_structure - last_structure)
         else:
-            print(f"Not converged. Proceeding to step {self.nstep + 1}...")
-        print(f"{'=' * 70}\n")
-        
+            displacement = np.inf
+
+            #  Converge check
+        converged_flags = [delta_E < self.energy_tol, grad_norm < self.grad_tol, displacement < self.disp_tol, ]
+        is_converged = sum(converged_flags) >= 2
+        print(
+            f"Energy gap: {delta_E:.5e}, Converged? {delta_E < self.energy_tol}; \n Gradient norm: {grad_norm:.5e}, Converged? {grad_norm < self.grad_tol};\n Displacement: {displacement:.5e}, Converged? {displacement < self.disp_tol}. \n")
         return is_converged
 
     def restrain_ene(self, atom_i, atom_j, R0, K=1000.0):
