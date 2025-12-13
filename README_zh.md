@@ -14,7 +14,7 @@
 ## 安装
 
 ```bash
-git clone <repo_url>
+git clone https://github.com/MoriyaSuwako2524/chemlab.git
 cd chemlab
 pip install -e .
 ```
@@ -78,7 +78,7 @@ chemlab qchem run_mecp --file ref.in --spin1 1 --spin2 3
 | `traj_split` | 轨迹分割 train/val/test |
 | `prepare_tddft_inp` | MD 轨迹 → TDDFT 输入 |
 
-### qchem - Q-Chem 工具
+### qchem - Q-Chem Scripts
 
 | 脚本 | 功能 |
 |------|------|

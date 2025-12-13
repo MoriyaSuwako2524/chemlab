@@ -16,7 +16,7 @@ A quantum chemistry automation toolkit focused on Q-Chem workflow automation, ma
 ## Installation
 
 ```bash
-git clone <repo_url>
+git clone https://github.com/MoriyaSuwako2524/chemlab.git
 cd chemlab
 pip install -e .
 ```
@@ -33,7 +33,7 @@ chemlab/
 ├── scripts/               # All CLI scripts
 │   ├── base.py           # Script / QchemBaseScript base classes
 │   ├── ml_data/          # Machine learning data processing
-│   ├── qchem/            # Q-Chem utilities
+│   ├── qchem/            # Q-Chem Scripts
 │   └── scan/             # PES scanning
 └── util/                  # Utility library
     ├── file_system.py    # Q-Chem file parsing
@@ -80,7 +80,7 @@ chemlab qchem run_mecp --file ref.in --spin1 1 --spin2 3
 | `traj_split` | Split trajectory into train/val/test |
 | `prepare_tddft_inp` | MD trajectory → TDDFT inputs |
 
-### qchem - Q-Chem Utilities
+### qchem - Q-Chem Scripts
 
 | Script | Function |
 |--------|----------|
