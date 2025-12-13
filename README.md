@@ -185,7 +185,7 @@ chemlab <module> my_script --param value
 
 ## Dependencies
 
-- Python >= 3.11
+- Python >= 3.9
 - numpy
 - matplotlib (for visualization)
 

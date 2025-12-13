@@ -183,7 +183,7 @@ chemlab <module> my_script --param value
 
 ## 依赖
 
-- Python >= 3.11
+- Python >= 3.9
 - numpy
 - matplotlib (可视化)
 

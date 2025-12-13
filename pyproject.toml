@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chemlab"
-version = "0.2.0"
-description = "Utilities for Q-Chem workflows, ML datasets, and scanning"
+version = "0.2.1"
+description = "Utilities for Q-Chem workflows"
 authors = [
     { name="moriya2524", email="suwako2524@gmail.com" }
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = ["numpy"]
 
 [tool.setuptools.packages.find]
