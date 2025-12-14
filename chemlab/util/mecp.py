@@ -249,9 +249,9 @@ class mecp(object):
         grad_norm = np.linalg.norm(self.orthogonal_gradient + self.parallel_gradient)
         natom = self.state_1.inp.molecule.natom
         # Structure shift
-        current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
+        current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float)
         if self.last_structure is not None:
-            last_structure = self.last_structure.reshape((3, natom))
+            last_structure = self.last_structure
             displacement = np.linalg.norm(current_structure - last_structure)
         else:
             displacement = np.inf
