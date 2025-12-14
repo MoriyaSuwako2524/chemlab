@@ -2,6 +2,7 @@
 
 :I This readme is written by Claude
 
+[中文介绍](./README_zh.md)
 A quantum chemistry automation toolkit focused on Q-Chem workflow automation, machine learning data preparation, and potential energy surface scanning.
 
 ## Features
