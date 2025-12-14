@@ -1,48 +1,46 @@
 # -*- coding: utf-8 -*-
 """
-Parallel 1D scan runner with job gating (scan_limit) and geometry inheritance.
+改进的 1D Scan 脚本 - 集成了 ResultSaver
+展示如何在现有脚本中使用ResultSaver自动保存结果和绘图
 
-Usage:
-    chemlab scan scan1d --path /your/path --ref ref.in --row_max 40 ...
-
-All config parameters can be defined in config.toml under:
-
-    [scan1d]
-    use_defaults = "scan"
+这个文件展示了如何修改现有的 chemlab/scripts/scan/1d_scan.py
 """
 import os
 import time
 import subprocess
 from dataclasses import dataclass
 from typing import Dict, Optional, List, Tuple
+import numpy as np
 
 from chemlab.scripts.base import Script
 from chemlab.config.config_loader import ConfigBase
 from chemlab.util.file_system import qchem_file, qchem_out_opt
 from chemlab.config.config_loader import QchemEnvConfig
-
-# ======================
-# Q-Chem Environment
-# ======================
-QCHEM_ENV_SETUP = """
-module purge
-export QC=/scratch/moriya/software/soc
-export QCAUX=/scratch/zhengpei/q-chem/qcaux
-source $QC/bin/qchem.setup.sh
-export QCSCRATCH=/scratch/$USER
-module load impi/2021.2.0
-module load intel/2021.2.0
-"""
+from chemlab.util.result_saver import create_result_saver_from_config  # 新增导入
 
 
 # ======================
-# Utilities
+# Config (添加ResultSaver配置字段)
+# ======================
+class Scan1DConfig(ConfigBase):
+    """
+    1D Scan配置类
+
+    新增的ResultSaver相关字段会自动从config.toml加载
+    并自动生成命令行参数
+    """
+    section_name = "scan1d"
+
+
+# ======================
+# 其他辅助函数保持不变
 # ======================
 def make_scan_name(prefix: str, row_dis: float, row_idx: int, col_idx: int = 1) -> str:
-    return f"{prefix}_{row_dis}_0.0_row{row_idx+1}_col{col_idx}"
+    return f"{prefix}_{row_dis}_0.0_row{row_idx + 1}_col{col_idx}"
 
 
-def run_qchem_job_async(input_file: str, output_file: str, nthreads: int,env_script, launcher: str = "srun") -> subprocess.Popen:
+def run_qchem_job_async(input_file: str, output_file: str, nthreads: int,
+                        env_script, launcher: str = "srun") -> subprocess.Popen:
     """Launch Q-Chem without blocking."""
     tag = os.path.splitext(os.path.basename(input_file))[0]
 
@@ -62,17 +60,14 @@ export QCSCRATCH=/scratch/$USER/{tag}
 export OMP_NUM_THREADS={nthreads}
 qchem -nt {nthreads} {input_file} {output_file}
 """
-
     return subprocess.Popen(
-        cmd,
-        shell=True,
-        executable="/bin/bash",
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.STDOUT
+        cmd, shell=True, executable="/bin/bash",
+        stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT
     )
 
 
-def write_input_from_carti(path: str, ref_filename: str, base_carti, row_dis: float, inp_file: str) -> None:
+def write_input_from_carti(path: str, ref_filename: str, base_carti,
+                           row_dis: float, inp_file: str) -> None:
     """Clone ref input and set coordinates + r12."""
     qf = qchem_file()
     qf.molecule.check = True
@@ -100,9 +95,6 @@ def read_final_carti_if_converged(out_file: str) -> Tuple[Optional[list], bool]:
     return out.final_geom, out.opt_converged
 
 
-# ======================
-# Job Structures
-# ======================
 @dataclass
 class ScanJob:
     row_idx: int
@@ -118,25 +110,22 @@ class ScanJob:
     start_time: Optional[float] = None
 
 
-# ======================
-# Status Panel
-# ======================
 def _fmt_job_list(jobs: List[ScanJob], max_show=16):
     items = [
         f"{j.row_idx}({j.row_dis:.3f}" + (f"<-{j.start_from_row}" if j.start_from_row is not None else "") + ")"
         for j in jobs
     ]
     if len(items) > max_show:
-        return ", ".join(items[:max_show]) + f", ... (+{len(items)-max_show})"
+        return ", ".join(items[:max_show]) + f", ... (+{len(items) - max_show})"
     return ", ".join(items)
 
 
 def print_status(jobs: List[ScanJob], running: Dict[int, ScanJob], scan_limit: int):
     running_list = sorted(running.values(), key=lambda j: j.row_idx)
-    ready_list   = [j for j in jobs if (not j.started) and (not j.finished) and (j.row_idx <= scan_limit)]
-    done_ok      = [j for j in jobs if j.finished and j.converged]
-    done_fail    = [j for j in jobs if j.finished and (not j.converged)]
-    locked_list  = [j for j in jobs if (not j.started) and (not j.finished) and (j.row_idx > scan_limit)]
+    ready_list = [j for j in jobs if (not j.started) and (not j.finished) and (j.row_idx <= scan_limit)]
+    done_ok = [j for j in jobs if j.finished and j.converged]
+    done_fail = [j for j in jobs if j.finished and (not j.converged)]
+    locked_list = [j for j in jobs if (not j.started) and (not j.finished) and (j.row_idx > scan_limit)]
 
     print("\n" + "=" * 78, flush=True)
     print(
@@ -155,24 +144,22 @@ def print_status(jobs: List[ScanJob], running: Dict[int, ScanJob], scan_limit: i
 
 
 # ======================
-# Config
-# ======================
-class Scan1DConfig(ConfigBase):
-    section_name = "scan1d"
-
-
-# ======================
-# Main Script
+# 主脚本 - 集成ResultSaver
 # ======================
 class Scan1D(Script):
     """
     Perform parallel 1D scan with Q-Chem.
+    自动保存每个step的结果并绘图。
     """
     name = "scan1d"
     config = Scan1DConfig
 
     def run(self, cfg):
-        # ========== unpack config ==========
+        # ========== 创建ResultSaver实例 ==========
+        result_saver = create_result_saver_from_config(cfg)
+        print(f"[Scan1D] ResultSaver enabled: {result_saver.enable}")
+
+        # ========== 解包配置 ==========
         qenv = QchemEnvConfig()
         env_srcipt = qenv.env_script
         path = cfg.inp_path
@@ -189,15 +176,16 @@ class Scan1D(Script):
         poll_interval = cfg.poll_interval
         launcher = cfg.launcher
 
-        os.makedirs(out_path, exist_ok=True)  # <-- 新增
-        # ===== Load reference input file =====
+        os.makedirs(out_path, exist_ok=True)
+
+        # ===== 加载参考输入文件 =====
         ref_qf = qchem_file()
         ref_qf.molecule.check = True
         ref_qf.opt2.check = True
         ref_qf.read_from_file(os.path.join(path, ref_filename))
         ref_carti = ref_qf.molecule.carti
 
-        # ===== Build job list =====
+        # ===== 构建任务列表 =====
         jobs = []
         for r in range(row_max):
             row_dis = round(row_start + row_distance * r, 3)
@@ -206,7 +194,7 @@ class Scan1D(Script):
             out_file = os.path.join(out_path, f"{name}.inp.out")
             jobs.append(ScanJob(r, row_dis, inp_file, out_file))
 
-        # ===== Pre-scan existing outputs =====
+        # ===== 预扫描已有输出 =====
         final_carti_by_row = {}
         finished = 0
         for job in jobs:
@@ -217,6 +205,19 @@ class Scan1D(Script):
                 final_carti_by_row[job.row_idx] = carti
                 finished += 1
                 print(f"[FOUND_OK] row={job.row_idx}  r={job.row_dis}")
+
+                # ========== 保存已完成的结果 ==========
+                if result_saver.enable:
+                    out = qchem_out_opt(job.out_file)
+                    out.read_file()
+                    result_saver.save_step(
+                        step_idx=job.row_idx,
+                        structure=np.array(carti).T,  # 转换为 (natom, 3)
+                        energy=out.ene,
+                        distance=job.row_dis,
+                        converged=True,
+                        row_idx=job.row_idx
+                    )
             else:
                 if os.path.exists(job.out_file):
                     print(f"[FOUND_FAIL] row={job.row_idx}")
@@ -234,11 +235,11 @@ class Scan1D(Script):
             nearest = min(final_carti_by_row.keys(), key=lambda x: abs(x - r))
             return final_carti_by_row[nearest], nearest
 
-        # ===== Control Loop =====
+        # ===== 控制循环 =====
         print_status(jobs, running, scan_limit)
 
         while finished < row_max:
-            # Poll
+            # 轮询任务
             for ridx, job in list(running.items()):
                 if job.popen is None:
                     continue
@@ -254,11 +255,31 @@ class Scan1D(Script):
                         final_carti_by_row[jidx := ridx] = carti
                         print(f"[DONE_OK] row={ridx}")
 
+                        # ========== 保存新完成的结果 ==========
+                        if result_saver.enable:
+                            out = qchem_out_opt(job.out_file)
+                            out.read_file()
+                            result_saver.save_step(
+                                step_idx=job.row_idx,
+                                structure=np.array(carti).T,
+                                energy=out.ene,
+                                distance=job.row_dis,
+                                converged=True,
+                                row_idx=job.row_idx
+                            )
+
+                        # ========== 实时绘图（可选）==========
+                        if result_saver.enable and result_saver.save_plot:
+                            result_saver.plot_1d_scan(
+                                title=f"1D Scan Progress (Step {finished}/{row_max})",
+                                xlabel="Distance (Å)",
+                                ylabel="Relative Energy (kcal/mol)"
+                            )
+
                         new_limit = ridx + scan_limit_progress
                         if new_limit > scan_limit:
                             print(f"[PROMOTE] scan_limit {scan_limit} → {new_limit}")
-                        scan_limit = max(scan_limit, new_limit)
-
+                            scan_limit = max(scan_limit, new_limit)
                     else:
                         job.converged = False
                         print(f"[DONE_FAIL] row={ridx}")
@@ -272,7 +293,7 @@ class Scan1D(Script):
 
             print_status(jobs, running, scan_limit)
 
-            # Launch new jobs
+            # 启动新任务
             ready = [j for j in jobs if (not j.started) and (not j.finished) and (j.row_idx <= scan_limit)]
             while len(running) < njob and ready:
                 job = ready.pop(0)
@@ -289,9 +310,33 @@ class Scan1D(Script):
                 print(f"[LAUNCH] row={job.row_idx}  from={fr} attempt={job.attempts}")
 
             print_status(jobs, running, scan_limit)
-
             time.sleep(poll_interval)
 
-        # ===== Summary =====
+        # ===== 总结 =====
         n_conv = sum(j.converged for j in jobs)
         print(f"[ALL_DONE] Finished={finished}/{row_max}, Converged={n_conv}")
+
+        # ========== 保存最终汇总 ==========
+        if result_saver.enable:
+            result_saver.save_summary(
+                total_converged=n_conv,
+                total_steps=row_max,
+                scan_type="1d_scan",
+                scan_range=[row_start, row_start + row_distance * (row_max - 1)],
+                prefix=prefix
+            )
+
+            # 生成最终图片
+            result_saver.plot_1d_scan(
+                title=f"1D Scan Final Results ({n_conv}/{row_max} converged)",
+                xlabel="Distance (Å)",
+                ylabel="Relative Energy (kcal/mol)"
+            )
+
+            print("\n" + "=" * 78)
+            print("[ResultSaver] All results saved to:")
+            print(f"  NPZ files: {result_saver.npz_path}")
+            print(f"  Plots:     {result_saver.plot_path}")
+            print("=" * 78 + "\n")
+
+        return jobs

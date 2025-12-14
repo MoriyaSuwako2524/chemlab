@@ -3,6 +3,8 @@ import time
 from chemlab.config.config_loader import QchemEnvConfig
 from typing import Dict
 import subprocess
+
+
 class Script:
     """
     Base class for all scripts used by CLI.
@@ -55,7 +57,6 @@ class QchemBaseScript(Script):
 
         cfg_env = QchemEnvConfig()
         env_script = cfg_env.env_script.strip()
-
         poll_interval = getattr(cfg, "poll_interval", 20)
         max_attempts  = getattr(cfg, "max_attempts", 2)
         njob          = cfg.njob

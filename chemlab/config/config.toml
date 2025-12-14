@@ -150,3 +150,14 @@ njob = 8
 launcher = "srun"
 project = "soc"
 
+[defaults.result_saver]
+result_saver_enable = true              # 是否启用ResultSaver (默认开启)
+result_saver_save_npz = true            # 是否保存npz文件
+result_saver_save_plot = true           # 是否保存图片
+
+result_saver_output_path = "./results"  # 输出目录
+result_saver_prefix = "result"          # 文件前缀
+
+result_saver_plot_format = "png"        # 图片格式: png, pdf, svg, jpg
+result_saver_dpi = 300                  # 图片分辨率
+result_saver_auto_close = true          # 自动关闭图片（节省内存）
