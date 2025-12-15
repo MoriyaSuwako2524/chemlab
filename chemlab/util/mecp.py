@@ -369,6 +369,7 @@ class mecp_soc(mecp):
         else:
             path = self.out_path
         self.state_1.job_name = "{}{}_job{}.inp".format(self.prefix,self.state_1._spin,self.job_num)
+
         out = open(path+self.state_1.job_name,"w")
         out.write(self.state_1.inp.molecule.return_output_format()+self.state_1.inp.remain_texts)
 

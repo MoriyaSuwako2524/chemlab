@@ -313,16 +313,29 @@ class MecpScan(Script):
                 mecp_obj.generate_new_inp()
 
                 # 运行两个态的 Q-Chem 计算
+
                 processes, out_files = [], []
-                for state in [mecp_obj.state_1, mecp_obj.state_2]:
-                    inp = os.path.join(mecp_obj.out_path, state.job_name)
+                if cfg.jobtype == "mecp":
+                    for state in [mecp_obj.state_1, mecp_obj.state_2]:
+                        inp = os.path.join(mecp_obj.out_path, state.job_name)
+                        out = inp[:-4] + ".out"
+                        out_files.append(out)
+
+                        cmd = f"""{env_script}
+    export QCSCRATCH=/scratch/$USER/mecp_scan_{job.scan_idx}_{step}
+    qchem -nt {cfg.nthreads // 2} {inp} {out}
+    """
+                        p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
+                        processes.append(p)
+                elif cfg.jobtype == "mecp_soc":
+                    inp = os.path.join(mecp_obj.out_path, mecp_obj.state_1.job_name)
                     out = inp[:-4] + ".out"
                     out_files.append(out)
 
                     cmd = f"""{env_script}
-export QCSCRATCH=/scratch/$USER/mecp_scan_{job.scan_idx}_{step}
-qchem -nt {cfg.nthreads // 2} {inp} {out}
-"""
+                export QCSCRATCH=/scratch/$USER/mecp_scan_{job.scan_idx}_{step}
+                qchem -nt {cfg.nthreads } {inp} {out}
+                """
                     p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
                     processes.append(p)
 
