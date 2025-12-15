@@ -46,6 +46,8 @@ class MecpScanJob:
     final_energy_1: Optional[float] = None
     final_energy_2: Optional[float] = None
     final_structure: Optional[np.ndarray] = None
+    atom_i = None
+    atom_j = None
 
 
 def make_scan_dir_name(prefix: str, distance: float, scan_idx: int) -> str:
@@ -311,9 +313,8 @@ class MecpScan(Script):
                 log.write(f"\n>>> MECP iteration step {step}\n")
 
                 mecp_obj.job_num = step
-                mecp_obj.ref_path
+                mecp_obj.state_1.inp.molecule.modify_bond_length(cfg.restrain_atom_i,cfg.restrain_atom_j,job.distance)
                 mecp_obj.generate_new_inp()
-
                 # 运行两个态的 Q-Chem 计算
 
                 processes, out_files = [], []

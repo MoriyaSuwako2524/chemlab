@@ -432,6 +432,64 @@ class molecule(qchem_inp_block):
         R_atom_1_atom_2 = atom_1_xyz - atom_2_xyz
         return R_atom_1_atom_2
 
+    def modify_bond_length(self, i, j, target_distance, fix=None):
+        """
+        调整原子i和j之间的键长到指定值
+
+        参数:
+            i: 原子1的索引
+            j: 原子2的索引
+            target_distance: 目标键长
+            fix: 固定哪个原子 ('i' 或 'j' 或 None)
+                 - 'i': 固定原子i，移动原子j
+                 - 'j': 固定原子j，移动原子i
+                 - None: 两个原子都移动（各移动一半）
+        """
+        # 计算当前的距离向量和距离
+        R_vec = self.calc_array_from_atom_1_to_atom_2(i, j)
+        current_distance = self.calc_distance_of_2_atoms(i, j)
+
+        # 如果当前距离为0，无法调整
+        if current_distance == 0:
+            raise ValueError("当前两原子距离为0，无法调整")
+
+        # 计算单位向量
+        unit_vec = R_vec / current_distance
+
+        # 计算需要移动的总距离
+        delta_distance = target_distance - current_distance
+
+        # 根据fix参数决定如何移动
+        if fix == 'i':
+            # 固定i，移动j
+            # j沿着从i到j的方向移动
+            displacement = -unit_vec * delta_distance
+            self.carti[j][1] = float(self.carti[j][1]) + displacement[0]
+            self.carti[j][2] = float(self.carti[j][2]) + displacement[1]
+            self.carti[j][3] = float(self.carti[j][3]) + displacement[2]
+
+        elif fix == 'j':
+            # 固定j，移动i
+            # i沿着从j到i的方向移动
+            displacement = unit_vec * delta_distance
+            self.carti[i][1] = float(self.carti[i][1]) + displacement[0]
+            self.carti[i][2] = float(self.carti[i][2]) + displacement[1]
+            self.carti[i][3] = float(self.carti[i][3]) + displacement[2]
+
+        else:
+            # 两个原子都移动，各移动一半距离
+            displacement = unit_vec * delta_distance / 2
+
+            # 移动原子i
+            self.carti[i][1] = float(self.carti[i][1]) + displacement[0]
+            self.carti[i][2] = float(self.carti[i][2]) + displacement[1]
+            self.carti[i][3] = float(self.carti[i][3]) + displacement[2]
+
+            # 移动原子j
+            self.carti[j][1] = float(self.carti[j][1]) - displacement[0]
+            self.carti[j][2] = float(self.carti[j][2]) - displacement[1]
+            self.carti[j][3] = float(self.carti[j][3]) - displacement[2]
+
     def transform_atom_type_into_charge(self):
         for i in range(len(self.carti)):
             self.carti[i][0] = atom_charge_dict[self.carti[i][0]]
