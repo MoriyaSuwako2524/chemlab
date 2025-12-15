@@ -247,6 +247,7 @@ class MecpScan(Script):
 
                 # 初始化
                 mecp_obj.read_init_structure()
+                print(f"[START] Generating Inp {job.scan_idx} (d={job.distance:.3f}) in {mecp_obj.out_path}")
                 mecp_obj.generate_new_inp()
                 mecp_obj.initialize_bfgs()
 
