@@ -221,8 +221,10 @@ class MecpScan(Script):
                 if cfg.jobtype == "mecp":
                     mecp_obj = mecp()
                     mecp_obj.different_type = cfg.gradient_type
-                else:
+                elif cfg.jobtype == "mecp_soc":
                     mecp_obj = mecp_soc()
+                else:
+                    mecp_obj = mecp()
 
                 # 配置 MECP
                 mecp_obj.ref_path = cfg.ref_path
