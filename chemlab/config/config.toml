@@ -196,6 +196,3 @@ max_stepsize = 0.1           # 最大步长
 nthreads = 16        # 每个 Q-Chem 任务的线程数
 njob = 2             # 同时运行的 scan 点数量
 poll_interval = 60   # 轮询间隔（秒）
-
-# ResultSaver 设置（继承默认值）
-use_defaults = "result_saver"
