@@ -1,10 +1,11 @@
 #!/bin/bash
 #SBATCH -J qchem-1d-scan
-#SBATCH -N 2
-#SBATCH -p batch
-#SBATCH --ntasks-per-node=2        # æ¯èŠ‚ç‚¹å¼€ 2 ä¸ª srun
-#SBATCH --cpus-per-task=16          # æ¯ä¸ª srun 16 æ ¸
-#SBATCH --time=5-00:00:00
+#SBATCH -N 1
+##SBATCH -p batch
+#SBATCH -p express
+#SBATCH --ntasks-per-node=4        # Ã¿½Úµã¿ª 2 ¸ö srun 
+#SBATCH --cpus-per-task=8          # Ã¿¸ö srun 16 ºË
+#SBATCH --time=00:60:00
 #SBATCH --exclusive
 #SBATCH -o ./logs/OUTPUT_%J.log
 #SBATCH -e ./logs/ERRORS_%J.log
@@ -24,7 +25,7 @@ chemlab scan 1d_scan \
     --row_max 40 \
     --row_start 1.25 \
     --row_distance 0.05 \
-    --ncore 16 \
+    --ncore 8 \
     --njob 4 \
     --scan_limit_init 10 \
     --scan_limit_progress 10 \
