@@ -348,7 +348,7 @@ class MecpScan(Script):
                 # 读取结果
                 mecp_obj.read_output()
                 mecp_obj.calc_new_gradient()
-
+                print(mecp_obj.parallel_gradient)
                 e1 = mecp_obj.state_1.out.ene
                 e2 = mecp_obj.state_2.out.ene
 
