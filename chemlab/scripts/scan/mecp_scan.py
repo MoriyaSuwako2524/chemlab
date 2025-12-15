@@ -333,10 +333,8 @@ class MecpScan(Script):
                     inp = os.path.join(mecp_obj.out_path, mecp_obj.state_1.job_name)
                     out = inp[:-4] + ".out"
                     out_files.append(out)
-
                     cmd = f"""{env_script}
-                export QCSCRATCH=/scratch/$USER/mecp_scan_{job.scan_idx}_{step}
-                qchem -nt {cfg.nthreads } {inp} {out}
+                srun -n1 -c {cfg.nthreads} --cpu-bind=cores --hint=nomultithread qchem -nt {cfg.nthreads} {inp} {out}
                 """
                     p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
                     processes.append(p)
