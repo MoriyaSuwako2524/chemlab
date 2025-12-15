@@ -161,3 +161,41 @@ result_saver_prefix = "result"          # 文件前缀
 result_saver_plot_format = "png"        # 图片格式: png, pdf, svg, jpg
 result_saver_dpi = 300                  # 图片分辨率
 result_saver_auto_close = true          # 自动关闭图片（节省内存）
+
+
+[mecp_scan]
+use_defaults = "scan"
+
+# 输入/输出路径
+ref_path = "./"
+ref_file = "ref.in"
+out_path = "./mecp_scan/"
+prefix = "mecp_scan"
+
+# 自旋态设置
+spin1 = 1          # 第一个态的自旋多重度
+spin2 = 3          # 第二个态的自旋多重度
+
+# 距离约束设置（关键参数）
+restrain_atom_i = 0      # 约束的第一个原子索引（从0开始）
+restrain_atom_j = 1      # 约束的第二个原子索引
+distance_start = 2.0     # 起始距离 (Å)
+distance_end = 3.0       # 结束距离 (Å)
+distance_step = 0.1      # 距离步长 (Å)
+restrain_k = 1000.0      # 约束力常数 (默认 1000.0)
+
+# MECP 优化参数
+jobtype = "mecp"              # "mecp" 或 "mecp_soc"
+gradient_type = "analytical"  # "analytical" 或 "numerical"
+mecp_max_steps = 80          # 每个点的最大 MECP 优化步数
+mecp_conv = 1e-5             # MECP 收敛标准
+step_size = 0.01             # MECP 步长
+max_stepsize = 0.1           # 最大步长
+
+# 并行设置
+nthreads = 16        # 每个 Q-Chem 任务的线程数
+njob = 2             # 同时运行的 scan 点数量
+poll_interval = 60   # 轮询间隔（秒）
+
+# ResultSaver 设置（继承默认值）
+use_defaults = "result_saver"
