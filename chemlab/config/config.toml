@@ -96,7 +96,14 @@ launcher = "srun"
 path = ""
 prefix = "scan"
 ref = "ref.in"
-
+result_saver_enable = true
+result_saver_save_npz = true
+result_saver_save_plot = true
+result_saver_output_path = "./results"
+result_saver_prefix = "result"
+result_saver_plot_format = "png"
+result_saver_dpi = 300
+result_saver_auto_close = true
 
 [qchem_env]
 use_defaults = "pete"
