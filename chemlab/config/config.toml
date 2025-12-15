@@ -188,7 +188,7 @@ restrain_atom_j = 1      # 约束的第二个原子索引
 distance_start = 2.0     # 起始距离 (Å)
 distance_end = 3.0       # 结束距离 (Å)
 distance_step = 0.1      # 距离步长 (Å)
-restrain_k = 100.0      # 约束力常数 (默认 1000.0)
+restrain_k = 100.0      # 约束力常数 (默认 100.0)
 
 # MECP 优化参数
 jobtype = "mecp"              # "mecp" 或 "mecp_soc"
