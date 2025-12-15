@@ -162,10 +162,10 @@ class mecp(object):
         if self.restrain:
             for restrain in self.restrain_list:
                 grad = self.restrain_force(restrain[0], restrain[1], restrain[2], restrain[3])
-                print(f"Restrain force:{grad},shape={grad.shape}",flush=True)
+                #print(f"Restrain force:{grad},shape={grad.shape}",flush=True)
                 self.parallel_gradient += grad.T
-        print(f"parallel gradient: {self.parallel_gradient},shape={self.parallel_gradient.shape}", flush=True)
-        print(f"orthogonal gradient: {self.orthogonal_gradient},shape={self.orthogonal_gradient.shape}", flush=True)
+        #print(f"parallel gradient: {self.parallel_gradient},shape={self.parallel_gradient.shape}", flush=True)
+        #print(f"orthogonal gradient: {self.orthogonal_gradient},shape={self.orthogonal_gradient.shape}", flush=True)
 
     def update_structure(self):
         structure = self.state_1.inp.molecule.return_xyz_list().astype(float)
