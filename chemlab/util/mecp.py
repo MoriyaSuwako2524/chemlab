@@ -422,6 +422,11 @@ class mecp_soc(mecp):
         print(f"Reading output file: {os.path.join(path,self.state_1.job_name)}")
         self.state_1.out.read_file(os.path.join(path,self.state_1.job_name), self_check=False, different_type=self.different_type)
         self.job_num += 1
+        from chemlab.util.file_system import qchem_out_soc
+        tem_out = qchem_out_soc()
+        tem_out.read_file(os.path.join(path,self.state_1.job_name))
+        self.state_1.out.final_adiabatic_ene = tem_out.final_adiabatic_ene
+        self.state_1.out.final_soc_ene = tem_out.final_soc_ene
 
         self.state_1.out.ene = self.state_1.out.final_adiabatic_ene
         self.state_2.out.ene = self.state_1.out.final_adiabatic_ene + self.state_1.out.final_soc_ene
