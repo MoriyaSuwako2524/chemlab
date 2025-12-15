@@ -174,7 +174,6 @@ result_saver_auto_close = true          # 自动关闭图片（节省内存）
 use_defaults = "scan"
 
 # 输入/输出路径
-ref_path = "./"
 ref_file = "ref.in"
 out_path = "./mecp_scan/"
 prefix = "mecp_scan"

@@ -100,7 +100,7 @@ class MecpScan(Script):
         print("[MECP Scan] Configuration:")
         print("=" * 78)
         print(f"Reference file: {cfg.ref_file}")
-        print(f"Reference path: {cfg.ref_path}")
+        print(f"Reference path: {cfg.path}")
         print(f"Output path: {cfg.out_path}")
         print(f"Prefix: {cfg.prefix}")
         print(f"Spin states: {cfg.spin1}, {cfg.spin2}")
@@ -227,7 +227,7 @@ class MecpScan(Script):
                     mecp_obj = mecp()
 
                 # 配置 MECP
-                mecp_obj.ref_path = cfg.ref_path
+                mecp_obj.ref_path = cfg.path
                 mecp_obj.ref_filename = cfg.ref_file
                 mecp_obj.out_path = job.work_dir
                 mecp_obj.prefix = cfg.prefix
