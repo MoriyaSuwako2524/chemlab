@@ -306,14 +306,14 @@ class MecpScan(Script):
             log.write(f"Distance constraint: {job.distance:.3f} Å\n")
             log.write(f"Restrain: atoms {cfg.restrain_atom_i}-{cfg.restrain_atom_j}\n")
             log.write("=" * 60 + "\n\n")
-
+            mecp_obj.state_1.inp.molecule.modify_bond_length(cfg.restrain_atom_i, cfg.restrain_atom_j, job.distance)
+            mecp_obj.state_2.inp.molecule.modify_bond_length(cfg.restrain_atom_i, cfg.restrain_atom_j, job.distance)
             # MECP 优化循环
             for step in range(cfg.mecp_max_steps):
                 print(f"  [Scan {job.scan_idx}] MECP step {step}")
                 log.write(f"\n>>> MECP iteration step {step}\n")
 
                 mecp_obj.job_num = step
-                mecp_obj.state_1.inp.molecule.modify_bond_length(cfg.restrain_atom_i,cfg.restrain_atom_j,job.distance)
                 mecp_obj.generate_new_inp()
                 # 运行两个态的 Q-Chem 计算
 
