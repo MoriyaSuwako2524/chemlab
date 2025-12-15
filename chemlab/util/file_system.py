@@ -855,6 +855,12 @@ class qchem_out_soc(qchem_out):
     @property
     def final_soc_ene(self):
         return self.opt_esoc_list[-1] if self.opt_esoc_list else None
+    @property
+    def final_adiabatic_ene(self):
+        esoc = self.final_soc_ene
+        e1 = self.opt_e1_list[-1]
+        e2 = self.opt_e2_list[-1]
+        return ((esoc **2 - (e1-e2)**2)/4)**0.5
 
 class qchem_out_force(qchem_out):
     def __init__(self, filename=""):
