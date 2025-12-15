@@ -162,7 +162,10 @@ class mecp(object):
         if self.restrain:
             for restrain in self.restrain_list:
                 grad = self.restrain_force(restrain[0], restrain[1], restrain[2], restrain[3])
+                print(f"Restrain force:{grad},shape={grad.shape}")
                 self.parallel_gradient += grad
+        print(f"parallel gradient: {self.parallel_gradient},shape={self.parallel_gradient.shape}")
+        print(f"orthogonal gradient: {self.orthogonal_gradient},shape={self.orthogonal_gradient.shape}")
 
     def update_structure(self):
         structure = self.state_1.inp.molecule.return_xyz_list().astype(float)
@@ -209,7 +212,6 @@ class mecp(object):
             print("⚠️  BFGS update skipped: first step")
 
         # === Newton step ===
-        print(f"inv_hessian:{self.inv_hess}")
         step_vector = -self.inv_hess @ g_k
         step_vector = step_vector.reshape((natom, 3))
 
