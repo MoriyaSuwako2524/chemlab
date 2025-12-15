@@ -163,7 +163,7 @@ class mecp(object):
             for restrain in self.restrain_list:
                 grad = self.restrain_force(restrain[0], restrain[1], restrain[2], restrain[3])
                 print(f"Restrain force:{grad},shape={grad.shape}",flush=True)
-                self.parallel_gradient -= grad
+                self.parallel_gradient -= grad.T
         print(f"parallel gradient: {self.parallel_gradient},shape={self.parallel_gradient.shape}", flush=True)
         print(f"orthogonal gradient: {self.orthogonal_gradient},shape={self.orthogonal_gradient.shape}", flush=True)
 
@@ -438,6 +438,8 @@ class mecp_soc(mecp):
         self.state_1.out.force = self.state_1.out.force
         self.state_2.out.force = -self.state_1.out.force + self.state_1.out.force_e1 + self.state_1.out.force_e2
 
+        self.state_1.out.force = self.state_1.out.force.T
+        self.state_2.out.force = self.state_2.out.force.T
         self.state_1.gradient_list.append(self.state_1.out.force)
         self.state_2.gradient_list.append(self.state_2.out.force)
 
