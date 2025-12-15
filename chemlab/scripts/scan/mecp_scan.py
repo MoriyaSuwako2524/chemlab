@@ -334,7 +334,7 @@ class MecpScan(Script):
                     out = inp[:-4] + ".out"
                     out_files.append(out)
                     cmd = f"""{env_script}
-                srun -n1 -c {cfg.nthreads} --cpu-bind=cores --hint=nomultithread qchem -nt {cfg.nthreads} {inp} {out}
+                srun -n1 -c {cfg.nthreads} --cpu-bind=cores --hint=nomultithread qchem -nt {cfg.nthreads} {inp} {out} > qc.log 2>&1
                 """
                     p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
                     processes.append(p)
@@ -346,7 +346,7 @@ class MecpScan(Script):
                 # 读取结果
                 mecp_obj.read_output()
                 mecp_obj.calc_new_gradient()
-                print(mecp_obj.parallel_gradient)
+                print(mecp_obj.parallel_gradient, flush=True)
                 e1 = mecp_obj.state_1.out.ene
                 e2 = mecp_obj.state_2.out.ene
 
