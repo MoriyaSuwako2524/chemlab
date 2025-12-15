@@ -452,8 +452,8 @@ class MecpScan(Script):
 
                 scratch_dir = f"mecp_scan_{job.scan_idx}_{job.current_step}_{state._spin}"
                 cmd = f"""{env_script}
-mkdir -p /scratch/$USER/{scratch_dir}
-export QCSCRATCH=/scratch/$USER/{scratch_dir}
+mkdir -p /scratch/$USER/cache/{scratch_dir}
+export QCSCRATCH=/scratch/$USER/cache/{scratch_dir}
 export OMP_NUM_THREADS={nthreads_per_job}
 qchem -nt {nthreads_per_job} {inp} {out}
 """
@@ -471,8 +471,8 @@ qchem -nt {nthreads_per_job} {inp} {out}
 
             scratch_dir = f"mecp_scan_{job.scan_idx}_{job.current_step}"
             cmd = f"""{env_script}
-mkdir -p /scratch/$USER/{scratch_dir}
-export QCSCRATCH=/scratch/$USER/{scratch_dir}
+mkdir -p /scratch/$USER/cache/{scratch_dir}
+export QCSCRATCH=/scratch/$USER/cache/{scratch_dir}
 export OMP_NUM_THREADS={nthreads_per_job}
 srun -n1 -c {nthreads_per_job} --cpu-bind=cores --hint=nomultithread qchem -nt {nthreads_per_job} {inp} {out}
 """
