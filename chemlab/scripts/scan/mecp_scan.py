@@ -1,15 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-MECP Scan Script - 在不同距离约束下进行 MECP 优化
-结合了 run_mecp.py 和 1d_scan.py 的功能
+MECP Scan Script - 改进版
+在不同距离约束下进行 MECP 优化
+
+改进点：
+1. 真正的并行执行 - 同时运行多个MECP点的Q-Chem计算
+2. SCF失败处理 - 失败时不中断整个任务，支持重试
+3. 更好的任务状态管理
 """
 import os
 import time
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Optional, List, Tuple
+from enum import Enum
 import numpy as np
-import matplotlib.pyplot as plt
+import traceback
 
 from chemlab.scripts.base import Script
 from chemlab.config.config_loader import ConfigBase, QchemEnvConfig
@@ -30,7 +36,19 @@ class MecpScanConfig(ConfigBase):
 
 
 # ======================
-# 辅助函数
+# 任务状态枚举
+# ======================
+class JobStatus(Enum):
+    PENDING = "pending"  # 等待启动
+    RUNNING_QCHEM = "running"  # Q-Chem正在运行
+    WAITING_READ = "waiting"  # 等待读取结果
+    CONVERGED = "converged"  # MECP收敛
+    FAILED = "failed"  # 失败（SCF失败或其他错误）
+    GAVE_UP = "gave_up"  # 多次失败后放弃
+
+
+# ======================
+# 辅助数据类
 # ======================
 @dataclass
 class MecpScanJob:
@@ -38,16 +56,36 @@ class MecpScanJob:
     scan_idx: int  # scan 点索引
     distance: float  # 约束距离
     work_dir: str  # 工作目录
-    started: bool = False
-    finished: bool = False
-    converged: bool = False
-    attempts: int = 0
+
+    # 状态管理
+    status: JobStatus = JobStatus.PENDING
+    current_step: int = 0  # 当前MECP优化步数
+    attempts: int = 0  # 尝试次数（用于重试）
+    max_attempts: int = 2  # 最大尝试次数
+
+    # MECP对象和进程
     mecp_obj: Optional[object] = None
+    processes: List[subprocess.Popen] = field(default_factory=list)
+    out_files: List[str] = field(default_factory=list)
+
+    # 结果
     final_energy_1: Optional[float] = None
     final_energy_2: Optional[float] = None
     final_structure: Optional[np.ndarray] = None
-    atom_i = None
-    atom_j = None
+    error_message: Optional[str] = None
+
+    # 时间戳
+    start_time: Optional[float] = None
+
+    @property
+    def is_active(self) -> bool:
+        """任务是否活跃（可以被处理）"""
+        return self.status in [JobStatus.PENDING, JobStatus.RUNNING_QCHEM, JobStatus.WAITING_READ]
+
+    @property
+    def is_finished(self) -> bool:
+        """任务是否已完成（成功或失败）"""
+        return self.status in [JobStatus.CONVERGED, JobStatus.FAILED, JobStatus.GAVE_UP]
 
 
 def make_scan_dir_name(prefix: str, distance: float, scan_idx: int) -> str:
@@ -55,25 +93,70 @@ def make_scan_dir_name(prefix: str, distance: float, scan_idx: int) -> str:
     return f"{prefix}_d{distance:.3f}_idx{scan_idx}"
 
 
-def check_mecp_convergence(work_dir: str, prefix: str, job_num: int) -> Tuple[bool, Optional[float], Optional[float]]:
-    """
-    检查 MECP 优化是否收敛
+def check_qchem_success(out_file: str) -> bool:
+    """检查Q-Chem是否成功完成"""
+    if not os.path.exists(out_file):
+        return False
+    try:
+        with open(out_file, 'r') as f:
+            content = f.read()
+            return "Thank you very much for using Q-Chem" in content
+    except Exception:
+        return False
 
-    Returns:
-        (converged, energy_1, energy_2)
-    """
+
+def check_qchem_scf_error(out_file: str) -> bool:
+    """检查是否有SCF收敛错误"""
+    if not os.path.exists(out_file):
+        return False
+    try:
+        with open(out_file, 'r') as f:
+            content = f.read()
+            error_keywords = [
+                "SCF failed to converge",
+                "Maximum number of SCF cycles exceeded",
+            ]
+            return any(kw in content for kw in error_keywords)
+    except Exception:
+        return False
+
+
+def check_mecp_log_convergence(work_dir: str) -> bool:
+    """检查 MECP 日志是否显示收敛"""
     log_file = os.path.join(work_dir, "mecp.log")
     if not os.path.exists(log_file):
-        return False, None, None
+        return False
+    try:
+        with open(log_file, 'r') as f:
+            return "Converged at step" in f.read()
+    except Exception:
+        return False
 
-    # 简单检查：查找 "Converged" 关键字
-    with open(log_file, 'r') as f:
-        content = f.read()
-        if "Converged at step" in content:
-            # 尝试读取最终能量（这里简化处理）
-            return True, None, None  # 能量从 mecp 对象中获取更可靠
 
-    return False, None, None
+def _fmt_job_list(jobs: List[MecpScanJob], max_show: int = 12) -> str:
+    """格式化任务列表用于显示"""
+    items = [f"{j.scan_idx}(d={j.distance:.3f},step={j.current_step})" for j in jobs]
+    if len(items) > max_show:
+        return ", ".join(items[:max_show]) + f", ... (+{len(items) - max_show})"
+    return ", ".join(items) if items else "(none)"
+
+
+def print_status(jobs: List[MecpScanJob], running: Dict[int, MecpScanJob]):
+    """打印当前任务状态"""
+    running_list = [j for j in jobs if j.status == JobStatus.RUNNING_QCHEM]
+    pending_list = [j for j in jobs if j.status == JobStatus.PENDING]
+    converged_list = [j for j in jobs if j.status == JobStatus.CONVERGED]
+    failed_list = [j for j in jobs if j.status in [JobStatus.FAILED, JobStatus.GAVE_UP]]
+
+    print("\n" + "=" * 78, flush=True)
+    print(f"[MECP SCAN STATUS] RUN={len(running_list)} PENDING={len(pending_list)} "
+          f"CONVERGED={len(converged_list)} FAILED={len(failed_list)}", flush=True)
+    print("-" * 78, flush=True)
+    print(f"[RUNNING]   {_fmt_job_list(running_list)}", flush=True)
+    print(f"[PENDING]   {_fmt_job_list(pending_list)}", flush=True)
+    print(f"[CONVERGED] {_fmt_job_list(converged_list)}", flush=True)
+    print(f"[FAILED]    {_fmt_job_list(failed_list)}", flush=True)
+    print("=" * 78 + "\n", flush=True)
 
 
 # ======================
@@ -81,11 +164,12 @@ def check_mecp_convergence(work_dir: str, prefix: str, job_num: int) -> Tuple[bo
 # ======================
 class MecpScan(Script):
     """
-    在不同距离约束下执行 MECP 优化
+    在不同距离约束下执行 MECP 优化 - 改进版
 
-    使用场景：
-    - 研究 MECP 点沿某个关键距离的变化
-    - 生成 MECP 能量随距离的扫描曲线
+    特点：
+    - 真正的并行执行：同时运行多个MECP点
+    - 容错处理：SCF失败不会中断整个任务
+    - 支持重试机制
     """
 
     name = "mecp_scan"
@@ -99,7 +183,7 @@ class MecpScan(Script):
             raise ValueError("[mecp_scan] No env_script found in [qchem_env].")
 
         print("=" * 78)
-        print("[MECP Scan] Configuration:")
+        print("[MECP Scan - Improved Version] Configuration:")
         print("=" * 78)
         print(f"Reference file: {cfg.ref_file}")
         print(f"Reference path: {cfg.path}")
@@ -123,8 +207,12 @@ class MecpScan(Script):
         print(f"[MecpScan] ResultSaver enabled: {result_saver.enable}\n")
 
         # ========== 构建任务列表 ==========
-        jobs = []
-        distances = np.arange(cfg.distance_start, cfg.distance_end + cfg.distance_step / 2, cfg.distance_step)
+        jobs: List[MecpScanJob] = []
+        distances = np.arange(
+            cfg.distance_start,
+            cfg.distance_end + cfg.distance_step / 2,
+            cfg.distance_step
+        )
 
         for idx, dist in enumerate(distances):
             dist = round(dist, 3)
@@ -132,144 +220,142 @@ class MecpScan(Script):
             work_dir = os.path.join(cfg.out_path, dir_name)
             os.makedirs(work_dir, exist_ok=True)
 
-            jobs.append(MecpScanJob(
+            job = MecpScanJob(
                 scan_idx=idx,
                 distance=dist,
-                work_dir=work_dir
-            ))
+                work_dir=work_dir,
+                max_attempts=getattr(cfg, 'max_attempts', 2)
+            )
+            jobs.append(job)
 
-        print(f"[INFO] Created {len(jobs)} scan jobs for distances: {distances}\n")
+        print(f"[INFO] Created {len(jobs)} scan jobs for distances: "
+              f"{[round(d, 3) for d in distances]}\n")
 
         # ========== 预扫描已完成的任务 ==========
-        finished_count = 0
         for job in jobs:
-            converged, e1, e2 = check_mecp_convergence(job.work_dir, cfg.prefix, 0)
-            if converged:
-                job.finished = True
-                job.converged = True
-                finished_count += 1
+            if check_mecp_log_convergence(job.work_dir):
+                job.status = JobStatus.CONVERGED
                 print(f"[FOUND] Scan {job.scan_idx} (d={job.distance:.3f}) already converged")
 
-        print(f"\n[INFO] Found {finished_count}/{len(jobs)} completed jobs\n")
+        n_already_done = sum(1 for j in jobs if j.status == JobStatus.CONVERGED)
+        print(f"\n[INFO] Found {n_already_done}/{len(jobs)} completed jobs\n")
 
-        # ========== 运行 MECP scan ==========
+        # ========== 主循环 ==========
         running: Dict[int, MecpScanJob] = {}
 
-        def print_status():
-            """打印当前状态"""
-            n_running = len(running)
-            n_ready = sum(1 for j in jobs if not j.started and not j.finished)
-            n_done = sum(1 for j in jobs if j.finished and j.converged)
-            n_fail = sum(1 for j in jobs if j.finished and not j.converged)
+        print_status(jobs, running)
 
-            print("\n" + "=" * 78)
-            print(f"[STATUS] RUNNING={n_running} | READY={n_ready} | DONE={n_done} | FAIL={n_fail}")
-            print("=" * 78 + "\n")
+        while any(j.is_active for j in jobs):
+            # ===== 1. 检查正在运行的Q-Chem进程 =====
+            for scan_idx in list(running.keys()):
+                job = running[scan_idx]
 
-        print_status()
+                if job.status != JobStatus.RUNNING_QCHEM:
+                    continue
 
-        while finished_count < len(jobs):
+                # 检查所有进程是否完成
+                all_done = all(p.poll() is not None for p in job.processes)
 
-            # ===== 检查正在运行的任务 =====
-            for scan_idx, job in list(running.items()):
-                converged, e1, e2 = check_mecp_convergence(job.work_dir, cfg.prefix, cfg.mecp_max_steps - 1)
+                if all_done:
+                    job.status = JobStatus.WAITING_READ
 
-                if converged:
-                    job.finished = True
-                    job.converged = True
-                    job.final_energy_1 = e1
-                    job.final_energy_2 = e2
-                    finished_count += 1
+                    # 检查是否有SCF错误
+                    has_scf_error = any(check_qchem_scf_error(f) for f in job.out_files)
+                    all_success = all(check_qchem_success(f) for f in job.out_files)
 
-                    print(f"[DONE] Scan {job.scan_idx} (d={job.distance:.3f}) CONVERGED")
+                    if has_scf_error or not all_success:
+                        # SCF失败处理
+                        job.error_message = "SCF convergence failed"
+                        print(f"[SCF_FAIL] Scan {job.scan_idx} step {job.current_step} SCF failed")
 
-                    # 保存结果
-                    if result_saver.enable and job.mecp_obj:
-                        try:
-                            structure = job.mecp_obj.state_1.inp.molecule.return_xyz_list().astype(float)
-                            energy_avg = (job.mecp_obj.state_1.out.ene + job.mecp_obj.state_2.out.ene) / 2
+                        if job.attempts < job.max_attempts:
+                            # 重试：重置状态
+                            print(f"[RETRY] Scan {job.scan_idx} will retry (attempt {job.attempts + 1})")
+                            job.status = JobStatus.PENDING
+                            job.current_step = 0
+                            job.mecp_obj = None
+                            running.pop(scan_idx)
+                        else:
+                            # 放弃
+                            job.status = JobStatus.GAVE_UP
+                            print(f"[GAVE_UP] Scan {job.scan_idx} gave up after {job.attempts} attempts")
+                            running.pop(scan_idx)
+                        continue
 
-                            result_saver.save_step(
-                                step_idx=job.scan_idx,
-                                structure=structure,
-                                energy=energy_avg,
-                                distance=job.distance,
-                                converged=True,
-                                scan_idx=job.scan_idx,
-                                energy_state1=job.mecp_obj.state_1.out.ene,
-                                energy_state2=job.mecp_obj.state_2.out.ene
-                            )
-                        except Exception as e:
-                            print(f"[WARNING] Failed to save results for scan {job.scan_idx}: {e}")
+                    # 读取输出并更新
+                    try:
+                        self._process_qchem_output(job, cfg, result_saver)
 
-                    running.pop(scan_idx)
+                        if job.status == JobStatus.CONVERGED:
+                            print(f"[CONVERGED] Scan {job.scan_idx} (d={job.distance:.3f}) "
+                                  f"converged at step {job.current_step}")
+                            running.pop(scan_idx)
+                        elif job.status == JobStatus.FAILED:
+                            running.pop(scan_idx)
+                        else:
+                            # 继续下一步MECP优化
+                            job.current_step += 1
+                            if job.current_step >= cfg.mecp_max_steps:
+                                job.status = JobStatus.FAILED
+                                job.error_message = "Max MECP steps exceeded"
+                                print(f"[MAX_STEPS] Scan {job.scan_idx} exceeded max steps")
+                                running.pop(scan_idx)
+                            else:
+                                # 启动下一步Q-Chem计算
+                                self._launch_qchem_step(job, env_script, cfg)
 
-                elif job.attempts >= 1:  # MECP 优化已运行完毕（无论是否收敛）
-                    job.finished = True
-                    job.converged = False
-                    finished_count += 1
-                    print(f"[FAIL] Scan {job.scan_idx} (d={job.distance:.3f}) did not converge")
-                    running.pop(scan_idx)
+                    except Exception as e:
+                        job.status = JobStatus.FAILED
+                        job.error_message = str(e)
+                        print(f"[ERROR] Scan {job.scan_idx} error: {e}")
+                        traceback.print_exc()
+                        running.pop(scan_idx)
 
-            # ===== 启动新任务 =====
-            ready_jobs = [j for j in jobs if not j.started and not j.finished]
+            # ===== 2. 启动新任务 =====
+            pending_jobs = [j for j in jobs if j.status == JobStatus.PENDING]
 
-            while len(running) < cfg.njob and ready_jobs:
-                job = ready_jobs.pop(0)
+            while len(running) < cfg.njob and pending_jobs:
+                job = pending_jobs.pop(0)
 
-                print(f"[START] Launching scan {job.scan_idx} (d={job.distance:.3f}) in {job.work_dir}")
+                print(f"[START] Launching scan {job.scan_idx} (d={job.distance:.3f})")
 
-                # 创建 MECP 对象
-                if cfg.jobtype == "mecp":
-                    mecp_obj = mecp()
-                    mecp_obj.different_type = cfg.gradient_type
-                elif cfg.jobtype == "mecp_soc":
-                    mecp_obj = mecp_soc()
-                else:
-                    mecp_obj = mecp()
+                try:
+                    # 初始化MECP对象
+                    self._initialize_mecp_job(job, cfg)
+                    job.attempts += 1
+                    job.start_time = time.time()
 
-                # 配置 MECP
-                mecp_obj.ref_path = cfg.path
-                mecp_obj.ref_filename = cfg.ref_file
-                mecp_obj.out_path = job.work_dir
-                mecp_obj.prefix = cfg.prefix
-                mecp_obj.step_size = cfg.step_size
-                mecp_obj.max_stepsize = cfg.max_stepsize
-                mecp_obj.state_1.spin = cfg.spin1
-                mecp_obj.state_2.spin = cfg.spin2
-                mecp_obj.converge_limit = cfg.mecp_conv
+                    # 启动第一步Q-Chem计算
+                    self._launch_qchem_step(job, env_script, cfg)
 
-                # **关键：添加距离约束**
-                mecp_obj.add_restrain(
-                    cfg.restrain_atom_i,
-                    cfg.restrain_atom_j,
-                    job.distance,  # 当前 scan 点的目标距离
-                    cfg.restrain_k
-                )
+                    running[job.scan_idx] = job
 
-                # 初始化
-                mecp_obj.read_init_structure()
-                print(f"[START] Generating Inp {job.scan_idx} (d={job.distance:.3f}) in {mecp_obj.out_path}")
-                mecp_obj.generate_new_inp()
-                mecp_obj.initialize_bfgs()
+                except Exception as e:
+                    job.status = JobStatus.FAILED
+                    job.error_message = str(e)
+                    print(f"[INIT_ERROR] Scan {job.scan_idx} initialization failed: {e}")
+                    traceback.print_exc()
 
-                # 保存 mecp 对象供后续使用
-                job.mecp_obj = mecp_obj
-                job.started = True
-                job.attempts += 1
-                running[job.scan_idx] = job
-
-                # 启动 MECP 优化（后台运行）
-                self._run_mecp_optimization_async(job, env_script, cfg)
-
-            print_status()
+            print_status(jobs, running)
             time.sleep(cfg.poll_interval)
 
         # ========== 总结 ==========
-        n_converged = sum(j.converged for j in jobs)
+        n_converged = sum(1 for j in jobs if j.status == JobStatus.CONVERGED)
+        n_failed = sum(1 for j in jobs if j.status in [JobStatus.FAILED, JobStatus.GAVE_UP])
+
         print("\n" + "=" * 78)
-        print(f"[COMPLETE] MECP Scan finished: {n_converged}/{len(jobs)} converged")
+        print(f"[COMPLETE] MECP Scan finished:")
+        print(f"  - Converged: {n_converged}/{len(jobs)}")
+        print(f"  - Failed:    {n_failed}/{len(jobs)}")
         print("=" * 78 + "\n")
+
+        # 打印失败任务详情
+        if n_failed > 0:
+            print("[Failed Jobs Details]:")
+            for job in jobs:
+                if job.status in [JobStatus.FAILED, JobStatus.GAVE_UP]:
+                    print(f"  Scan {job.scan_idx} (d={job.distance:.3f}): {job.error_message}")
+            print()
 
         # ========== 保存和绘图 ==========
         if result_saver.enable:
@@ -281,7 +367,6 @@ class MecpScan(Script):
                 prefix=cfg.prefix
             )
 
-            # 绘制 MECP 能量曲线
             result_saver.plot_1d_scan(
                 title=f"MECP Scan ({n_converged}/{len(jobs)} converged)",
                 xlabel="Distance (Å)",
@@ -292,77 +377,168 @@ class MecpScan(Script):
 
         return jobs
 
-    def _run_mecp_optimization_async(self, job: MecpScanJob, env_script: str, cfg):
-        """
-        在后台运行 MECP 优化
-        这里简化实现：直接在主进程中运行（因为 MECP 本身需要同步等待 Q-Chem）
-        如果需要真正的并行，需要更复杂的进程管理
-        """
-        mecp_obj = job.mecp_obj
-        log_path = os.path.join(job.work_dir, "mecp.log")
+    def _initialize_mecp_job(self, job: MecpScanJob, cfg):
+        """初始化单个MECP任务"""
+        # 创建 MECP 对象
+        if cfg.jobtype == "mecp":
+            mecp_obj = mecp()
+            mecp_obj.different_type = cfg.gradient_type
+        elif cfg.jobtype == "mecp_soc":
+            mecp_obj = mecp_soc()
+        else:
+            mecp_obj = mecp()
 
-        with open(log_path, "w", buffering=1) as log:
+        # 配置 MECP
+        mecp_obj.ref_path = cfg.path
+        mecp_obj.ref_filename = cfg.ref_file
+        mecp_obj.out_path = job.work_dir
+        mecp_obj.prefix = cfg.prefix
+        mecp_obj.step_size = cfg.step_size
+        mecp_obj.max_stepsize = cfg.max_stepsize
+        mecp_obj.state_1.spin = cfg.spin1
+        mecp_obj.state_2.spin = cfg.spin2
+        mecp_obj.converge_limit = cfg.mecp_conv
+
+        # 添加距离约束
+        mecp_obj.add_restrain(
+            cfg.restrain_atom_i,
+            cfg.restrain_atom_j,
+            job.distance,
+            cfg.restrain_k
+        )
+
+        # 初始化
+        mecp_obj.read_init_structure()
+
+        # 修改初始结构的键长
+        mecp_obj.state_1.inp.molecule.modify_bond_length(
+            cfg.restrain_atom_i, cfg.restrain_atom_j, job.distance
+        )
+        mecp_obj.state_2.inp.molecule.modify_bond_length(
+            cfg.restrain_atom_i, cfg.restrain_atom_j, job.distance
+        )
+
+        mecp_obj.initialize_bfgs()
+
+        job.mecp_obj = mecp_obj
+        job.current_step = 0
+
+        # 创建日志文件
+        log_path = os.path.join(job.work_dir, "mecp.log")
+        with open(log_path, "w") as log:
             log.write(f"MECP Scan Point {job.scan_idx}\n")
             log.write(f"Distance constraint: {job.distance:.3f} Å\n")
             log.write(f"Restrain: atoms {cfg.restrain_atom_i}-{cfg.restrain_atom_j}\n")
             log.write("=" * 60 + "\n\n")
-            mecp_obj.state_1.inp.molecule.modify_bond_length(cfg.restrain_atom_i, cfg.restrain_atom_j, job.distance)
-            mecp_obj.state_2.inp.molecule.modify_bond_length(cfg.restrain_atom_i, cfg.restrain_atom_j, job.distance)
-            # MECP 优化循环
-            for step in range(cfg.mecp_max_steps):
-                print(f"  [Scan {job.scan_idx}] MECP step {step}")
-                log.write(f"\n>>> MECP iteration step {step}\n")
 
-                mecp_obj.job_num = step
-                mecp_obj.generate_new_inp()
-                # 运行两个态的 Q-Chem 计算
+    def _launch_qchem_step(self, job: MecpScanJob, env_script: str, cfg):
+        """启动单步Q-Chem计算（异步）"""
+        mecp_obj = job.mecp_obj
+        mecp_obj.job_num = job.current_step
+        mecp_obj.generate_new_inp()
 
-                processes, out_files = [], []
-                if cfg.jobtype == "mecp":
-                    for state in [mecp_obj.state_1, mecp_obj.state_2]:
-                        inp = os.path.join(mecp_obj.out_path, state.job_name)
-                        out = inp[:-4] + ".out"
-                        out_files.append(out)
+        job.processes = []
+        job.out_files = []
 
-                        cmd = f"""{env_script}
-    export QCSCRATCH=/scratch/$USER/mecp_scan_{job.scan_idx}_{step}
-    qchem -nt {cfg.nthreads // 2} {inp} {out}
-    """
-                        p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
-                        processes.append(p)
-                elif cfg.jobtype == "mecp_soc":
-                    inp = os.path.join(mecp_obj.out_path, mecp_obj.state_1.job_name)
-                    out = inp[:-4] + ".out"
-                    out_files.append(out)
-                    cmd = f"""{env_script}
-                srun -n1 -c {cfg.nthreads} --cpu-bind=cores --hint=nomultithread qchem -nt {cfg.nthreads} {inp} {out} > qc.log 2>&1
-                """
-                    p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
-                    processes.append(p)
+        # 计算每个Q-Chem任务的线程数
+        nthreads_per_job = cfg.nthreads // 2 if cfg.jobtype == "mecp" else cfg.nthreads
 
-                # 等待完成
-                for p in processes:
-                    p.wait()
+        if cfg.jobtype == "mecp":
+            # 两个态分别运行
+            for state in [mecp_obj.state_1, mecp_obj.state_2]:
+                inp = os.path.join(mecp_obj.out_path, state.job_name)
+                out = inp[:-4] + ".out"
+                job.out_files.append(out)
 
-                # 读取结果
-                mecp_obj.read_output()
-                mecp_obj.calc_new_gradient()
+                scratch_dir = f"mecp_scan_{job.scan_idx}_{job.current_step}_{state._spin}"
+                cmd = f"""{env_script}
+mkdir -p /scratch/$USER/{scratch_dir}
+export QCSCRATCH=/scratch/$USER/{scratch_dir}
+export OMP_NUM_THREADS={nthreads_per_job}
+qchem -nt {nthreads_per_job} {inp} {out}
+"""
+                p = subprocess.Popen(
+                    cmd, shell=True, executable="/bin/bash",
+                    stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT
+                )
+                job.processes.append(p)
 
-                e1 = mecp_obj.state_1.out.ene
-                e2 = mecp_obj.state_2.out.ene
+        elif cfg.jobtype == "mecp_soc":
+            # SOC: 只有一个计算
+            inp = os.path.join(mecp_obj.out_path, mecp_obj.state_1.job_name)
+            out = inp[:-4] + ".out"
+            job.out_files.append(out)
 
-                if e1 and e2:
-                    gap = abs(e1 - e2) * Hartree_to_kcal
-                    log.write(f"Energy gap: {gap:.4f} kcal/mol\n")
+            scratch_dir = f"mecp_scan_{job.scan_idx}_{job.current_step}"
+            cmd = f"""{env_script}
+mkdir -p /scratch/$USER/{scratch_dir}
+export QCSCRATCH=/scratch/$USER/{scratch_dir}
+export OMP_NUM_THREADS={nthreads_per_job}
+srun -n1 -c {nthreads_per_job} --cpu-bind=cores --hint=nomultithread qchem -nt {nthreads_per_job} {inp} {out}
+"""
+            p = subprocess.Popen(
+                cmd, shell=True, executable="/bin/bash",
+                stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT
+            )
+            job.processes.append(p)
 
-                # 更新结构
-                mecp_obj.update_structure()
+        job.status = JobStatus.RUNNING_QCHEM
 
-                # 检查收敛
-                if mecp_obj.check_convergence():
-                    log.write(f"\n>>> Converged at step {step}\n")
-                    print(f"  [Scan {job.scan_idx}] MECP converged at step {step}")
-                    break
-            else:
-                log.write(f"\n>>> Did not converge after {cfg.mecp_max_steps} steps\n")
-                print(f"  [Scan {job.scan_idx}] MECP did not converge")
+        # 记录日志
+        log_path = os.path.join(job.work_dir, "mecp.log")
+        with open(log_path, "a") as log:
+            log.write(f"\n>>> MECP iteration step {job.current_step}\n")
+
+    def _process_qchem_output(self, job: MecpScanJob, cfg, result_saver):
+        """处理Q-Chem输出，更新MECP状态"""
+        mecp_obj = job.mecp_obj
+
+        # 读取结果
+        mecp_obj.read_output()
+        mecp_obj.calc_new_gradient()
+
+        e1 = mecp_obj.state_1.out.ene
+        e2 = mecp_obj.state_2.out.ene
+
+        # 记录能量
+        log_path = os.path.join(job.work_dir, "mecp.log")
+        with open(log_path, "a") as log:
+            if e1 is not None and e2 is not None:
+                gap = abs(e1 - e2) * Hartree_to_kcal
+                log.write(f"E1 = {e1:.8f} Ha, E2 = {e2:.8f} Ha\n")
+                log.write(f"Energy gap: {gap:.4f} kcal/mol\n")
+
+        # 更新结构
+        mecp_obj.update_structure()
+
+        # 检查收敛
+        if mecp_obj.check_convergence():
+            job.status = JobStatus.CONVERGED
+            job.final_energy_1 = e1
+            job.final_energy_2 = e2
+
+            # 记录收敛
+            with open(log_path, "a") as log:
+                log.write(f"\n>>> Converged at step {job.current_step}\n")
+
+            # 保存结果
+            if result_saver.enable:
+                try:
+                    structure = mecp_obj.state_1.inp.molecule.return_xyz_list().astype(float)
+                    energy_avg = (e1 + e2) / 2 if e1 and e2 else None
+
+                    result_saver.save_step(
+                        step_idx=job.scan_idx,
+                        structure=structure,
+                        energy=energy_avg,
+                        distance=job.distance,
+                        converged=True,
+                        scan_idx=job.scan_idx,
+                        energy_state1=e1,
+                        energy_state2=e2
+                    )
+                except Exception as e:
+                    print(f"[WARNING] Failed to save results for scan {job.scan_idx}: {e}")
+        else:
+            # 继续优化
+            job.status = JobStatus.WAITING_READ  # 会在主循环中进入下一步
