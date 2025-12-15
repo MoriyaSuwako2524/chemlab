@@ -364,10 +364,7 @@ class mecp_soc(mecp):
         super(mecp_soc, self).__init__()
         self.different_type = "soc"
     def generate_new_inp(self):
-        if self.out_path == "":
-            path = self.ref_path
-        else:
-            path = self.out_path
+        path = self.out_path
         self.state_1.job_name = "{}{}_job{}.inp".format(self.prefix,self.state_1._spin,self.job_num)
 
         out = open(path+self.state_1.job_name,"w")

@@ -310,6 +310,7 @@ class MecpScan(Script):
                 log.write(f"\n>>> MECP iteration step {step}\n")
 
                 mecp_obj.job_num = step
+                mecp_obj.ref_path
                 mecp_obj.generate_new_inp()
 
                 # 运行两个态的 Q-Chem 计算
