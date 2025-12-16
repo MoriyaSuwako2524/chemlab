@@ -1,15 +1,7 @@
-import numpy as np
+from chemlab.util.unit import WAVENUMBER,FREQUENCY,WAVELENGTH,PERIOD
+wn = WAVENUMBER(3600, "cm^-1")
 
-
-arr = np.array([
-    [0.0000023, 0.0000013, 0.0000002],
-    [0.0000023, 0.0000013, 0.0000002],
-    [0.0000192, 0.0000277, 0.0000000],
-    [0.0000121, 0.0000058, 0.0000000],
-    [0.0000100, 0.0000179, 0.0000000],
-    [0.0000018, 0.0000066, 0.0000000]
-])
-
-mean = np.mean(np.abs(arr))
-rms = np.sqrt(np.mean(np.abs(arr)**2))
-print(mean,rms)
+freq = wn.convert_to(FREQUENCY).value
+wl   = wn.convert_to(WAVELENGTH).value
+T    = wn.convert_to(PERIOD).value
+print(freq,wl,T)

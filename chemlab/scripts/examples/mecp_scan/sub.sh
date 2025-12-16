@@ -1,11 +1,10 @@
 #!/bin/bash
-#SBATCH -J qchem-1d-scan
+#SBATCH -J mecp-scan
 #SBATCH -N 1
 #SBATCH -p batch
-##SBATCH -p express
 #SBATCH --ntasks-per-node=4        # 每节点开 2 个 srun 
 #SBATCH --cpus-per-task=8          # 每个 srun 16 核
-#SBATCH --time=3-00:60:00
+#SBATCH --time=4-00:60:00
 #SBATCH --exclusive
 #SBATCH -o ./logs/OUTPUT_%J.log
 #SBATCH -e ./logs/ERRORS_%J.log
@@ -22,7 +21,7 @@ chemlab scan mecp_scan \
     --ref_file $filename \
     --out_path "./${filename%.inp}" \
     --prefix ${filename%.inp} \
-    --spin1 1 --spin2 3 \
+    --spin1 2 --spin2 4 \
     --restrain_atom_i 4 --restrain_atom_j 3 \
     --distance_start 1.25 \
     --distance_end 3.2 \
@@ -30,5 +29,6 @@ chemlab scan mecp_scan \
     --mecp_max_steps 200 \
     --njob 4 \
     --nthreads 8 \
-    --jobtype "mecp_soc"
+    --jobtype "mecp_soc" \
+    --result_saver_prefix "${filename%.inp}"
 

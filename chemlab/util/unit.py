@@ -1,4 +1,7 @@
+from abc import ABC, abstractmethod
 import numpy as np
+
+C_LIGHT = 2.99792458e8  # m/s
 # -----------------------------
 # Unit system (scalar quantities)
 # -----------------------------
@@ -213,7 +216,140 @@ class GRADIENT(complex_unit_type):
         })
 
 
-# Registry for converting by category name
+
+class SpectralQuantity(unit_type, ABC):
+    """
+    Abstract base class for spectral quantities that can be
+    converted via frequency as a common physical bridge.
+    """
+
+    spectral_group = "spectral"
+
+    def to_frequency(self):
+        """Return FREQUENCY object in Hz."""
+        freq_value = self._to_frequency_value()
+        return FREQUENCY(freq_value, "Hz")
+
+    @classmethod
+    def from_frequency(cls, freq: "FREQUENCY", target_unit=None):
+        """Construct object from a FREQUENCY instance."""
+        value = cls._from_frequency_value(freq.convert_to("Hz"))
+        unit = target_unit if target_unit is not None else cls.default_unit
+        return cls(value, unit)
+
+    @abstractmethod
+    def _to_frequency_value(self):
+        """Return frequency in Hz (numeric)."""
+        pass
+
+    @classmethod
+    @abstractmethod
+    def _from_frequency_value(cls, freq_hz):
+        """Return numeric value in canonical unit."""
+        pass
+
+    def convert_to(self, target):
+        """
+        Extended convert_to:
+        - If target is a unit in the same category → normal unit conversion
+        - If target is a SpectralQuantity class → physical conversion
+        """
+        # same-category unit conversion
+        if isinstance(target, str):
+            return super().convert_to(target)
+
+        # cross-category spectral conversion
+        if issubclass(target, SpectralQuantity):
+            freq = self.to_frequency()
+            return target.from_frequency(freq)
+
+        raise TypeError(f"Cannot convert {type(self)} to {target}")
+
+class FREQUENCY(SpectralQuantity):
+    category = "frequency"
+    default_unit = "Hz"
+
+    def __init__(self, value, unit="Hz"):
+        super().__init__(value, unit)
+        self.DICT = {
+            "Hz": 1.0,
+            "kHz": 1e3,
+            "MHz": 1e6,
+            "GHz": 1e9,
+            "THz": 1e12,
+        }
+
+    def _to_frequency_value(self):
+        return self.convert_to("Hz")
+
+    @classmethod
+    def _from_frequency_value(cls, freq_hz):
+        return freq_hz
+
+class PERIOD(SpectralQuantity):
+    category = "period"
+    default_unit = "s"
+
+    def __init__(self, value, unit="s"):
+        super().__init__(value, unit)
+        self.DICT = {
+            "s": 1.0,
+            "ms": 1e-3,
+            "us": 1e-6,
+            "ns": 1e-9,
+            "fs": 1e-15,
+        }
+
+    def _to_frequency_value(self):
+        T = self.convert_to("s")
+        return 1.0 / T
+
+    @classmethod
+    def _from_frequency_value(cls, freq_hz):
+        return 1.0 / freq_hz
+
+class WAVELENGTH(SpectralQuantity):
+    category = "wavelength"
+    default_unit = "m"
+
+    def __init__(self, value, unit="m"):
+        super().__init__(value, unit)
+        self.DICT = {
+            "m": 1.0,
+            "cm": 1e-2,
+            "mm": 1e-3,
+            "um": 1e-6,
+            "nm": 1e-9,
+            "ang": 1e-10,
+        }
+
+    def _to_frequency_value(self):
+        lam = self.convert_to("m")
+        return C_LIGHT / lam
+
+    @classmethod
+    def _from_frequency_value(cls, freq_hz):
+        return C_LIGHT / freq_hz
+
+class WAVENUMBER(SpectralQuantity):
+    category = "wavenumber"
+    default_unit = "cm^-1"
+
+    def __init__(self, value, unit="cm^-1"):
+        super().__init__(value, unit)
+        self.DICT = {
+            "cm^-1": 1.0,
+            "m^-1": 1e-2,
+        }
+
+    def _to_frequency_value(self):
+        nu_bar = self.convert_to("cm^-1")
+        return nu_bar * C_LIGHT * 100.0
+
+    @classmethod
+    def _from_frequency_value(cls, freq_hz):
+        return freq_hz / (C_LIGHT * 100.0)
+
 UNIT_REGISTRY = {
     "energy": ENERGY,
     "distance": DISTANCE,
@@ -223,4 +359,10 @@ UNIT_REGISTRY = {
     "dipole": DIPOLE,
     "force": FORCE,
     "gradient": GRADIENT,
+    "frequency": FREQUENCY,
+    "period": PERIOD,
+    "wavelength": WAVELENGTH,
+    "wavenumber": WAVENUMBER,
+
+
 }
