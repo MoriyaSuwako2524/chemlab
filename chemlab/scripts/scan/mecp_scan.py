@@ -387,7 +387,7 @@ class MecpScan(Script):
             mecp_obj = mecp_soc()
         else:
             mecp_obj = mecp()
-
+        print(f"Current mecp opject:{mecp_obj}")
         # 配置 MECP
         mecp_obj.ref_path = cfg.path
         mecp_obj.ref_filename = cfg.ref_file

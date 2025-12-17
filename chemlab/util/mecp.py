@@ -228,7 +228,6 @@ class mecp(object):
             step_vector *= self.max_stepsize / step_norm
         # Update structure
         new_structure = structure + step_vector
-        print(f"new structure: {new_structure},shape={new_structure.shape}")
         self.state_1.inp.molecule.replace_new_xyz(new_structure)
         self.state_2.inp.molecule.carti = self.state_1.inp.molecule.carti
 
