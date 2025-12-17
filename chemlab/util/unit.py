@@ -89,7 +89,7 @@ class TIME(unit_type):
 
     def __init__(self, value, unit="fs"):
         super().__init__(value, unit)
-        self.DICT = {"fs": 1, "ps": 1e-3, "ns": 1e-6, "s": 1e-15}
+        self.DICT = {"fs": 1, "ps": 1e-3, "ns": 1e-6, "s": 1e-15,"au": 1/0.024188843265857,"a.u.": 1/0.024188843265857}
 
 
 # --------------------------------
