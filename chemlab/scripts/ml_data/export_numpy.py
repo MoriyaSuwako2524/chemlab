@@ -12,7 +12,7 @@ class ExportNumpy(Script):
     CLI will load this class automatically and call `run(cfg)`.
     """
     name = "export_numpy"
-    config = ExportNumpyConfig   # link to config section in config.toml
+    config = ExportNumpyConfig  # link to config section in config.toml
 
     # -------------------------------------------------------
     # Main execution
@@ -56,6 +56,9 @@ class ExportNumpy(Script):
         all_transition_density = []
         qm_type = None
 
+        # For all-states export
+        all_multi_readers = []
+
         # ======== Process each subset ========
         for grp, files in groups.items():
             if not files:
@@ -65,6 +68,9 @@ class ExportNumpy(Script):
 
             multi = qchem_out_excite_multi()
             multi.read_files(files, path=path)
+
+            # Keep reference for all-states export
+            all_multi_readers.append(multi)
 
             # === Modular export system ===
             results = {
@@ -119,21 +125,31 @@ class ExportNumpy(Script):
         )
 
         # ======== Save outputs ========
-        prefix = f"{out_path}{prefix}"
-        np.save(prefix + "coord.npy", coords)
-        np.save(prefix + "gs_energy.npy", gs_energy)
-        np.save(prefix + "ex_energy.npy", ex_energy)
-        np.save(prefix + "ex_state_energy.npy", ex_state_energy)
-        np.save(prefix + "grad.npy", grad)
-        np.save(prefix + "force.npy", force)
-        np.save(prefix + "transmom.npy", aligned_mom)
-        np.save(prefix + "dipolemom.npy", dipolemom)
-        np.save(prefix + "transition_density.npy", transition_density)
-        np.save(prefix + "aligned_td.npy", aligned_transition_density)
-        np.save(prefix + "qm_type.npy", qm_type)
-        np.savez(prefix + "split.npz", **split_idx)
+        full_prefix = f"{out_path}{prefix}"
+        np.save(full_prefix + "coord.npy", coords)
+        np.save(full_prefix + "gs_energy.npy", gs_energy)
+        np.save(full_prefix + "ex_energy.npy", ex_energy)
+        np.save(full_prefix + "ex_state_energy.npy", ex_state_energy)
+        np.save(full_prefix + "grad.npy", grad)
+        np.save(full_prefix + "force.npy", force)
+        np.save(full_prefix + "transmom.npy", aligned_mom)
+        np.save(full_prefix + "dipolemom.npy", dipolemom)
+        np.save(full_prefix + "transition_density.npy", transition_density)
+        np.save(full_prefix + "aligned_td.npy", aligned_transition_density)
+        np.save(full_prefix + "qm_type.npy", qm_type)
+        np.savez(full_prefix + "split.npz", **split_idx)
 
-        print("Export completed.")
+        print("Export completed (single-state .npy files).")
+
+        # ===== Export all states to single NPZ =====
+        tddft_npz_path = f"{out_path}{prefix}tddft.npz"
+        self._export_all_states_npz(
+            all_multi_readers,
+            tddft_npz_path,
+            split_idx,
+            qm_type,
+            atom_symbols,
+        )
 
         # ===== multiple splits =====
         self._save_splits(
@@ -143,6 +159,140 @@ class ExportNumpy(Script):
             cfg.test_splits,
             prefix=out_path
         )
+
+    # -------------------------------------------------------
+    # Helper: Export all excited states to single NPZ
+    # -------------------------------------------------------
+    def _export_all_states_npz(self, multi_readers, output_file, split_idx, qm_type, atom_symbols):
+        """
+        Export all excited states data to a single NPZ file.
+
+        This creates a comprehensive file containing:
+        - All excited states (not just state_idx)
+        - Ground state data
+        - ESP charges for all states
+        - Transition densities for all states
+        - Gradients (where available)
+
+        Args:
+            multi_readers: List of qchem_out_excite_multi objects
+            output_file: Output NPZ filename
+            split_idx: Dictionary of train/val/test indices
+            qm_type: Atom type array
+            atom_symbols: List of atom symbols
+        """
+        # Collect all tasks
+        all_tasks = []
+        for multi in multi_readers:
+            all_tasks.extend(multi.tasks)
+
+        if not all_tasks:
+            print("Warning: No tasks to export for all-states NPZ")
+            return
+
+        nframes = len(all_tasks)
+        natoms = len(all_tasks[0].molecule.carti)
+        n_excited = len(all_tasks[0].states) - 1  # exclude ground state
+
+        print(f"\nExporting all-states NPZ: {nframes} frames, {natoms} atoms, {n_excited} excited states")
+
+        # ======== Initialize arrays ========
+        # Coordinates (raw, in Angstrom)
+        coords = np.zeros((nframes, natoms, 3))
+
+        # Ground state
+        gs_energies = np.zeros(nframes)  # Hartree
+        gs_dipoles = np.zeros((nframes, 3))  # Debye
+        gs_esp_charges = np.zeros((nframes, natoms))
+
+        # Excited states - all states
+        ex_energies = np.zeros((nframes, n_excited))  # eV
+        total_energies = np.zeros((nframes, n_excited))  # Hartree
+        osc_strengths = np.zeros((nframes, n_excited))
+        trans_moms = np.zeros((nframes, n_excited, 3))
+        esp_charges_ex = np.zeros((nframes, n_excited, natoms))
+        esp_trans_density = np.zeros((nframes, n_excited, natoms))
+        gradients = np.full((nframes, n_excited, natoms, 3), np.nan)  # Hartree/Bohr
+
+        # ======== Extract data ========
+        for i, task in enumerate(all_tasks):
+            # Coordinates
+            coords[i] = np.array(task.molecule.carti)[:, 1:].astype(float)
+
+            # Ground state (index 0)
+            gs = task.states[0]
+            gs_energies[i] = gs.total_energy if gs.total_energy else np.nan
+
+            if gs.dipole_mom:
+                gs_dipoles[i] = gs.dipole_mom
+
+            if gs.esp_charges is not None:
+                gs_esp_charges[i] = gs.esp_charges
+
+            # Excited states (index 1, 2, 3, ...)
+            for j, st in enumerate(task.states[1:]):
+                if j >= n_excited:
+                    break
+
+                ex_energies[i, j] = st.excitation_energy if st.excitation_energy else np.nan
+                total_energies[i, j] = st.total_energy if st.total_energy else np.nan
+                osc_strengths[i, j] = st.osc_strength if st.osc_strength else 0.0
+
+                if st.trans_mom:
+                    trans_moms[i, j] = st.trans_mom
+
+                if st.esp_charges is not None:
+                    esp_charges_ex[i, j] = st.esp_charges
+
+                if st.esp_transition_density is not None:
+                    esp_trans_density[i, j] = st.esp_transition_density
+
+                if st.gradient is not None:
+                    gradients[i, j] = st.gradient
+
+        # ======== Build output dict ========
+        data = {
+            # Coordinates and atoms
+            'coords': coords,  # (nframes, natoms, 3) Angstrom
+            'atom_symbols': np.array(atom_symbols, dtype='U2'),
+            'qm_type': qm_type,
+
+            # Ground state
+            'gs_energies': gs_energies,  # (nframes,) Hartree
+            'gs_dipoles': gs_dipoles,  # (nframes, 3) Debye
+            'gs_esp_charges': gs_esp_charges,  # (nframes, natoms)
+
+            # Excited states - ALL states
+            'excitation_energies': ex_energies,  # (nframes, n_excited) eV
+            'total_energies': total_energies,  # (nframes, n_excited) Hartree
+            'osc_strengths': osc_strengths,  # (nframes, n_excited)
+            'trans_moms': trans_moms,  # (nframes, n_excited, 3)
+            'esp_charges_excited': esp_charges_ex,  # (nframes, n_excited, natoms)
+            'esp_trans_density': esp_trans_density,  # (nframes, n_excited, natoms)
+            'gradients': gradients,  # (nframes, n_excited, natoms, 3) Hartree/Bohr
+
+            # Metadata
+            'n_frames': nframes,
+            'n_atoms': natoms,
+            'n_excited': n_excited,
+            'state_indices': np.arange(1, n_excited + 1),
+        }
+
+        # Add split indices
+        data.update(split_idx)
+
+        # ======== Save ========
+        np.savez(output_file, **data)
+
+        print(f"Saved all-states NPZ: {output_file}")
+        print(f"  coords: {coords.shape}")
+        print(f"  gs_energies: {gs_energies.shape}")
+        print(f"  excitation_energies: {ex_energies.shape}")
+        print(f"  osc_strengths: {osc_strengths.shape}")
+        print(f"  trans_moms: {trans_moms.shape}")
+        print(f"  esp_charges_excited: {esp_charges_ex.shape}")
+        print(f"  esp_trans_density: {esp_trans_density.shape}")
+        print(f"  gradients: {gradients.shape}")
 
     # -------------------------------------------------------
     # Helper: alignment
@@ -216,4 +366,3 @@ class ExportNumpy(Script):
             np.savez(out_file, idx_train=idx_train, idx_val=idx_val, idx_test=idx_test)
 
             print(f"Saved {out_file}")
-
