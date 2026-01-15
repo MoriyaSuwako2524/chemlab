@@ -19,8 +19,5 @@ where = ["."]
 [project.scripts]
 chemlab = "chemlab.__main__:main"
 
-run_mecp = "chemlab.scripts.qchem.run_mecp:main"
-export_numpy = "chemlab.scripts.ml_data.export_numpy:main"
-prepare_tddft_inp = "chemlab.scripts.ml_data.prepare_tddft_inp:main"
 
 
