@@ -1,15 +1,14 @@
 """
 prepare_tddft_inp.py
 
-从 XYZ 文件或 AIMD 输出文件生成 Q-Chem TDDFT 输入文件
+从 XYZ 轨迹文件或 AIMD 输出文件生成 Q-Chem TDDFT 输入文件
 
 使用方法:
-    chemlab ml_data prepare_tddft_inp --file mol.xyz --ref ref.in --out ./output/
-    chemlab ml_data prepare_tddft_inp --file traj.out --ref ref.in --out ./output/
+    chemlab ml_data prepare_tddft_inp --file traj.xyz --ref ref.in --out ./output/ --dataset_size 2000
+    chemlab ml_data prepare_tddft_inp --file traj.out --ref ref.in --out ./output/ --dataset_size 2000
 """
 
 import os
-import glob
 from pathlib import Path
 import numpy as np
 
@@ -17,6 +16,7 @@ from chemlab.scripts.base import Script
 from chemlab.config.config_loader import ConfigBase
 from chemlab.util.modify_inp import single_spin_job, qchem_out_aimd_multi
 from chemlab.util.ml_data import MLData
+from chemlab.util.file_system import atom_charge_dict
 
 
 class PrepareTddftConfig(ConfigBase):
@@ -28,7 +28,7 @@ class PrepareTddftConfig(ConfigBase):
 
 class PrepareTddftInp(Script):
     """
-    从 XYZ 文件或 AIMD 输出生成 Q-Chem TDDFT 输入文件
+    从 XYZ 轨迹或 AIMD 输出生成 Q-Chem TDDFT 输入文件
     """
 
     name = "prepare_tddft_inp"
@@ -42,6 +42,7 @@ class PrepareTddftInp(Script):
         out_dir = cfg.out
         charge = cfg.charge
         spin = cfg.spin
+        dataset_size = cfg.dataset_size
 
         if not input_file:
             raise ValueError("必须指定输入文件 --file")
@@ -50,32 +51,49 @@ class PrepareTddftInp(Script):
 
         # 根据文件后缀自动判断模式
         if input_file.endswith(".xyz"):
-            self._run_xyz_mode(input_file, ref_file, out_dir, charge, spin)
+            self._run_xyz_mode(input_file, ref_file, out_dir, charge, spin, dataset_size)
         elif input_file.endswith(".out"):
             self._run_aimd_mode(input_file, ref_file, out_dir, charge, spin, cfg)
         else:
             raise ValueError(f"不支持的文件类型: {input_file}. 支持 .xyz 或 .out")
 
-    def _run_xyz_mode(self, xyz_file, ref_file, out_dir, charge, spin):
-        """XYZ 模式: 从单个 xyz 文件生成 Q-Chem 输入"""
+    def _run_xyz_mode(self, xyz_file, ref_file, out_dir, charge, spin, dataset_size):
+        """XYZ 模式: 从多帧 xyz 轨迹文件生成 Q-Chem 输入"""
 
-        print(f"[prepare_tddft_inp] XYZ 模式")
+        print(f"[prepare_tddft_inp] XYZ 轨迹模式")
         print(f"[prepare_tddft_inp] 输入文件: {xyz_file}")
         print(f"[prepare_tddft_inp] 参考文件: {ref_file}")
         print(f"[prepare_tddft_inp] 电荷: {charge}, 自旋多重度: {spin}")
         print(f"[prepare_tddft_inp] 输出目录: {out_dir}")
 
-        job = single_spin_job()
-        job.charge = charge
-        job.spin = spin
-        job.ref_name = ref_file
-        job.xyz_name = xyz_file
+        # 读取多帧 xyz 文件
+        frames, atom_types = self._read_xyz_trajectory(xyz_file)
+        n_frames = len(frames)
+        print(f"[prepare_tddft_inp] 读取到 {n_frames} 帧")
 
-        xyz_basename = os.path.basename(xyz_file)
-        out_prefix = out_dir.rstrip("/") + "/"
-        job.generate_outputs(new_file_name=xyz_basename, prefix=out_prefix)
+        # 选择 frame
+        if dataset_size > 0 and dataset_size < n_frames:
+            indices = np.random.choice(n_frames, size=dataset_size, replace=False)
+            indices = np.sort(indices)
+            print(f"[prepare_tddft_inp] 随机选择 {dataset_size} 帧")
+        else:
+            indices = np.arange(n_frames)
+            print(f"[prepare_tddft_inp] 使用全部 {n_frames} 帧")
 
-        print("[prepare_tddft_inp] 完成!")
+        # 为每个 frame 生成 inp
+        for i, idx in enumerate(indices):
+            coords = frames[idx]
+            self._generate_inp(
+                coords=coords,
+                atom_types=atom_types,
+                ref_file=ref_file,
+                out_dir=out_dir,
+                charge=charge,
+                spin=spin,
+                frame_idx=i
+            )
+
+        print(f"[prepare_tddft_inp] 完成! 生成了 {len(indices)} 个输入文件")
 
     def _run_aimd_mode(self, out_file, ref_file, out_dir, charge, spin, cfg):
         """AIMD 模式: 从 Q-Chem AIMD 输出文件提取结构并生成输入"""
@@ -110,7 +128,7 @@ class PrepareTddftInp(Script):
 
         print(f"[prepare_tddft_inp] 生成输入文件, charge={charge}, spin={spin}")
 
-        for xyz_file in Path(out_dir).glob('*.xyz'):
+        for xyz_file in sorted(Path(out_dir).glob('*.xyz')):
             job = single_spin_job()
             job.charge = charge
             job.spin = spin
@@ -122,3 +140,54 @@ class PrepareTddftInp(Script):
             job.generate_outputs(new_file_name=xyz_basename, prefix=out_prefix)
 
         print("[prepare_tddft_inp] 完成!")
+
+    def _read_xyz_trajectory(self, xyz_file):
+        """读取多帧 xyz 轨迹文件"""
+        frames = []
+        atom_types = None
+
+        with open(xyz_file, 'r') as f:
+            content = f.read()
+
+        lines = content.strip().split('\n')
+        i = 0
+        while i < len(lines):
+            # 读取原子数
+            natoms = int(lines[i].strip())
+            i += 1
+
+            # 跳过注释行
+            i += 1
+
+            # 读取坐标
+            coords = []
+            types = []
+            for j in range(natoms):
+                parts = lines[i].split()
+                types.append(parts[0])
+                coords.append([float(parts[1]), float(parts[2]), float(parts[3])])
+                i += 1
+
+            frames.append(np.array(coords))
+            if atom_types is None:
+                atom_types = types
+
+        return frames, atom_types
+
+    def _generate_inp(self, coords, atom_types, ref_file, out_dir, charge, spin, frame_idx):
+        """从坐标生成单个 Q-Chem 输入文件"""
+
+        # 构建 carti 格式 (atom_type, x, y, z)
+        carti = []
+        for atom, (x, y, z) in zip(atom_types, coords):
+            carti.append([atom, x, y, z])
+
+        job = single_spin_job()
+        job.charge = charge
+        job.spin = spin
+        job.ref_name = ref_file
+        job._xyz.carti = carti
+
+        out_prefix = out_dir.rstrip("/") + "/"
+        out_name = f"frame_{frame_idx:04d}.xyz"
+        job.generate_outputs(new_file_name=out_name, prefix=out_prefix)
