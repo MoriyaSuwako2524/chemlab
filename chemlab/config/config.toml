@@ -219,8 +219,6 @@ result_saver_auto_close = true
 
 mode = "auto"
 
-# Path settings
-path = ""           # 输入路径：xyz文件/目录 或 AIMD输出目录
 file = ""           # AIMD模式下的输出文件（逗号分隔多个）
 out = "./raw_data/" # 输出目录
 
