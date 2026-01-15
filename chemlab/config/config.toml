@@ -210,3 +210,33 @@ result_saver_prefix = "result"
 result_saver_plot_format = "png"
 result_saver_dpi = 300
 result_saver_auto_close = true
+
+
+
+
+[prepare_tddft]
+
+
+mode = "auto"
+
+# Path settings
+path = ""           # 输入路径：xyz文件/目录 或 AIMD输出目录
+file = ""           # AIMD模式下的输出文件（逗号分隔多个）
+out = "./raw_data/" # 输出目录
+
+# Molecule
+charge = 0          # 分子电荷
+spin = 1            # 自旋多重度
+
+# Reference file
+ref = "ref.in"      # Q-Chem 参考输入文件
+
+# Dataset size (仅AIMD模式使用)
+dataset_size = 2000
+
+# Units (仅AIMD模式使用)
+energy_unit = "kcal/mol"
+ex_energy_unit = "ev"
+distance_unit = "ang"
+grad_unit = ["kcal/mol", "ang"]
+force_unit = ["kcal/mol", "ang"]
