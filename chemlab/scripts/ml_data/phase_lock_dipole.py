@@ -20,7 +20,7 @@ class PhaseLockDipole(Script):
     def run(self, cfg):
         # ======== Load data ========
         print(f"[phase_lock_dipole] Loading data from: {cfg.input}")
-        data = np.load(cfg.input, allow_pickle=True)
+        data = np.load(f"{cfg.path}/{cfg.input}", allow_pickle=True)
 
         mu = data["trans_moms"]           # (nframes, nexc, 3)
         qex = data["esp_trans_density"]   # (nframes, nexc, natoms)
