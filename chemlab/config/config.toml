@@ -215,3 +215,8 @@ ex_energy_unit = "ev"
 distance_unit = "ang"
 grad_unit = ["kcal/mol", "ang"]
 force_unit = ["kcal/mol", "ang"]
+
+[phase_lock_dipole]
+input = "full_tddft.npz"          # 必填：输入的 NPZ 文件
+out = "./"          # 输出目录
+prefix = ""         # 输出文件前缀
