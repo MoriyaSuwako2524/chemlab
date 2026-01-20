@@ -59,7 +59,10 @@ class PhaseLockDipole(Script):
 
         # ======== Save outputs ========
         out_path = cfg.out.rstrip("/") + "/"
-        prefix = cfg.prefix
+        if cfg.prefix == "default":
+            prefix = ""
+        else:
+            prefix = cfg.prefix
 
         np.save(f"{out_path}{prefix}bright_dipole.npy", bright_mu_al)
         np.save(f"{out_path}{prefix}dark_dipole.npy", dark_mu_al)

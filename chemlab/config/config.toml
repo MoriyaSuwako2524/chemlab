@@ -220,4 +220,4 @@ force_unit = ["kcal/mol", "ang"]
 path = "./"
 input = "full_tddft.npz"          #
 out = "./"          # 输出目录
-prefix = ""         # 输出文件前缀
+prefix = "default"         # 输出文件前缀
