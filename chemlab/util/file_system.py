@@ -1425,9 +1425,13 @@ class qchem_out_multi:
         self.filenames = filenames
         self.tasks = []
         for fn in filenames:
-            out = out_cls(fn)
-            out.read_file(fn)
-            self.tasks.append(out)
+            try:
+                out = out_cls(fn)
+                out.read_file(fn)
+                self.tasks.append(out)
+            except:
+                print(f"Skipping {fn}")
+                continue
 
     @property
     def ntasks(self):

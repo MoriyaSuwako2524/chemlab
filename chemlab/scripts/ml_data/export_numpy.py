@@ -69,11 +69,8 @@ class ExportNumpy(Script):
             print(f"Processing {grp} ({len(files)} files)...")
 
             multi = qchem_out_excite_multi()
-            try:
-                multi.read_files(files, path=path)
-            except:
-                print(f"Skipping {grp} ({len(files)} files)...")
-                continue
+            multi.read_files(files, path=path)
+
 
             # Keep reference for all-states export
             all_multi_readers.append(multi)
