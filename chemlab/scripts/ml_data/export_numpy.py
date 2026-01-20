@@ -31,7 +31,7 @@ class ExportNumpy(Script):
         force_unit = cfg.force_unit
 
         # ======== Split files into train/val/test groups ========
-        groups = {"train": [], "val": [], "test": []}
+        groups = {"train": [], "val": [], "test": [],"frame":[]}
         for fn in sorted(os.listdir(path)):
             if fn.endswith(".out"):
                 if fn.startswith("train"):
@@ -40,6 +40,8 @@ class ExportNumpy(Script):
                     groups["val"].append(fn)
                 elif fn.startswith("test"):
                     groups["test"].append(fn)
+                elif fn.startswith("frame"):
+                    groups["frame"].append(fn)
 
         # ======== Prepare accumulators ========
         split_idx = {}
