@@ -206,7 +206,6 @@ spin = 1            # 自旋多重度
 # Reference file
 ref = "ref.in"      # Q-Chem 参考输入文件
 
-# Dataset size (仅AIMD模式使用)
 dataset_size = 2000
 
 # Units (仅AIMD模式使用)
