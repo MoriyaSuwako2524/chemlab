@@ -63,7 +63,7 @@ class MergeTestData(Script):
             print(f"\n[{i + 1}/{len(dataset_dirs)}] Processing: {dataset_dir}")
 
             # Load split indices
-            split_file = os.path.join(dataset_dir, f"{prefix}split.npz")
+            split_file = os.path.join(dataset_dir, f"1000_split.npz")
             if not os.path.exists(split_file):
                 print(f"  WARNING: split file not found: {split_file}")
                 continue
