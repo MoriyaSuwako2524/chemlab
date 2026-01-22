@@ -2,10 +2,10 @@ import os
 import numpy as np
 from pathlib import Path
 from chemlab.scripts.base import Script
-from chemlab.config import BaseConfig
+from chemlab.config import ConfigBase
 
 
-class MergeTestDataConfig(BaseConfig):
+class MergeTestDataConfig(ConfigBase):
     section_name = "merge_test_data"
 
 
