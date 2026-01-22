@@ -17,6 +17,7 @@ class MergeTestData(Script):
     1. Reads multiple datasets (each with split.npz)
     2. Extracts the test portion from each dataset
     3. Merges all test data into a single dataset
+    4. Optionally merges tddft.npz files
     """
     name = "merge_test_data"
     config = MergeTestDataConfig
@@ -32,6 +33,7 @@ class MergeTestData(Script):
         prefix = cfg.prefix
         out_dir = cfg.out_dir
         out_prefix = cfg.out_prefix
+        merge_tddft = getattr(cfg, 'merge_tddft', True)  # 默认合并 tddft
 
         if not dataset_dirs:
             raise ValueError("No dataset directories specified!")
@@ -138,4 +140,143 @@ class MergeTestData(Script):
         print("\n" + "=" * 60)
         print(f"Merge completed! Total test frames: {total_frames}")
         print(f"Output directory: {out_dir}")
+        print("=" * 60)
+
+        # ===== Merge TDDFT files if requested =====
+        if merge_tddft:
+            self._merge_tddft_files(dataset_dirs, prefix, out_dir, out_prefix)
+
+    def _merge_tddft_files(self, dataset_dirs, prefix, out_dir, out_prefix):
+        """Merge TDDFT NPZ files from multiple datasets"""
+
+        print("\n" + "=" * 60)
+        print("Merging TDDFT Test Datasets")
+        print("=" * 60)
+
+        # Fields that are per-frame and need to be merged
+        frame_fields = [
+            "coords",
+            "gs_energies",
+            "gs_dipoles",
+            "gs_esp_charges",
+            "excitation_energies",
+            "total_energies",
+            "osc_strengths",
+            "trans_moms",
+            "esp_charges_excited",
+            "esp_trans_density",
+            "gradients"
+        ]
+
+        # Accumulators
+        merged_data = {field: [] for field in frame_fields}
+
+        # Reference data (should be same across all files)
+        ref_atom_symbols = None
+        ref_qm_type = None
+        ref_n_atoms = None
+        ref_n_excited = None
+        ref_state_indices = None
+
+        total_frames = 0
+
+        # Process each TDDFT file
+        for i, dataset_dir in enumerate(dataset_dirs):
+            tddft_file = os.path.join(dataset_dir, f"{prefix}tddft.npz")
+
+            print(f"\n[{i + 1}/{len(dataset_dirs)}] Processing: {tddft_file}")
+
+            if not os.path.exists(tddft_file):
+                print(f"  WARNING: File not found, skipping")
+                continue
+
+            # Load data
+            data = np.load(tddft_file)
+
+            # Extract test indices
+            if 'idx_test' not in data:
+                print(f"  WARNING: No idx_test found")
+                continue
+
+            idx_test = data['idx_test']
+            print(f"  Found {len(idx_test)} test samples")
+
+            # Verify consistency of reference data
+            if ref_atom_symbols is None:
+                ref_atom_symbols = data['atom_symbols']
+                ref_qm_type = data['qm_type']
+                ref_n_atoms = int(data['n_atoms'])
+                ref_n_excited = int(data['n_excited'])
+                ref_state_indices = data['state_indices']
+                print(f"  Reference: {ref_n_atoms} atoms, {ref_n_excited} excited states")
+            else:
+                # Check consistency
+                if not np.array_equal(data['atom_symbols'], ref_atom_symbols):
+                    raise ValueError(f"Inconsistent atom_symbols in {tddft_file}")
+                if not np.array_equal(data['qm_type'], ref_qm_type):
+                    raise ValueError(f"Inconsistent qm_type in {tddft_file}")
+                if int(data['n_atoms']) != ref_n_atoms:
+                    raise ValueError(f"Inconsistent n_atoms in {tddft_file}")
+                if int(data['n_excited']) != ref_n_excited:
+                    raise ValueError(f"Inconsistent n_excited in {tddft_file}")
+
+            # Extract test data for each field
+            for field in frame_fields:
+                if field not in data:
+                    print(f"  WARNING: {field} not found, skipping")
+                    continue
+
+                full_data = data[field]
+                test_data = full_data[idx_test]
+                merged_data[field].append(test_data)
+
+                print(f"  Loaded {field}: {test_data.shape}")
+
+            total_frames += len(idx_test)
+            data.close()
+
+        if total_frames == 0:
+            print("  WARNING: No TDDFT data to merge")
+            return
+
+        # Merge all data
+        print("\n" + "=" * 60)
+        print("Merging TDDFT data...")
+        print("=" * 60)
+
+        final_data = {}
+        for field in frame_fields:
+            if merged_data[field]:
+                final_data[field] = np.concatenate(merged_data[field], axis=0)
+                print(f"  {field}: {final_data[field].shape}")
+            else:
+                print(f"  WARNING: No data for {field}")
+
+        # Add reference data
+        final_data['atom_symbols'] = ref_atom_symbols
+        final_data['qm_type'] = ref_qm_type
+        final_data['n_atoms'] = ref_n_atoms
+        final_data['n_excited'] = ref_n_excited
+        final_data['n_frames'] = total_frames
+        final_data['state_indices'] = ref_state_indices
+
+        # Create split (all data is test)
+        final_data['idx_train'] = np.array([], dtype=int)
+        final_data['idx_val'] = np.array([], dtype=int)
+        final_data['idx_test'] = np.arange(total_frames)
+
+        # Save merged data
+        print("\n" + "=" * 60)
+        print("Saving merged TDDFT dataset...")
+        print("=" * 60)
+
+        out_file = os.path.join(out_dir, f"{out_prefix}tddft.npz")
+        np.savez(out_file, **final_data)
+        print(f"  Saved: {out_file}")
+
+        print("\n" + "=" * 60)
+        print(f"TDDFT merge completed!")
+        print(f"  Total test frames: {total_frames}")
+        print(f"  Atoms: {ref_n_atoms}")
+        print(f"  Excited states: {ref_n_excited}")
         print("=" * 60)
