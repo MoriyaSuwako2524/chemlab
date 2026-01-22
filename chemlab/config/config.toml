@@ -228,6 +228,6 @@ dataset_dirs = [
     "/path/to/dataset3/"
 ]
 prefix = "full_"  # 或者你的数据集前缀
-out_dir = "./test_dataset/"
+out_dir = "./test_npy/"
 out_prefix = "full_"
 merge_tddft = "True"
