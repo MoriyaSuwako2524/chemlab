@@ -220,3 +220,13 @@ path = "./"
 input = "full_tddft.npz"          #
 out = "./"          # 输出目录
 prefix = "default"         # 输出文件前缀
+
+[merge_test_data]
+dataset_dirs = [
+    "/path/to/dataset1/",
+    "/path/to/dataset2/",
+    "/path/to/dataset3/"
+]
+prefix = "full_"  # 或者你的数据集前缀
+out_dir = "./test_dataset/"
+out_prefix = "full_"
