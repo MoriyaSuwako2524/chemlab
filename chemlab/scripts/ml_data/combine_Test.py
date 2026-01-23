@@ -18,6 +18,7 @@ class MergeTestData(Script):
     2. Extracts the test portion from each dataset
     3. Merges all test data into a single dataset
     4. Merges tddft.npz files using the same split
+    5. Tracks source file information for each frame
     """
     name = "merge_test_data"
     config = MergeTestDataConfig
@@ -34,6 +35,7 @@ class MergeTestData(Script):
         out_dir = cfg.out_dir
         out_prefix = cfg.out_prefix
         merge_tddft = getattr(cfg, 'merge_tddft', True)
+        source_field_name = getattr(cfg, 'source_field_name', 'source_files')  # 可配置的字段名
 
         if not dataset_dirs:
             raise ValueError("No dataset directories specified!")
@@ -73,6 +75,8 @@ class MergeTestData(Script):
         # Accumulators
         merged_data = {field: [] for field in data_fields}
         merged_tddft = {field: [] for field in tddft_fields}
+        merged_source_files = []  # 新增：存储源文件信息
+        merged_dataset_indices = []  # 新增：存储数据集索引
 
         qm_type = None
         total_frames = 0
@@ -97,6 +101,24 @@ class MergeTestData(Script):
             split_data = np.load(split_file)
             idx_test = split_data['idx_test']
             print(f"  Found {len(idx_test)} test samples")
+
+            # ===== Load source file information =====
+            source_file_path = os.path.join(dataset_dir, f"{prefix}{source_field_name}.npy")
+
+            if os.path.exists(source_file_path):
+                source_files = np.load(source_file_path, allow_pickle=True)
+                test_source_files = source_files[idx_test]
+                merged_source_files.append(test_source_files)
+                print(f"  Loaded source files: {len(test_source_files)} entries")
+            else:
+                # 如果没有source_files字段，创建默认值
+                print(f"  WARNING: {source_field_name}.npy not found, using dataset path as identifier")
+                default_sources = np.array([f"{Path(dataset_dir).name}_frame_{j}" for j in idx_test])
+                merged_source_files.append(default_sources)
+
+            # 记录每个帧来自哪个数据集
+            dataset_indices = np.full(len(idx_test), i, dtype=int)
+            merged_dataset_indices.append(dataset_indices)
 
             # ===== Process .npy files =====
             for field in data_fields:
@@ -166,6 +188,13 @@ class MergeTestData(Script):
             else:
                 print(f"  WARNING: No data for {field}")
 
+        # Merge source file information
+        if merged_source_files:
+            final_source_files = np.concatenate(merged_source_files, axis=0)
+            final_dataset_indices = np.concatenate(merged_dataset_indices, axis=0)
+            print(f"  source_files: {final_source_files.shape}")
+            print(f"  dataset_indices: {final_dataset_indices.shape}")
+
         # Save merged .npy data
         print("\n" + "=" * 60)
         print("Saving merged test dataset...")
@@ -177,6 +206,21 @@ class MergeTestData(Script):
             outfile = f"{full_prefix}{field}.npy"
             np.save(outfile, data)
             print(f"  Saved: {outfile}")
+
+        # Save source file information
+        if merged_source_files:
+            np.save(f"{full_prefix}source_files.npy", final_source_files)
+            print(f"  Saved: {full_prefix}source_files.npy")
+
+            np.save(f"{full_prefix}dataset_indices.npy", final_dataset_indices)
+            print(f"  Saved: {full_prefix}dataset_indices.npy")
+
+            # 同时保存一个文本文件方便查看
+            with open(f"{full_prefix}source_mapping.txt", 'w') as f:
+                f.write("Frame_Index\tDataset_Index\tSource_File\n")
+                for idx, (ds_idx, src_file) in enumerate(zip(final_dataset_indices, final_source_files)):
+                    f.write(f"{idx}\t{ds_idx}\t{src_file}\n")
+            print(f"  Saved: {full_prefix}source_mapping.txt")
 
         # Save qm_type
         if qm_type is not None:
