@@ -231,3 +231,14 @@ prefix = "full_"  # 或者你的数据集前缀
 out_dir = "./test_npy/"
 out_prefix = "full_"
 merge_tddft = "True"
+
+[gpr_kernel]
+coord = "./coord.npy"
+
+[align_data]
+coord = "coord.npy"
+gradient = "gradient.npy"
+dipole = "dipole.npy"
+
+[example_config]
+config1 = "config1"
