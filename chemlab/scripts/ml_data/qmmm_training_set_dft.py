@@ -116,13 +116,17 @@ def get_qchem_training_set(qm_coords, qm_elem_num, mm_coords, mm_charges, charge
 
 class QMMMTrainSetDFT(QchemBaseScript):
     def run(self, cfg):
-        qm_coords = np.load("qm_coord.npy")
-        mm_coords = np.load("mm_coord.npy")
-        qm_elems = np.loadtxt("qm_elem.txt", dtype=int)
-        mm_charges = np.load("mm_charge.npy")
-        energy, qm_grad, mm_esp, mm_esp_grad = get_qchem_training_set(qm_coords, qm_elems, mm_coords, mm_charges, 0, 1)
+        qmmmpath = cfg.qmmmpath
+        outpath = cfg.outpath
+        prefix = cfg.prefix
+        ref = cfg.ref
+        qm_coords = cfg.qm_coords
+        mm_coords = cfg.mm_coords
+        qm_types = cfg.qm_types
+        mm_charges = cfg.qm_types
+        windows = cfg.windows
+        qm_spin = cfg.qm_spin
+        qm_charge = cfg.qm_charge
+        os.makedirs(outpath, exist_ok=True)
 
-        np.save("energy", energy)
-        np.save("qm_grad", np.array(qm_grad, dtype='float32'))
-        np.save("mm_esp", np.array(mm_esp, dtype='float32'))
-        np.save("mm_esp_grad", np.array(mm_esp_grad, dtype='float32'))
+        energy, qm_grad, mm_esp, mm_esp_grad = get_qchem_training_set(qm_coords, qm_types, mm_coords, mm_charges, 0, 1)

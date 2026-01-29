@@ -116,22 +116,11 @@ class PrepareTddftInp(Script):
         print(f"[prepare_tddft_inp] 完成! 生成了 {len(selected_frames)} 个输入文件")
 
     def _export_xyz_to_numpy(self, frames, atom_types, prefix):
-        """将 xyz 坐标导出为 numpy 文件，与 MLData 格式兼容"""
 
-        # 元素符号到原子序数的映射
-        ELEMENT_TO_Z = {
-            'H': 1, 'He': 2, 'Li': 3, 'Be': 4, 'B': 5, 'C': 6, 'N': 7, 'O': 8, 'F': 9, 'Ne': 10,
-            'Na': 11, 'Mg': 12, 'Al': 13, 'Si': 14, 'P': 15, 'S': 16, 'Cl': 17, 'Ar': 18,
-            'K': 19, 'Ca': 20, 'Sc': 21, 'Ti': 22, 'V': 23, 'Cr': 24, 'Mn': 25, 'Fe': 26,
-            'Co': 27, 'Ni': 28, 'Cu': 29, 'Zn': 30, 'Ga': 31, 'Ge': 32, 'As': 33, 'Se': 34,
-            'Br': 35, 'Kr': 36, 'I': 53
-        }
-
-        # 转换为 numpy 数组
         coords = np.array(frames)  # shape: (n_frames, n_atoms, 3)
 
         # 将元素符号转换为原子序数
-        atom_types_arr = np.array([ELEMENT_TO_Z[symbol] for symbol in atom_types], dtype=np.int32)
+        atom_types_arr = np.array([atom_charge_dict[symbol] for symbol in atom_types], dtype=np.int32)
 
         # 保存为 MLData 格式
         np.save(f"{prefix}coord.npy", coords)

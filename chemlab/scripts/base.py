@@ -42,6 +42,18 @@ class QchemBaseScript(Script):
                 return 0
             elif "Error in gen_scfman" in f.read():
                 return 1
+
+    def generate_qchem_inp(self,molecule,ref):
+        from chemlab.util.modify_inp import single_spin_job
+        job = single_spin_job()
+        job.charge = molecule.charge
+        job.spin = molecule.spin
+        job.ref_name = ref_file
+        job._xyz = molecule
+        job.generate_outputs()
+
+
+
     def wait_for_jobs(self, out_files, log=None, interval=30):
         while True:
             if all(self.check_qchem_success(f) for f in out_files):

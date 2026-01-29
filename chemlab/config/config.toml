@@ -242,3 +242,16 @@ dipole = "dipole.npy"
 
 [example_config]
 config1 = "config1"
+
+[qmmm_training_set_dft]
+qmmmpath = "./"
+outpath = "./raw_data/"
+ref = "ref.in"
+prefix = "full_"
+qm_coords = "qm_coord.npy"
+mm_coords = "mm_coord.npy"
+mm_charge = "mm_charge.npy"
+qm_type = "qm_type.npy"
+windows = 42
+qm_spin = 1
+qm_charge = 0
