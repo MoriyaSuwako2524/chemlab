@@ -127,6 +127,11 @@ class QMMMTrainSetDFT(QchemBaseScript):
         windows = cfg.windows
         qm_spin = cfg.qm_spin
         qm_charge = cfg.qm_charge
-        os.makedirs(outpath, exist_ok=True)
+
+
+        for i in range(windows):
+            number = "{:02d}".format(i)
+            os.makedirs(f"{outpath}/{number}", exist_ok=True)
+            self.generate_qchem_inp()
 
         energy, qm_grad, mm_esp, mm_esp_grad = get_qchem_training_set(qm_coords, qm_types, mm_coords, mm_charges, 0, 1)
