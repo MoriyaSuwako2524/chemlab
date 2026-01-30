@@ -154,7 +154,8 @@ class qchem_out_aimd_multi(qchem_out_multi):
             save_as_force (bool): True=-∇E，False=∇E
         """
         import numpy as np
-        from .file_system import ENERGY, DISTANCE, FORCE, GRADIENT, atom_charge_dict
+        from .unit import ENERGY, DISTANCE, FORCE, GRADIENT
+        from .file_system import atom_charge_dict
 
         traj = self.merge_trajectories()
         if not traj:

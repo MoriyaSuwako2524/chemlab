@@ -48,7 +48,7 @@ class QchemBaseScript(Script):
         job = single_spin_job()
         job.charge = molecule.charge
         job.spin = molecule.spin
-        job.ref_name = ref_file
+        job.ref_name = ref
         job._xyz = molecule
         job.generate_outputs()
 
