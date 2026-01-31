@@ -20,8 +20,8 @@ class qm_molecule(molecule):
         return np.vectorize(NUM2ELEMENT.get)(self.qm_type)
     @property
     def _carti(self):
-        return np.column_stack((self.coord, self._atoms))
-    
+        return np.column_stack((self._atoms,self.coord))
+
 class qmmm_molecule(molecule):
     def __init__(self):
         super(qmmm_molecule, self).__init__()
