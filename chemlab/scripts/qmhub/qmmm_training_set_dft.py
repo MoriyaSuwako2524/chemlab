@@ -132,7 +132,29 @@ class QMMMTrainSetDFT(QchemBaseScript):
         for i in range(windows):
             number = "{:02d}".format(i)
             os.makedirs(f"{outpath}/{number}", exist_ok=True)
+            from chemlab.util.file_system import qchem_file
+            from chemlab.util.qmhub import qmmm_molecule
+            import re
 
-            self.generate_qchem_inp()
+            pattern = re.compile(r".*_\d{4}$")
 
+            qmmm_dir = os.path.join(qmmmpath, f"{number}", "qmhub")
+
+            files = [
+                f for f in os.listdir(qmmm_dir)
+                if pattern.match(f)
+            ]
+
+            files = [os.path.join(qmmm_dir, f) for f in files]
+            for f in files:
+                qmmm = qmmm_molecule()
+                qmmm.load_qmmm(f)
+                tem_inp = qchem_file()
+                tem_inp.molecule.check = True
+                tem_inp.external_charges.check = True
+                tem_inp.charge = qmmm.qm_molecule.charge
+                tem_inp.spin = qmmm.qm_molecule.spin
+                tem_inp.external_charges = qmmm.mm_molecule.external_charges
+                tem_inp.molecule.carti =
         energy, qm_grad, mm_esp, mm_esp_grad = get_qchem_training_set(qm_coords, qm_types, mm_coords, mm_charges, 0, 1)
+

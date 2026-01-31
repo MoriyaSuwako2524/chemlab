@@ -2,7 +2,7 @@ import sys
 import numpy as np
 from chemlab.util.unit import unit_type,complex_unit_type
 Hartree_to_kcal = 627.51
-atom_charge_dict = {
+ELEMENT_DICT = {
     "H": 1, "He": 2, "Li": 3, "Be": 4, "B": 5, "C": 6, "N": 7, "O": 8, "F": 9, "Ne": 10, "Na": 11, "Mg": 12,
     "Al": 13, "Si": 14, "P": 15, "S": 16, "Cl": 17, "Ar": 18, "K": 19, "Ca": 20, "Sc": 21, "Ti": 22, "V": 23,
     "Cr": 24, "Mn": 25, "Fe": 26, "Co": 27, "Ni": 28, "Cu": 29, "Zn": 30, "Ga": 31, "Ge": 32, "As": 33,
@@ -19,6 +19,7 @@ class qchem_file(object):  # standard qchem inp file class
         self.pcm = pcm()
         self.opt = opt()
         self.opt2 = opt2()
+        self.external_charges = external_charges()
         self.remain_texts = ""
 
     @property
@@ -37,6 +38,8 @@ class qchem_file(object):  # standard qchem inp file class
             sections.append(self.opt.output)
         if self.opt2.check:
             sections.append(self.opt2.output)
+        if self.external_charges.check:
+            sections.append(self.external_charges.output)
         return "".join(sections)
 
     def show_molecule(self):
@@ -334,7 +337,7 @@ class molecule(qchem_inp_block):
 
     def transform_atom_type_into_charge(self):
         for i in range(len(self.carti)):
-            self.carti[i][0] = atom_charge_dict[self.carti[i][0]]
+            self.carti[i][0] = ELEMENT_DICT[self.carti[i][0]]
 
     def calc_angle(self, atom_i, atom_j, atom_k):
         """
