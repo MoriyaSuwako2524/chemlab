@@ -429,6 +429,7 @@ class external_charges(qchem_inp_block):
         self.name = "external_charges"
         self.mm_pos = []
         self.mm_charge = []
+
     def return_output_format(self):
         mm_pos = self.mm_pos.copy()
         mm_charge = self.mm_charge.copy()

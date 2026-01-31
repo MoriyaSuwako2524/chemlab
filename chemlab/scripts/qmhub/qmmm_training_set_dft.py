@@ -156,7 +156,8 @@ class QMMMTrainSetDFT(QchemBaseScript):
 
                 tem_inp.charge = qmmm.qm_molecule.charge
                 tem_inp.spin = qmmm.qm_molecule.spin
-                tem_inp.external_charges = qmmm.mm_molecule.external_charges
+                tem_inp.external_charges.mm_pos = qmmm.mm_molecule.coord
+                tem_inp.external_charges.mm_charge = qmmm.mm_molecule.charges
                 tem_inp.molecule.carti = qmmm.qm_molecule._carti
                 number = "{:04d}".format(j)
                 tem_inp.generate_inp(f"{outpath}/{prefix}{number}.inp")
