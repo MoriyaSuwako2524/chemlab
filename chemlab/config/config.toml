@@ -227,7 +227,7 @@ dataset_dirs = [
     "/path/to/dataset2/",
     "/path/to/dataset3/"
 ]
-prefix = "full_"  # 或者你的数据集前缀
+prefix = "full_"
 out_dir = "./test_npy/"
 out_prefix = "full_"
 merge_tddft = "True"
@@ -246,12 +246,6 @@ config1 = "config1"
 [qmmm_training_set_dft]
 qmmmpath = "./"
 outpath = "./raw_data/"
-ref = "ref.in"
+ref = "。/ref.in"
 prefix = "full_"
-qm_coords = "qm_coord.npy"
-mm_coords = "mm_coord.npy"
-mm_charge = "mm_charge.npy"
-qm_type = "qm_type.npy"
 windows = 42
-qm_spin = 1
-qm_charge = 0

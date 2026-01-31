@@ -123,10 +123,6 @@ class QMMMTrainSetDFT(QchemBaseScript):
         outpath = cfg.outpath
         prefix = cfg.prefix
         ref = cfg.ref
-        qm_coords = cfg.qm_coords
-        mm_coords = cfg.mm_coords
-        qm_types = cfg.qm_types
-        mm_charges = cfg.qm_types
         windows = cfg.windows
 
 
