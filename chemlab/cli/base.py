@@ -7,33 +7,13 @@ import chemlab.scripts
 from chemlab.scripts.base import Script
 
 
-# ============================================================
-#   Base CLICommand class
-# ============================================================
-
 class CLICommand:
-    """
-    Base class for ALL top-level CLI groups, e.g.:
 
-        chemlab ml_data ...
-        chemlab scan ...
-        chemlab soc ...
-
-    Subclasses only need to define:
-        name = "ml_data"
-
-    and Script 自动发现会注册所有子命令。
-    """
 
     name = None   # e.g. "ml_data"
 
     def add_arguments(self, parser, subparsers):
-        """
-        自动发现 chemlab.scripts 下的 Script 子类，
-        根据路径映射成二级 CLI 命令。
-        """
 
-        # Find scripts dynamically
         for script_cls in discover_scripts():
 
             group, command = script_to_cli(script_cls)
@@ -77,9 +57,7 @@ class CLICommand:
         self.add_arguments(parser, subparsers)
 
 
-# ============================================================
-#   Helper: Script discovery
-# ============================================================
+
 _DISCOVER_CACHE = None
 def discover_scripts():
     """
@@ -102,9 +80,7 @@ def discover_scripts():
     return scripts
 
 
-# ============================================================
-#   Helper: script path → CLI command mapping
-# ============================================================
+
 def script_to_cli(script_cls):
     """
     Convert script module path to (group, command).

@@ -11,6 +11,7 @@ ELEMENT_DICT = {
 }
 SPIN_REF = {1: "singlet", 2: "doublet", 3: "triplet", 4: "quartlet", 5: "quintet", 6: "sextuplet"}
 
+NUM2ELEMENT = {v: k for k, v in ELEMENT_DICT.items()}
 
 class qchem_file(object):  # standard qchem inp file class
     def __init__(self):

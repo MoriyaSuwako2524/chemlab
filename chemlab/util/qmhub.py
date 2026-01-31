@@ -1,5 +1,5 @@
 import numpy as np
-from chemlab.util.file_system import molecule,atom_charge_dict
+from chemlab.util.file_system import molecule,ELEMENT_DICT,NUM2ELEMENT
 
 
 class mm_molecule(molecule):
@@ -16,9 +16,12 @@ class qm_molecule(molecule):
         self.coord = []
         self.qm_type = []
     @property
-    def atoms(self):
-        return atom_charge_dict.keys()
-
+    def _atoms(self):
+        return np.vectorize(NUM2ELEMENT.get)(self.qm_type)
+    @property
+    def _carti(self):
+        return np.column_stack((self.coord, self._atoms))
+    
 class qmmm_molecule(molecule):
     def __init__(self):
         super(qmmm_molecule, self).__init__()

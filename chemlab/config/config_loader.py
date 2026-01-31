@@ -119,7 +119,7 @@ class ConfigBase:
         return parser
 
 
-# ---- User-defined config sections ----
+# ---- User-defined config ----
 
 class MecpConfig(ConfigBase):
     section_name = "mecp"

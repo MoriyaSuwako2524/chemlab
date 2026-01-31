@@ -125,8 +125,7 @@ class QMMMTrainSetDFT(QchemBaseScript):
         qm_types = cfg.qm_types
         mm_charges = cfg.qm_types
         windows = cfg.windows
-        qm_spin = cfg.qm_spin
-        qm_charge = cfg.qm_charge
+
 
 
         for i in range(windows):
@@ -152,9 +151,14 @@ class QMMMTrainSetDFT(QchemBaseScript):
                 tem_inp = qchem_file()
                 tem_inp.molecule.check = True
                 tem_inp.external_charges.check = True
+
+                tem_inp.read_from_file(cfg.ref)
+
                 tem_inp.charge = qmmm.qm_molecule.charge
                 tem_inp.spin = qmmm.qm_molecule.spin
                 tem_inp.external_charges = qmmm.mm_molecule.external_charges
-                tem_inp.molecule.carti =
-        energy, qm_grad, mm_esp, mm_esp_grad = get_qchem_training_set(qm_coords, qm_types, mm_coords, mm_charges, 0, 1)
+                tem_inp.molecule.carti = qmmm.qm_molecule._carti
+
+                tem_inp.generate_inp(f)
+
 
