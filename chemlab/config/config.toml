@@ -248,5 +248,5 @@ config1 = "config1"
 qmmmpath = "./"
 outpath = "./raw_data/"
 ref = "./ref.in"
-prefix = "full_"
+prefix = "qmmm_"
 windows = 42

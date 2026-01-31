@@ -144,7 +144,8 @@ class QMMMTrainSetDFT(QchemBaseScript):
             ]
 
             files = [os.path.join(qmmm_dir, f) for f in files]
-            for f in files:
+            for j in range(len(files)):
+                f = files[j]
                 qmmm = qmmm_molecule()
                 qmmm.load_qmmm(f)
                 tem_inp = qchem_file()
@@ -157,7 +158,7 @@ class QMMMTrainSetDFT(QchemBaseScript):
                 tem_inp.spin = qmmm.qm_molecule.spin
                 tem_inp.external_charges = qmmm.mm_molecule.external_charges
                 tem_inp.molecule.carti = qmmm.qm_molecule._carti
-
-                tem_inp.generate_inp(f)
+                number = "{:04d}".format(j)
+                tem_inp.generate_inp(f"{outpath}/{prefix}{number}.inp")
 
 
