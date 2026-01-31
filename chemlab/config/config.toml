@@ -208,7 +208,6 @@ ref = "ref.in"      # Q-Chem 参考输入文件
 
 dataset_size = 2000
 
-# Units (仅AIMD模式使用)
 energy_unit = "kcal/mol"
 ex_energy_unit = "ev"
 distance_unit = "ang"
@@ -217,9 +216,9 @@ force_unit = ["kcal/mol", "ang"]
 
 [phase_lock_dipole]
 path = "./"
-input = "full_tddft.npz"          #
-out = "./"          # 输出目录
-prefix = "default"         # 输出文件前缀
+input = "full_tddft.npz"
+out = "./"
+prefix = "default"
 
 [merge_test_data]
 dataset_dirs = [
@@ -243,9 +242,11 @@ dipole = "dipole.npy"
 [example_config]
 config1 = "config1"
 
+
+
 [qmmm_training_set_dft]
 qmmmpath = "./"
 outpath = "./raw_data/"
-ref = "。/ref.in"
+ref = "./ref.in"
 prefix = "full_"
 windows = 42
