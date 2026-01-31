@@ -6,13 +6,13 @@ import subprocess as sp
 from multiprocessing import Pool
 import numpy as np
 
-from chemlab.util.file_system import atom_charge_dict
+from chemlab.util.file_system import ELEMENT_DICT
 from chemlab.scripts.base import QchemBaseScript
 from chemlab.config.config_loader import ConfigBase
 
 
 class QMMMTrainSetDFTConfig(ConfigBase):
-    section_name = "qmmm_force"
+    section_name = "qmmm_training_set_dft"
 
 
 qc_rem = """
@@ -115,6 +115,9 @@ def get_qchem_training_set(qm_coords, qm_elem_num, mm_coords, mm_charges, charge
 
 
 class QMMMTrainSetDFT(QchemBaseScript):
+    name = "example_script"
+    config = QMMMTrainSetDFTConfig
+
     def run(self, cfg):
         qmmmpath = cfg.qmmmpath
         outpath = cfg.outpath
