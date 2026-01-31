@@ -128,15 +128,15 @@ class QMMMTrainSetDFT(QchemBaseScript):
 
 
         for i in range(windows):
-            number = "{:02d}".format(i)
-            os.makedirs(f"{outpath}/{number}", exist_ok=True)
+            window = "{:02d}".format(i)
+            os.makedirs(f"{outpath}/{window}", exist_ok=True)
             from chemlab.util.file_system import qchem_file
             from chemlab.util.qmhub import qmmm_molecule
             import re
 
             pattern = re.compile(r".*_\d{4}$")
 
-            qmmm_dir = os.path.join(qmmmpath, f"{number}", "qmhub")
+            qmmm_dir = os.path.join(qmmmpath, f"{window}", "qmhub")
 
             files = [
                 f for f in os.listdir(qmmm_dir)
@@ -159,7 +159,8 @@ class QMMMTrainSetDFT(QchemBaseScript):
                 tem_inp.external_charges.mm_pos = qmmm.mm_molecule.coord
                 tem_inp.external_charges.mm_charge = qmmm.mm_molecule.charges
                 tem_inp.molecule.carti = qmmm.qm_molecule._carti
+                tem_inp.molecule.read = False
                 number = "{:04d}".format(j)
-                tem_inp.generate_inp(f"{outpath}/{prefix}{number}.inp")
+                tem_inp.generate_inp(f"{outpath}/{window}/{prefix}{number}.inp")
 
 
