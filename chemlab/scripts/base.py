@@ -40,7 +40,7 @@ class QchemBaseScript(Script):
         with open(out_file) as f:
             if "Thank you very much for using Q-Chem" in f.read():
                 return 0
-            elif "Error in gen_scfman" in f.read():
+            elif "Q-Chem fatal error" in f.read():
                 return 1
 
     def generate_qchem_inp(self,molecule,ref):
