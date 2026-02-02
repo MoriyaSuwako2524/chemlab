@@ -15,16 +15,15 @@ class QMMMTrainSetDataConfig(ConfigBase):
     section_name = "qmmm_training_set_data"
 
 
-class QMMMTrainSetDFT(QchemBaseScript):
+class QMMMTrainSetData(QchemBaseScript):
     name = "example_script"
-    config = QMMMTrainSetDFTConfig
+    config = QMMMTrainSetDataConfig
 
     def run(self, cfg):
         qmmmpath = cfg.qmmmpath
         cache_path = cfg.cache_path
         outpath = cfg.outpath
         prefix = cfg.prefix
-        ref = cfg.ref
         windows = cfg.windows
         nframes = cfg.nframes
         os.makedirs(outpath, exist_ok=True)
