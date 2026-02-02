@@ -36,7 +36,7 @@ class QchemBaseScript(Script):
     @staticmethod
     def check_qchem_error(out_file):
         if not os.path.exists(out_file):
-            return None
+            return -1
         with open(out_file) as f:
             if "Thank you very much for using Q-Chem" in f.read():
                 return 0
