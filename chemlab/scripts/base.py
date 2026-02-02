@@ -37,11 +37,16 @@ class QchemBaseScript(Script):
     def check_qchem_error(out_file):
         if not os.path.exists(out_file):
             return -1
+
         with open(out_file) as f:
-            if "Thank you very much for using Q-Chem" in f.read():
-                return 0
-            elif "Q-Chem fatal error" in f.read():
-                return 1
+            content = f.read()
+
+        if "Thank you very much for using Q-Chem" in content:
+            return 0
+        elif "Q-Chem fatal error" in content:
+            return 1
+        else:
+            return -10
 
     def generate_qchem_inp(self,molecule,ref):
         from chemlab.util.modify_inp import single_spin_job
