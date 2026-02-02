@@ -58,6 +58,7 @@ class QMMMTrainSetData(QchemBaseScript):
                     tem_mm_esp_grad = -np.loadtxt(tem_qmmm_path + f"{prefix}{frame}.out.efld", max_rows=len(tem_mm_esp), dtype=float)
                 except:
                     print(tem_qmmm_path + f"{prefix}{frame}.out.efld error")
+                    continue
                 win_energy.append(tem_energy)
                 win_qm_grad.append(tem_qm_grad)
                 win_mm_esp.append(tem_mm_esp)
