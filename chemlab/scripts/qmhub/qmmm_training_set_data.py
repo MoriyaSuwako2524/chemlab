@@ -59,9 +59,9 @@ class QMMMTrainSetData(QchemBaseScript):
                 except:
                     print(tem_qmmm_path + f"{prefix}{frame}.out.efld error")
                     continue
-                if len(win_mm_esp) == 0:
-                    ref_n = win_mm_esp.shape[0]
 
+                if len(win_mm_esp) == 0:
+                    ref_n = tem_mm_esp.shape[0]
                 elif tem_mm_esp_grad.shape[0] != ref_n:
                     print("Skip frame due to inconsistent MM ESP size:", tem_input)
                     continue
