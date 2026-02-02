@@ -59,6 +59,12 @@ class QMMMTrainSetData(QchemBaseScript):
                 except:
                     print(tem_qmmm_path + f"{prefix}{frame}.out.efld error")
                     continue
+                if tem_mm_esp_grad.shape != tem_mm_esp.shape:
+                    print(
+                        f"Shape mismatch: {tem_input} "
+                        f"esp {tem_mm_esp.shape}, efld {tem_mm_esp_grad.shape}"
+                    )
+                    continue
                 win_energy.append(tem_energy)
                 win_qm_grad.append(tem_qm_grad)
                 win_mm_esp.append(tem_mm_esp)
