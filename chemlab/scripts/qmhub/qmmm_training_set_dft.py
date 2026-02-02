@@ -115,7 +115,7 @@ def get_qchem_training_set(qm_coords, qm_elem_num, mm_coords, mm_charges, charge
 
 
 class QMMMTrainSetDFT(QchemBaseScript):
-    name = "example_script"
+    name = "qmmm_train_set_dft"
     config = QMMMTrainSetDFTConfig
 
     def run(self, cfg):
