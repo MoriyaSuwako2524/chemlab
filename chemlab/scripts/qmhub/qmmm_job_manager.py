@@ -28,7 +28,7 @@ class QMMMJobManager(QchemBaseScript):
                 if file.endswith(".inp"):
                     inp_path = os.path.join(root, file)
                     out_path = inp_path.replace(".inp", ".out")
-                    jobs.append(QMJob(inp_path,out_path))
+                    jobs.append(QMJob(inp_path,out_path,cache=root))
         self.run_jobs(jobs, cfg, print_status_func=print_status)
 
 

@@ -125,7 +125,7 @@ class QchemBaseScript(Script):
                     ncore,
                     env_script,
                     launcher=cfg.launcher,
-                    cache=cfg.cache
+                    cache=job.cache
                 )
                 job.started = True
                 job.start_time = time.time()
@@ -178,6 +178,7 @@ class QMJob:
     inp_file: str
     out_file: str
     attempts: int = 0
+    cache: str = "/scratch/moriya/cache/"
     popen: Optional[subprocess.Popen] = None
     started: bool = False
     finished: bool = False
