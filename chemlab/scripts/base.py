@@ -171,6 +171,7 @@ qchem -nt {ncore} {inp_file} {out_file}
 
 
 from dataclasses import dataclass
+from typing import Optional, List, Dict
 @dataclass
 class QMJob:
     inp_file: str
