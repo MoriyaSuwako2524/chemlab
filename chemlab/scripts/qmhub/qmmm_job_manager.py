@@ -23,12 +23,14 @@ class QMMMJobManager(QchemBaseScript):
         window = "{:02d}".format(cfg.window)
         tem_path = f"{qmmmpath}/{window}/"
         jobs = []
+
         for root, dirs, files in os.walk(tem_path):
+            rel_root = os.path.relpath(root, qmmmpath)
             for file in files:
                 if file.endswith(".inp"):
                     inp_path = os.path.join(root, file)
                     out_path = inp_path.replace(".inp", ".out")
-                    jobs.append(QMJob(inp_path,out_path,cache=root))
+                    jobs.append(QMJob(inp_path,out_path,cache=rel_root))
         self.run_jobs(jobs, cfg, print_status_func=print_status)
 
 
