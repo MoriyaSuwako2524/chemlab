@@ -155,7 +155,7 @@ class QMMMTrainSetDFT(QchemBaseScript):
                 elif cfg.method == "gas":
                     tem_inp.external_charges.check = False
                 else:
-                    tem_inp.external_charges.check = True
+                    tem_inp.external_charges.check = False
 
                 tem_inp.read_from_file(cfg.ref)
 
