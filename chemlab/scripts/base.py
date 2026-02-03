@@ -171,3 +171,31 @@ qchem -nt {ncore} {inp_file} {out_file}
 
 
 
+@dataclass
+class QMJob:
+    inp_file: str
+    out_file: str
+    attempts: int = 0
+    popen: Optional[subprocess.Popen] = None
+    started: bool = False
+    finished: bool = False
+    converged: bool = False
+    start_time: Optional[float] = None
+
+def print_status(jobs: List[QMJob], running: Dict[int, QMJob], njob: int):
+    running_list = list(running.values())
+    ready_list   = [j for j in jobs if (not j.started and not j.finished)]
+    done_ok      = [j for j in jobs if j.finished and j.converged]
+    done_fail    = [j for j in jobs if j.finished and not j.converged]
+
+    print("\n" + "=" * 88)
+    print(
+        f"FD STATUS | RUN={len(running_list)} READY={len(ready_list)} "
+        f"DONE_OK={len(done_ok)} DONE_FAIL={len(done_fail)} | LIMIT={njob}"
+    )
+    print("-" * 88)
+    print("[RUN]      " + ", ".join(f"{j.idx}{j.sign}" for j in running_list))
+    print("[READY]    " + ", ".join(f"{j.idx}{j.sign}" for j in ready_list))
+    print("[DONE_OK]  " + ", ".join(f"{j.idx}{j.sign}" for j in done_ok))
+    print("[DONE_FAIL]" + ", ".join(f"{j.idx}{j.sign}" for j in done_fail))
+    print("=" * 88 + "\n")

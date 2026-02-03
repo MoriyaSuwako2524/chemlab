@@ -161,6 +161,7 @@ class QMMMTrainSetDFT(QchemBaseScript):
                 tem_inp.molecule.carti = qmmm.qm_molecule._carti
                 tem_inp.molecule.read = False
                 number = "{:04d}".format(j)
-                tem_inp.generate_inp(f"{outpath}/{window}/{prefix}{number}.inp")
+                os.makedirs(f"{outpath}/{window}/{number}/", exist_ok=True)
+                tem_inp.generate_inp(f"{outpath}/{window}/{number}/{prefix}{number}.inp")
 
 
