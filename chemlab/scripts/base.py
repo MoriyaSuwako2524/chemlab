@@ -197,8 +197,8 @@ def print_status(jobs: List[QMJob], running: Dict[int, QMJob], njob: int):
         f"DONE_OK={len(done_ok)} DONE_FAIL={len(done_fail)} | LIMIT={njob}"
     )
     print("-" * 88)
-    print("[RUN]      " + ", ".join(f"{j.idx}{j.sign}" for j in running_list))
-    print("[READY]    " + ", ".join(f"{j.idx}{j.sign}" for j in ready_list))
-    print("[DONE_OK]  " + ", ".join(f"{j.idx}{j.sign}" for j in done_ok))
-    print("[DONE_FAIL]" + ", ".join(f"{j.idx}{j.sign}" for j in done_fail))
+    print("[RUN]      " + ", ".join(f"{os.path.basename(j.inp_file)}" for j in running_list))
+    print("[READY]    " + ", ".join(f"{os.path.basename(j.inp_file)}" for j in ready_list))
+    print("[DONE_OK]  " + ", ".join(f"{os.path.basename(j.inp_file)}" for j in done_ok))
+    print("[DONE_FAIL]" + ", ".join(f"{os.path.basename(j.inp_file)}" for j in done_fail))
     print("=" * 88 + "\n")
