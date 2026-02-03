@@ -170,7 +170,7 @@ qchem -nt {ncore} {inp_file} {out_file}
 
 
 
-
+from dataclasses import dataclass
 @dataclass
 class QMJob:
     inp_file: str
