@@ -124,7 +124,8 @@ class QchemBaseScript(Script):
                     job.out_file,
                     ncore,
                     env_script,
-                    launcher=cfg.launcher
+                    launcher=cfg.launcher,
+                    cache=cfg.cache
                 )
                 job.started = True
                 job.start_time = time.time()
@@ -145,19 +146,19 @@ class QchemBaseScript(Script):
 
             time.sleep(poll_interval)
 
-def run_qchem_job_async(inp_file, out_file, ncore, env_script, launcher="srun"):
+def run_qchem_job_async(inp_file, out_file, ncore, env_script, launcher="srun", cache=""):
 
     if launcher == "srun":
         cmd = f"""
 {env_script}
 export OMP_NUM_THREADS={ncore}
-srun -n1 -c {ncore} --cpu-bind=cores --hint=nomultithread qchem -nt {ncore} {inp_file} {out_file}
+srun -n1 -c {ncore} --cpu-bind=cores --hint=nomultithread qchem -nt {ncore} {inp_file} {out_file} {cache}
 """
     else:
         cmd = f"""
 {env_script}
 export OMP_NUM_THREADS={ncore}
-qchem -nt {ncore} {inp_file} {out_file}
+qchem -nt {ncore} {inp_file} {out_file} {cache}
 """
 
     return subprocess.Popen(

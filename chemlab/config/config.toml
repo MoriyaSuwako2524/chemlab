@@ -132,6 +132,7 @@ distance = 0.001
 ncore = 32
 njob = 8
 launcher = "srun"
+cache = ""
 project = "soc"
 
 [defaults.result_saver]
@@ -258,3 +259,11 @@ prefix = "qmmm_"
 windows = 42
 cache_path = "/scratch/moriya/cache/"
 nframes = 500
+
+[qmmm_job_manager]
+qmmmpath = "./"
+window = 0
+ncore = 64
+njob = 16
+launcher = "srun"
+cache = ""
