@@ -146,17 +146,19 @@ class QchemBaseScript(Script):
 
             time.sleep(poll_interval)
 
-def run_qchem_job_async(inp_file, out_file, ncore, env_script, launcher="srun", cache=""):
+def run_qchem_job_async(inp_file, out_file, ncore, env_script, launcher="srun", cache="/scratch/$USER/cache"):
 
     if launcher == "srun":
         cmd = f"""
 {env_script}
+unset QCSCRATCH
 export OMP_NUM_THREADS={ncore}
 srun -n1 -c {ncore} --cpu-bind=cores --hint=nomultithread qchem -nt {ncore} {inp_file} {out_file} {cache}
 """
     else:
         cmd = f"""
 {env_script}
+unset QCSCRATCH
 export OMP_NUM_THREADS={ncore}
 qchem -nt {ncore} {inp_file} {out_file} {cache}
 """
