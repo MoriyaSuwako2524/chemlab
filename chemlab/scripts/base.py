@@ -86,7 +86,7 @@ class QchemBaseScript(Script):
                     # job successfully completed earlier
                     job.started = True
                     job.finished = True
-                    print(f"[Resume] Job {job.idx}{job.sign} already finished.")
+                    print(f"[Resume] Job {os.path.basename(j.inp_file)} already finished.")
                 else:
                     # output exists but failed or incomplete
                     job.started = False
@@ -117,7 +117,7 @@ class QchemBaseScript(Script):
             while len(running) < njob and ready_jobs:
                 job = ready_jobs.pop(0)
                 job.attempts += 1
-                print(f"Launching job {job.idx}{job.sign} attempt={job.attempts}")
+                print(f"Launching job {os.path.basename(j.inp_file)} attempt={job.attempts}")
 
                 job.popen = run_qchem_job_async(
                     job.inp_file,
@@ -140,7 +140,7 @@ class QchemBaseScript(Script):
             for j in jobs:
                 if j.finished and not j.converged:
                     if j.attempts < max_attempts:
-                        print(f"Retry job {j.idx}{j.sign}")
+                        print(f"Retry job {os.path.basename(j.inp_file)}")
                         j.started = False
                         j.finished = False
 
