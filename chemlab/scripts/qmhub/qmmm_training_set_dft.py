@@ -150,7 +150,12 @@ class QMMMTrainSetDFT(QchemBaseScript):
                 qmmm.load_qmmm(f)
                 tem_inp = qchem_file()
                 tem_inp.molecule.check = True
-                tem_inp.external_charges.check = True
+                if cfg.method == "qmmm":
+                    tem_inp.external_charges.check = True
+                elif cfg.method == "gas":
+                    tem_inp.external_charges.check = False
+                else:
+                    tem_inp.external_charges.check = True
 
                 tem_inp.read_from_file(cfg.ref)
 

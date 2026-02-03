@@ -252,6 +252,7 @@ outpath = "./raw_data/"
 ref = "./ref.in"
 prefix = "qmmm_"
 windows = 42
+method = "qmmm"
 
 [qmmm_training_set_data]
 qmmmpath = "./"
