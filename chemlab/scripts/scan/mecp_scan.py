@@ -1,13 +1,6 @@
-# -*- coding: utf-8 -*-
-"""
-MECP Scan Script - 改进版
-在不同距离约束下进行 MECP 优化
-
-改进点：
-1. 真正的并行执行 - 同时运行多个MECP点的Q-Chem计算
-2. SCF失败处理 - 失败时不中断整个任务，支持重试
-3. 更好的任务状态管理
-"""
+import matplotlib
+matplotlib.use('Agg')  # 非交互式后端
+import matplotlib.pyplot as plt
 import os
 import time
 import subprocess
@@ -464,7 +457,6 @@ qchem -nt {nthreads_per_job} {inp} {out}
                 job.processes.append(p)
 
         elif cfg.jobtype == "mecp_soc":
-            # SOC: 只有一个计算
             inp = os.path.join(mecp_obj.out_path, mecp_obj.state_1.job_name)
             out = inp[:-4] + ".out"
             job.out_files.append(out)
@@ -511,6 +503,12 @@ srun -n1 -c {nthreads_per_job} --cpu-bind=cores --hint=nomultithread qchem -nt {
         # 更新结构
         mecp_obj.update_structure()
 
+        # ========== 新增：绘制收敛进度图 ==========
+        try:
+            self._plot_convergence_progress(job, cfg)
+        except Exception as e:
+            print(f"[WARNING] Failed to plot convergence for scan {job.scan_idx}: {e}", flush=True)
+
         # 检查收敛
         if mecp_obj.check_convergence():
             job.status = JobStatus.CONVERGED
@@ -542,3 +540,89 @@ srun -n1 -c {nthreads_per_job} --cpu-bind=cores --hint=nomultithread qchem -nt {
         else:
             # 继续优化
             job.status = JobStatus.WAITING_READ  # 会在主循环中进入下一步
+
+
+
+def _plot_convergence_progress(self, job: MecpScanJob, cfg):
+
+    import matplotlib.pyplot as plt
+
+    log_path = os.path.join(job.work_dir, "mecp.log")
+    if not os.path.exists(log_path):
+        return
+
+    # 解析日志文件
+    steps = []
+    e1_list = []
+    e2_list = []
+    gap_list = []
+
+    try:
+        with open(log_path, 'r') as f:
+            current_step = None
+            for line in f:
+                if "MECP iteration step" in line:
+                    try:
+                        current_step = int(line.split("step")[-1].strip())
+                    except:
+                        pass
+                elif "E1 =" in line and "E2 =" in line:
+                    # 格式: E1 = -xxx.xxx Ha, E2 = -xxx.xxx Ha
+                    parts = line.split(',')
+                    try:
+                        e1 = float(parts[0].split('=')[1].strip().split()[0])
+                        e2 = float(parts[1].split('=')[1].strip().split()[0])
+                        if current_step is not None:
+                            steps.append(current_step)
+                            e1_list.append(e1)
+                            e2_list.append(e2)
+                    except:
+                        pass
+                elif "Energy gap:" in line:
+                    try:
+                        gap = float(line.split(':')[1].strip().split()[0])
+                        gap_list.append(gap)
+                    except:
+                        pass
+    except Exception as e:
+        print(f"[WARNING] Failed to parse log for scan {job.scan_idx}: {e}")
+        return
+
+    if not steps:
+        return
+
+    # 创建图表
+    fig, axes = plt.subplots(2, 1, figsize=(10, 8))
+
+    # 子图1: 能量变化
+    ax1 = axes[0]
+    ax1.plot(steps, e1_list, 'o-', label=f'State 1 (spin={cfg.spin1})', linewidth=2, markersize=6)
+    ax1.plot(steps, e2_list, 's-', label=f'State 2 (spin={cfg.spin2})', linewidth=2, markersize=6)
+    ax1.set_xlabel('MECP Step', fontsize=12)
+    ax1.set_ylabel('Energy (Hartree)', fontsize=12)
+    ax1.set_title(f'MECP Point {job.scan_idx} - Distance = {job.distance:.3f} Å',
+                  fontsize=14, fontweight='bold')
+    ax1.legend(fontsize=10)
+    ax1.grid(True, alpha=0.3)
+
+    # 子图2: 能量差
+    ax2 = axes[1]
+    if gap_list:
+        ax2.plot(steps, gap_list, 'o-', color='red', linewidth=2, markersize=6)
+        ax2.axhline(y=cfg.mecp_conv * Hartree_to_kcal, color='green',
+                    linestyle='--', label=f'Convergence threshold ({cfg.mecp_conv * Hartree_to_kcal:.4f} kcal/mol)')
+        ax2.set_xlabel('MECP Step', fontsize=12)
+        ax2.set_ylabel('Energy Gap (kcal/mol)', fontsize=12)
+        ax2.set_title('Energy Gap Convergence', fontsize=12)
+        ax2.legend(fontsize=10)
+        ax2.grid(True, alpha=0.3)
+        ax2.set_yscale('log')
+
+    plt.tight_layout()
+
+    # 保存图片
+    plot_path = os.path.join(job.work_dir, f"convergence_progress.png")
+    plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+    plt.close()
+
+    print(f"[PLOT] Saved convergence plot for scan {job.scan_idx}: {plot_path}", flush=True)
