@@ -381,7 +381,7 @@ class MecpScan(Script):
         else:
             mecp_obj = mecp()
         print(f"Current mecp opject:{mecp_obj}")
-        # 配置 MECP
+
         mecp_obj.ref_path = cfg.path
         mecp_obj.ref_filename = cfg.ref_file
         mecp_obj.out_path = job.work_dir
@@ -392,7 +392,7 @@ class MecpScan(Script):
         mecp_obj.state_2.spin = cfg.spin2
         mecp_obj.converge_limit = cfg.mecp_conv
 
-        # 添加距离约束
+
         mecp_obj.add_restrain(
             cfg.restrain_atom_i,
             cfg.restrain_atom_j,
