@@ -127,7 +127,7 @@ class QchemBaseScript(Script):
                     env_script,
                     launcher=cfg.launcher,
                     cache=job.cache,
-                    qscratch=qcscratch
+                    qcscratch=qcscratch
 
                 )
                 job.started = True
