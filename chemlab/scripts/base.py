@@ -76,6 +76,7 @@ class QchemBaseScript(Script):
         env_script = cfg_env.env_script.strip()
         poll_interval = getattr(cfg, "poll_interval", 20)
         max_attempts  = getattr(cfg, "max_attempts", 2)
+        qscratch = getattr(cfg, "QSCRATCH", "/scratch/$USER/cache")
         njob          = cfg.njob
         ncore = int(cfg.ncore/njob)
         running: Dict[int, object] = {}
@@ -126,7 +127,7 @@ class QchemBaseScript(Script):
                     env_script,
                     launcher=cfg.launcher,
                     cache=job.cache,
-                    qscratch=cfg.QSCRATCH
+                    qscratch=qscratch
 
                 )
                 job.started = True
