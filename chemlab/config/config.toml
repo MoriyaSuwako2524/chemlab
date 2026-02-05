@@ -268,3 +268,4 @@ window = 0
 ncore = 64
 njob = 16
 launcher = "srun"
+QSCRATCH = "/scratch/$USER/cache"
