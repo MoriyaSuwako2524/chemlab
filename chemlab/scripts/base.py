@@ -76,7 +76,7 @@ class QchemBaseScript(Script):
         env_script = cfg_env.env_script.strip()
         poll_interval = getattr(cfg, "poll_interval", 20)
         max_attempts  = getattr(cfg, "max_attempts", 2)
-        qscratch = getattr(cfg, "QSCRATCH", "/scratch/$USER/cache")
+        qcscratch = getattr(cfg, "QCSCRATCH", "/scratch/$USER/cache")
         njob          = cfg.njob
         ncore = int(cfg.ncore/njob)
         running: Dict[int, object] = {}
@@ -127,7 +127,7 @@ class QchemBaseScript(Script):
                     env_script,
                     launcher=cfg.launcher,
                     cache=job.cache,
-                    qscratch=qscratch
+                    qscratch=qcscratch
 
                 )
                 job.started = True
@@ -149,12 +149,12 @@ class QchemBaseScript(Script):
 
             time.sleep(poll_interval)
 
-def run_qchem_job_async(inp_file, out_file, ncore, env_script, launcher="srun", cache="",qscratch="/scratch/$USER/cache"):
+def run_qchem_job_async(inp_file, out_file, ncore, env_script, launcher="srun", cache="",qcscratch="/scratch/$USER/cache"):
     workdir = os.path.dirname(inp_file)
     if launcher == "srun":
         cmd = f"""
 {env_script}
-QSCRATCH={qscratch}
+QCSCRATCH={qcscratch}
 export OMP_NUM_THREADS={ncore}
 cd {workdir}
 srun -n1 -c {ncore} --cpu-bind=cores --hint=nomultithread qchem -nt {ncore} {inp_file} {out_file} {cache}
