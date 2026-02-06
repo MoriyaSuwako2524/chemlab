@@ -114,6 +114,7 @@ class QMMMTrainSetData(QchemBaseScript):
         full_energy = []
         full_qm_grad = []
         full_qm_coords = []
+        full_qm_type = []
         for i in range(windows):
             window = "{:02d}".format(i)
             tem_qmmm_path = f"{qmmmpath}/{window}/"
@@ -134,6 +135,11 @@ class QMMMTrainSetData(QchemBaseScript):
                     print("Qchem Job Fail:", tem_input)
                     continue
                 tem_qmout.read_file(tem_input)
+                if full_qm_type == []:
+                    from chemlab.util.file_system import atom_charge_dict
+                    atom_symbols = [atm[0] for atm in tem_qmout.molecule.carti]
+                    qm_type = np.array([atom_charge_dict[sym] for sym in atom_symbols])
+                    full_qm_type = qm_type
                 tem_qm_coord = tem_qmout.molecule.xyz
                 tem_energy = np.fromfile(tem_cache_path + "99.0", dtype="f8", count=2)[1]
                 tem_qm_grad = np.fromfile(tem_cache_path + "131.0", dtype="f8").reshape(-1, 3)
@@ -160,3 +166,4 @@ class QMMMTrainSetData(QchemBaseScript):
         np.save(f"{outpath}/full_qm_grad.npy", full_qm_grad)
         full_qm_coords = np.concatenate(full_qm_coords, axis=0)
         np.save(f"{outpath}/full_qm_coords.npy", full_qm_coords)
+        np.save(f"{outpath}/full_qm_type.npy", full_qm_type)
