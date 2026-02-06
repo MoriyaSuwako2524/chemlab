@@ -261,6 +261,7 @@ prefix = "qmmm_"
 windows = 42
 cache_path = "/scratch/moriya/cache/"
 nframes = 500
+mode = "qmmm"
 
 [qmmm_job_manager]
 qmmmpath = "./"

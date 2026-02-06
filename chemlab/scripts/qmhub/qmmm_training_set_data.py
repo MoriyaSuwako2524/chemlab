@@ -23,6 +23,12 @@ class QMMMTrainSetData(QchemBaseScript):
         if cfg.method == "gas":
             self.run_gas(cfg)
             return 0
+        elif cfg.method == "qmmm":
+            self.run_qmmm(cfg)
+            return 0
+        else:
+            return KeyError(f"Method {cfg.method} Not Supported")
+    def run_qmmm(self,cfg):
         qmmmpath = cfg.qmmmpath
         cache_path = cfg.cache_path
         outpath = cfg.outpath
