@@ -148,9 +148,17 @@ class QMMMTrainSetData(QchemBaseScript):
                 win_qm_grad.append(tem_qm_grad)
 
                 win_qm_coord.append(tem_qm_coord)
+
+            from chemlab.util.unit import ENERGY,GRADIENT,DISTANCE
+
+
             win_qm_coord = np.asarray(win_qm_coord)
             win_energy = np.asarray(win_energy)
             win_qm_grad = np.asarray(win_qm_grad)
+            win_energy = ENERGY(win_energy, "hartree").convert_to("kcal")
+            win_qm_grad = GRADIENT(win_qm_grad, energy_unit="hartree", distance_unit="bohr").convert_to(
+                {"energy": ("kcal", 1), "distance": ("ang", -1)}
+            )
 
             np.save(f"{outpath}/qm_coord_w{window}.npy", win_qm_coord)
             np.save(f"{outpath}/energy_w{window}.npy", win_energy)
