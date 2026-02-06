@@ -213,7 +213,7 @@ class molecule(qchem_inp_block):
 
     def return_xyz_list(self):
         carti = np.array(self.carti)
-        return carti[:, 1:]
+        return carti[:, 1:].astype(float)
 
     def return_atom_type_list(self):
         carti = np.array(self.carti)
