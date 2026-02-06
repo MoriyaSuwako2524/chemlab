@@ -122,8 +122,8 @@ class QMMMTrainSetData(QchemBaseScript):
 
             for j in range(nframes):
                 frame = "{:04d}".format(j)
-                tem_cache_path = f"{cache_path}/w{window}/{frame}/"
-                tem_input = f"{tem_qmmm_path}/{prefix}{frame}.out"
+                tem_cache_path = f"{cache_path}/{window}/{frame}/"
+                tem_input = f"{tem_qmmm_path}/{frame}/{prefix}{frame}.out"
                 if self.check_qchem_error(tem_input) == -1:
                     print("File not found:", tem_input)
                     continue
