@@ -122,7 +122,6 @@ class MECP1DScan(QchemBaseScript):
             test_mecp.different_type = "soc"
             test_mecp.converge_limit = converge_limit
             test_mecp.read_init_structure()
-            test_mecp.initialize_bfgs()
             test_mecp.generate_new_inp()
 
             for step in range(max_opt_steps):
