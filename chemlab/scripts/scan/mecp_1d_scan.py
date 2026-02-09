@@ -76,7 +76,7 @@ def plot_opt_step_progress(energy1_list, energy2_list, gap_list, step_list, dist
 from chemlab.scripts.base import QchemBaseScript
 from chemlab.config.config_loader import ConfigBase
 class MECP1DScanConfig(ConfigBase):
-    section_name = "mecp_1d_scan_config"
+    section_name = "mecp_1d_scan"
 
 class MECP1DScan(QchemBaseScript):
     name = "mecp_1d_scan"
