@@ -78,7 +78,6 @@ class RunMecp(Script):
 
         test_mecp.read_init_structure()
         test_mecp.generate_new_inp()
-        test_mecp.initialize_bfgs()
 
         plt.ion()
         fig, ax = plt.subplots(figsize=(6, 4))
