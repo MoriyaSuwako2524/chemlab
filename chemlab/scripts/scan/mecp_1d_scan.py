@@ -5,7 +5,7 @@ import numpy as np
 import time
 import subprocess
 from subprocess import Popen
-from chemlab.util.mecp import mecp
+from chemlab.util.mecp import mecp_soc
 from chemlab.util.file_system import qchem_file
 import matplotlib.pyplot as plt
 
@@ -111,7 +111,7 @@ class MECP1DScan(QchemBaseScript):
             ref_path = os.path.join(scan_dir, ref_filename)
             inp.generate_inp(ref_path)
 
-            test_mecp = mecp()
+            test_mecp = mecp_soc()
             test_mecp.ref_path = scan_dir
             test_mecp.ref_filename = ref_filename
             test_mecp.out_path = scan_dir
@@ -127,7 +127,7 @@ class MECP1DScan(QchemBaseScript):
             for step in range(max_opt_steps):
                 print(f"\n>>> MECP optimization step {step}")
                 test_mecp.job_num = step
-                test_mecp.generate_new_spc_inp()
+                test_mecp.generate_new_inp()
 
                 processes = []
                 out_files = []
