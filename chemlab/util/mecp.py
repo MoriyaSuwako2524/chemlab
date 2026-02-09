@@ -171,7 +171,7 @@ class mecp(object):
         step_vector = -self.inv_hess @ g_k
         step_vector = step_vector.reshape((natom, 3))
         step_norm = np.linalg.norm(step_vector)
-        max_step = self.stepsize
+        max_step = self.max_stepsize
 
         if step_norm > max_step:
             print(f"🔻 Step clipped from {step_norm:.4f} Å to {max_step:.4f} Å")
