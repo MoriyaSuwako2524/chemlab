@@ -28,9 +28,7 @@ class MecpScanConfig(ConfigBase):
     section_name = "mecp_scan"
 
 
-# ======================
-# 任务状态枚举
-# ======================
+
 class JobStatus(Enum):
     PENDING = "pending"  # 等待启动
     RUNNING_QCHEM = "running"  # Q-Chem正在运行
@@ -482,7 +480,6 @@ srun -n1 -c {nthreads_per_job} --cpu-bind=cores --hint=nomultithread qchem -nt {
             log.write(f"\n>>> MECP iteration step {job.current_step}\n")
 
     def _process_qchem_output(self, job: MecpScanJob, cfg, result_saver):
-        """处理Q-Chem输出，更新MECP状态"""
         mecp_obj = job.mecp_obj
 
         # 读取结果
@@ -502,12 +499,7 @@ srun -n1 -c {nthreads_per_job} --cpu-bind=cores --hint=nomultithread qchem -nt {
 
         # 更新结构
         mecp_obj.update_structure()
-
-        # ========== 新增：绘制收敛进度图 ==========
-        try:
-            self._plot_convergence_progress(job, cfg)
-        except Exception as e:
-            print(f"[WARNING] Failed to plot convergence for scan {job.scan_idx}: {e}", flush=True)
+        mecp_obj.plot_energy_progress()
 
         # 检查收敛
         if mecp_obj.check_convergence():
@@ -543,86 +535,87 @@ srun -n1 -c {nthreads_per_job} --cpu-bind=cores --hint=nomultithread qchem -nt {
 
 
 
-def _plot_convergence_progress(self, job: MecpScanJob, cfg):
+    def _plot_convergence_progress(self, job: MecpScanJob, cfg):
 
-    import matplotlib.pyplot as plt
+        import matplotlib.pyplot as plt
 
-    log_path = os.path.join(job.work_dir, "mecp.log")
-    if not os.path.exists(log_path):
-        return
+        log_path = os.path.join(job.work_dir, "mecp.log")
+        if not os.path.exists(log_path):
+            return
 
-    # 解析日志文件
-    steps = []
-    e1_list = []
-    e2_list = []
-    gap_list = []
+        # 解析日志文件
+        steps = []
+        e1_list = []
+        e2_list = []
+        gap_list = []
 
-    try:
-        with open(log_path, 'r') as f:
-            current_step = None
-            for line in f:
-                if "MECP iteration step" in line:
-                    try:
-                        current_step = int(line.split("step")[-1].strip())
-                    except:
-                        pass
-                elif "E1 =" in line and "E2 =" in line:
-                    # 格式: E1 = -xxx.xxx Ha, E2 = -xxx.xxx Ha
-                    parts = line.split(',')
-                    try:
-                        e1 = float(parts[0].split('=')[1].strip().split()[0])
-                        e2 = float(parts[1].split('=')[1].strip().split()[0])
-                        if current_step is not None:
-                            steps.append(current_step)
-                            e1_list.append(e1)
-                            e2_list.append(e2)
-                    except:
-                        pass
-                elif "Energy gap:" in line:
-                    try:
-                        gap = float(line.split(':')[1].strip().split()[0])
-                        gap_list.append(gap)
-                    except:
-                        pass
-    except Exception as e:
-        print(f"[WARNING] Failed to parse log for scan {job.scan_idx}: {e}")
-        return
+        try:
+            with open(log_path, 'r') as f:
+                current_step = None
+                for line in f:
+                    if "MECP iteration step" in line:
+                        try:
+                            current_step = int(line.split("step")[-1].strip())
+                        except:
+                            pass
+                    elif "E1 =" in line and "E2 =" in line:
+                        # 格式: E1 = -xxx.xxx Ha, E2 = -xxx.xxx Ha
+                        parts = line.split(',')
+                        try:
+                            e1 = float(parts[0].split('=')[1].strip().split()[0])
+                            e2 = float(parts[1].split('=')[1].strip().split()[0])
+                            if current_step is not None:
+                                steps.append(current_step)
+                                e1_list.append(e1)
+                                e2_list.append(e2)
+                        except:
+                            pass
+                    elif "Energy gap:" in line:
+                        try:
+                            gap = float(line.split(':')[1].strip().split()[0])
+                            gap_list.append(gap)
+                        except:
+                            pass
+        except Exception as e:
+            print(f"[WARNING] Failed to parse log for scan {job.scan_idx}: {e}")
+            return
 
-    if not steps:
-        return
+        if not steps:
+            return
 
-    # 创建图表
-    fig, axes = plt.subplots(2, 1, figsize=(10, 8))
+        # 创建图表
+        fig, axes = plt.subplots(2, 1, figsize=(10, 8))
 
-    # 子图1: 能量变化
-    ax1 = axes[0]
-    ax1.plot(steps, e1_list, 'o-', label=f'State 1 (spin={cfg.spin1})', linewidth=2, markersize=6)
-    ax1.plot(steps, e2_list, 's-', label=f'State 2 (spin={cfg.spin2})', linewidth=2, markersize=6)
-    ax1.set_xlabel('MECP Step', fontsize=12)
-    ax1.set_ylabel('Energy (Hartree)', fontsize=12)
-    ax1.set_title(f'MECP Point {job.scan_idx} - Distance = {job.distance:.3f} Å',
-                  fontsize=14, fontweight='bold')
-    ax1.legend(fontsize=10)
-    ax1.grid(True, alpha=0.3)
+        # 子图1: 能量变化
+        ax1 = axes[0]
+        ax1.plot(steps, e1_list, 'o-', label=f'State 1 (spin={cfg.spin1})', linewidth=2, markersize=6)
+        ax1.plot(steps, e2_list, 's-', label=f'State 2 (spin={cfg.spin2})', linewidth=2, markersize=6)
+        ax1.set_xlabel('MECP Step', fontsize=12)
+        ax1.set_ylabel('Energy (Hartree)', fontsize=12)
+        ax1.set_title(f'MECP Point {job.scan_idx} - Distance = {job.distance:.3f} Å',
+                      fontsize=14, fontweight='bold')
+        ax1.legend(fontsize=10)
+        ax1.grid(True, alpha=0.3)
 
-    # 子图2: 能量差
-    ax2 = axes[1]
-    if gap_list:
-        ax2.plot(steps, gap_list, 'o-', color='red', linewidth=2, markersize=6)
-        ax2.axhline(y=cfg.mecp_conv * Hartree_to_kcal, color='green',
-                    linestyle='--', label=f'Convergence threshold ({cfg.mecp_conv * Hartree_to_kcal:.4f} kcal/mol)')
-        ax2.set_xlabel('MECP Step', fontsize=12)
-        ax2.set_ylabel('Energy Gap (kcal/mol)', fontsize=12)
-        ax2.set_title('Energy Gap Convergence', fontsize=12)
-        ax2.legend(fontsize=10)
-        ax2.grid(True, alpha=0.3)
-        ax2.set_yscale('log')
+        # 子图2: 能量差
+        ax2 = axes[1]
+        if gap_list:
+            ax2.plot(steps, gap_list, 'o-', color='red', linewidth=2, markersize=6)
+            ax2.axhline(y=cfg.mecp_conv * Hartree_to_kcal, color='green',
+                        linestyle='--', label=f'Convergence threshold ({cfg.mecp_conv * Hartree_to_kcal:.4f} kcal/mol)')
+            ax2.set_xlabel('MECP Step', fontsize=12)
+            ax2.set_ylabel('Energy Gap (kcal/mol)', fontsize=12)
+            ax2.set_title('Energy Gap Convergence', fontsize=12)
+            ax2.legend(fontsize=10)
+            ax2.grid(True, alpha=0.3)
+            ax2.set_yscale('log')
 
-    plt.tight_layout()
+        plt.tight_layout()
 
-    # 保存图片
-    plot_path = os.path.join(job.work_dir, f"convergence_progress.png")
-    plt.savefig(plot_path, dpi=150, bbox_inches='tight')
-    plt.close()
+        # 保存图片
+        plot_path = os.path.join(job.work_dir, f"convergence_progress.png")
+        plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+        plt.close()
 
-    print(f"[PLOT] Saved convergence plot for scan {job.scan_idx}: {plot_path}", flush=True)
+        print(f"[PLOT] Saved convergence plot for scan {job.scan_idx}: {plot_path}", flush=True)
+

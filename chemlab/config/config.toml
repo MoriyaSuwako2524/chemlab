@@ -270,3 +270,19 @@ ncore = 64
 njob = 16
 launcher = "srun"
 QCSCRATCH = "/scratch/$USER/cache"
+
+
+[mecp_1d_scan]
+ref="./ref.in"
+out_path="./"
+atom1=1
+atom2=3
+dist_range=[]
+prefix="soc_scan"
+spin1=1
+spin2=3
+max_stepsize=0.1
+converge_limit=1e-4
+K=100.0
+max_opt_steps=100
+ncore=32

@@ -42,9 +42,6 @@ class RunMecp(Script):
 
     def run(self, cfg):
 
-        # =============================
-        # Load Q-Chem environment script
-        # =============================
         cfg_env = QchemEnvConfig()
         env_script = cfg_env.env_script.strip()
         if not env_script:
@@ -54,9 +51,7 @@ class RunMecp(Script):
         print(env_script)
         print("==============================================")
 
-        # ====================
-        # Build MECP object
-        # ====================
+
         if cfg.jobtype == "mecp":
             test_mecp = mecp()
             test_mecp.different_type = cfg.gradient

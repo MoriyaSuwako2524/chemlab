@@ -244,8 +244,7 @@ class mecp(object):
         from IPython.display import display, clear_output
         import matplotlib.pyplot as plt
         import numpy as np
-    
-        clear_output(wait=True)  # ✅ 每次清空之前的图像输出
+
         self.iteration_list.append(self.job_num)
     
         # 获取能量信息
@@ -312,6 +311,7 @@ class mecp(object):
         fig3.tight_layout()
         display(fig3)
         plt.close(fig3)
+
 
 class mecp_soc(mecp):
     def __init__(self):
