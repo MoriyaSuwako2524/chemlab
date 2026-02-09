@@ -90,11 +90,11 @@ class MECP1DScan(QchemBaseScript):
         prefix= cfg.prefix
         spin1=cfg.spin1
         spin2=cfg.spin2
-        stepsize=cfg.max_stepsize,
-        converge_limit=cfg.converge_limit,
-        K=cfg.restrain_const,
-        ncore = cfg.ncore,
-        max_opt_steps=cfg.max_opt_steps,
+        stepsize=cfg.max_stepsize
+        converge_limit=cfg.converge_limit
+        K=cfg.restrain_const
+        ncore = cfg.ncore
+        max_opt_steps=cfg.max_opt_steps
         os.makedirs(scan_dir, exist_ok=True)
 
         energy1_list = []
