@@ -283,6 +283,6 @@ spin1=1
 spin2=3
 max_stepsize=0.1
 converge_limit=1e-4
-K=100.0
+restrain_const=100.0
 max_opt_steps=100
 ncore=32

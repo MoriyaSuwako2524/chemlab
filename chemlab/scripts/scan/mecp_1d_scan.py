@@ -80,6 +80,7 @@ class MECP1DScanConfig(ConfigBase):
 
 class MECP1DScan(QchemBaseScript):
     name = "mecp_1d_scan"
+    config = MECP1DScanConfig
     def run(self,cfg):
         ref_template = cfg.ref
         scan_dir =cfg.out_path
