@@ -146,7 +146,8 @@ class mecp(object):
         natom = self.state_1.inp.molecule.natom
         x_k = structure.flatten()
         g_k = (self.parallel_gradient+self.orthogonal_gradient).flatten()
-
+        print(f"structure.shape:{structure.shape}, norm:{np.linalg.norm(structure)}")
+        print(f"self.parallel_gradient.shape:{self.parallel_gradient.shape}, norm:{np.linalg.norm(self.parallel_gradient)}")
         # Apply BFGS update if past first iteration
         if self.last_structure is not None:
             dx = x_k - self.last_structure
