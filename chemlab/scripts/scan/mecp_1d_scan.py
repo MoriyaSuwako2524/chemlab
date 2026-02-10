@@ -142,7 +142,7 @@ class MECP1DScan(QchemBaseScript):
                     p.wait()
                 wait_for_qchem_outputs(out_files)
 
-                test_mecp.read_soc_output()
+                test_mecp.read_output()
                 test_mecp.calc_new_gradient()
 
                 test_mecp.restrain_ene(atom1 - 1, atom2 - 1, dist, K=K)
