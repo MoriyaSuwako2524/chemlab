@@ -1,4 +1,4 @@
-# MECP soc scan
+
 import os
 import shutil
 import numpy as np
@@ -149,7 +149,7 @@ class MECP1DScan(QchemBaseScript):
                 test_mecp.restrain_force(atom1 - 1, atom2 - 1, dist, K=K)
                 test_mecp.parallel_gradient += test_mecp.F_EI
 
-                if test_mecp.check_soc_converge():
+                if test_mecp.check_converge():
                     print(f"✅ Converged at scan step {i}")
                     break
                 test_mecp.update_structure()
