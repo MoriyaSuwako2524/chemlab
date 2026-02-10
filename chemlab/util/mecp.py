@@ -230,8 +230,8 @@ class mecp(object):
         
         if Rij > 1e-8:  # avoid divide-by-zero
             dR_dqi = R_vec / Rij
-            grad[:, atom_i] += dR_dqi
-            grad[:, atom_j] -= dR_dqi
+            grad[atom_i, :] += dR_dqi
+            grad[atom_j, :] -= dR_dqi
     
         F_restrain = 2 * K * delta * grad
         self.F_EI = F_restrain
