@@ -226,7 +226,7 @@ class mecp(object):
         R_vec = self.state_1.inp.molecule.calc_array_from_atom_1_to_atom_2(atom_i, atom_j)
         Rij = np.linalg.norm(R_vec)
         delta = Rij - R0
-        grad = np.zeros((3, self.state_1.inp.molecule.natom))  # shape (3, N)
+        grad = np.zeros(( self.state_1.inp.molecule.natom,3))  # shape (3, N)
         
         if Rij > 1e-8:  # avoid divide-by-zero
             dR_dqi = R_vec / Rij
