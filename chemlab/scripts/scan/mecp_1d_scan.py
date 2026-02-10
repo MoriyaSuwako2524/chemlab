@@ -133,7 +133,7 @@ class MECP1DScan(QchemBaseScript):
                 out_files = []
                 for state in [test_mecp.state_1]:
                     inpfile = os.path.join(test_mecp.out_path, state.job_name)
-                    outfile = inpfile + ".out"
+                    outfile = inpfile.replace(".inp", ".out")
                     out_files.append(outfile)
                     cmd = f"""{QCHEM_ENV_SETUP}qchem -nt {ncore//2} {inpfile} {outfile}"""
                     processes.append(Popen(cmd, shell=True, executable="/bin/bash"))
