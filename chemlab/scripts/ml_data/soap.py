@@ -3,7 +3,7 @@ from ase import Atoms
 import numpy as np
 from chemlab.scripts.base import Script
 from chemlab.config.config_loader import ConfigBase
-from chemlab.util.file_system import get_element_symbols
+from chemlab.util.file_system import NUM2ELEMENT
 import os
 
 class BuildSOAPConfig(ConfigBase):
@@ -17,7 +17,7 @@ class BuildSOAP(Script):
         npy_path = cfg.npy_path
         qm_type_file = cfg.qm_type
         qm_type = np.load(os.path.join(npy_path,qm_type_file))
-        elements = get_element_symbols(qm_type)
+        elements = NUM2ELEMENT[qm_type]
         out_path=cfg.out_path
         r_cut = cfg.r_cut
         n_max = cfg.n_max
