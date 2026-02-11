@@ -294,4 +294,4 @@ l_max=6
 sigma=0.5
 windows=40
 npy_path="./"
-qm_type_file="full_qm_type.npy"
+qm_type="full_qm_type.npy"
