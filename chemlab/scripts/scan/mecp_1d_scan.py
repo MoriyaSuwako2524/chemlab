@@ -52,7 +52,7 @@ def plot_mecp_scan_progress(dist_list, energy1_list, energy2_list):
     plt.close()
 
 
-def plot_opt_step_progress(energy1_list, energy2_list, gap_list, step_list, dist):
+def plot_opt_step_progress(energy1_list, energy2_list, gap_list, step_list, dist,scan_dir):
     fig, axs = plt.subplots(2, 1, figsize=(7, 6), sharex=True)
 
     axs[0].plot(step_list, energy1_list, label="State 1 Energy", marker='o')
@@ -161,7 +161,7 @@ class MECP1DScan(QchemBaseScript):
                     test_mecp.state_2.ene_list,
                     [abs(e1 - e2) for e1, e2 in zip(test_mecp.state_1.ene_list, test_mecp.state_2.ene_list)],
                     list(range(len(test_mecp.state_1.ene_list))),
-                    dist
+                    dist, scan_dir
                 )
 
             final_name = os.path.join(scan_dir, f"{prefix}_step{i}_final.inp")
