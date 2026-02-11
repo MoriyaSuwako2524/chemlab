@@ -295,3 +295,4 @@ sigma=0.5
 windows=40
 npy_path="./"
 qm_type="full_qm_type.npy"
+out_path="./npys/"

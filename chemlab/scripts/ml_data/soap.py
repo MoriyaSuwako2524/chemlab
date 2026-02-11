@@ -18,6 +18,7 @@ class BuildSOAP(Script):
         qm_type_file = cfg.qm_type
         qm_type = np.load(os.path.join(npy_path,qm_type_file))
         elements = get_element_symbols(qm_type)
+        out_path=cfg.out_path
         r_cut = cfg.r_cut
         n_max = cfg.n_max
         l_max = cfg.l_max
@@ -38,7 +39,7 @@ class BuildSOAP(Script):
             for j, coord in enumerate(coords):
                 soap_features.append(self.single_frame_soap(coord,qm_type,soap))
             soap_features = np.array(soap_features)  # (n_structures, n_features)
-            np.save(f"soap_features_w{i:02d}.npy", soap_features)
+            np.save(f"{out_path}/soap_features_w{i:02d}.npy", soap_features)
     @staticmethod
     def single_frame_soap(coord,qm_type,soap):
         atoms = Atoms(numbers=qm_type, positions=coord)
