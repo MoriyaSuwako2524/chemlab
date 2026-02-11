@@ -286,3 +286,12 @@ converge_limit=1e-4
 restrain_const=100.0
 max_opt_steps=100
 ncore=32
+
+[build_soap]
+r_cut=6.0
+n_max=8
+l_max=6
+sigma=0.5
+windows=40
+npy_path="./"
+qm_type_file="full_qm_type.npy"
