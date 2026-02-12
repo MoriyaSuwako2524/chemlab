@@ -296,3 +296,5 @@ windows=40
 npy_path="./"
 qm_type="full_qm_type.npy"
 out_path="./npys/"
+n_select=25
+random_seed=42
