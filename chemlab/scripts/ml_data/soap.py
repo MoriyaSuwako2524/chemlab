@@ -13,6 +13,9 @@ class BuildSOAPConfig(ConfigBase):
     section_name = "build_soap"
 
 class BuildSOAP(Script):
+    '''
+    基于soap，聚类选出结构（要输入给定的test/val)
+    '''
     name = "build_soap"
     config = BuildSOAPConfig
     def run(self,cfg):
@@ -41,6 +44,7 @@ class BuildSOAP(Script):
             average="outer"
         )
         all_selected_global = []
+        results=[]
         for i in range(windows):
             coords = np.load(os.path.join(npy_path,f"qm_coord_w{i:02d}.npy"))
             soap_features = []
@@ -80,9 +84,26 @@ class BuildSOAP(Script):
             window_start_global = sum(window_sizes[:i])
             selected_global = selected_local + window_start_global
             all_selected_global.extend(selected_global)
+            rng = np.random.default_rng(random_seed)
+            random_in_available = rng.choice(len(available_indices),
+                                             size=len(selected_in_available),
+                                             replace=False)
+            random_local = available_indices[random_in_available]
+
+            # 计算指标
+            cs, ds = compute_metrics(soap_features, selected_local)
+            cr, dr = compute_metrics(soap_features, random_local)
+            results.append({'cs': cs, 'cr': cr, 'ds': ds, 'dr': dr})
+
+            print(f"W{i}: SOAP cov={cs:.3f} div={ds:.3f}, Random cov={cr:.3f} div={dr:.3f}")
+
+            # 可视化前3个window
+            if i < 3:
+                plot_comparison(soap_features, selected_local, random_local, i, out_path)
 
         all_selected_global = np.array(all_selected_global)
         np.savez(f"{out_path}/soap_{windows*n_select}_split.npz", idx_train=all_selected_global, idx_val=test_set["idx_val"],idx_test=test_set["idx_test"])
+        plot_all_summary(results, out_path)
     @staticmethod
     def single_frame_soap(coord,qm_type,soap):
         atoms = Atoms(numbers=qm_type, positions=coord)
@@ -114,3 +135,72 @@ def get_local_exclude_for_window(window_id, test_set, global_to_window):
         if win_id == window_id:
             local_exclude.append(local_idx)
     return np.array(local_exclude)
+
+
+def compute_metrics(soap_features, selected_indices):
+    """计算coverage和diversity指标"""
+    from sklearn.metrics import pairwise_distances
+    selected = soap_features[selected_indices]
+    coverage = pairwise_distances(soap_features, selected).min(axis=1).mean()
+    if len(selected) > 1:
+        dists = pairwise_distances(selected)
+        mask = np.triu(np.ones(dists.shape), k=1).astype(bool)
+        diversity = dists[mask].mean()
+    else:
+        diversity = 0.0
+    return coverage, diversity
+
+
+def plot_comparison(soap_features, soap_idx, rand_idx, window_id, out_path):
+    """绘制单个window的对比图"""
+    from sklearn.decomposition import PCA
+    import matplotlib.pyplot as plt
+
+    pca = PCA(n_components=2)
+    soap_2d = pca.fit_transform(soap_features)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+    # SOAP
+    ax1.scatter(soap_2d[:, 0], soap_2d[:, 1], c='gray', s=10, alpha=0.3)
+    ax1.scatter(soap_2d[soap_idx, 0], soap_2d[soap_idx, 1], c='red', s=60, edgecolors='black')
+    ax1.set_title(f'SOAP - Window {window_id}')
+
+    # Random
+    ax2.scatter(soap_2d[:, 0], soap_2d[:, 1], c='gray', s=10, alpha=0.3)
+    ax2.scatter(soap_2d[rand_idx, 0], soap_2d[rand_idx, 1], c='blue', s=60, edgecolors='black')
+    ax2.set_title(f'Random - Window {window_id}')
+
+    plt.tight_layout()
+    plt.savefig(f"{out_path}/w{window_id:02d}_comparison.png", dpi=120)
+    plt.close()
+
+
+def plot_all_summary(results, out_path):
+    """绘制所有windows的总结"""
+    import matplotlib.pyplot as plt
+
+    cov_s = [r['cs'] for r in results]
+    cov_r = [r['cr'] for r in results]
+    div_s = [r['ds'] for r in results]
+    div_r = [r['dr'] for r in results]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+    x = range(len(results))
+    w = 0.35
+
+    ax1.bar([i - w / 2 for i in x], cov_s, w, label='SOAP', alpha=0.8)
+    ax1.bar([i + w / 2 for i in x], cov_r, w, label='Random', alpha=0.8)
+    ax1.set_ylabel('Coverage (↓)')
+    ax1.set_title('Coverage Comparison')
+    ax1.legend()
+
+    ax2.bar([i - w / 2 for i in x], div_s, w, label='SOAP', alpha=0.8)
+    ax2.bar([i + w / 2 for i in x], div_r, w, label='Random', alpha=0.8)
+    ax2.set_ylabel('Diversity (↑)')
+    ax2.set_title('Diversity Comparison')
+    ax2.legend()
+
+    plt.tight_layout()
+    plt.savefig(f"{out_path}/summary.png", dpi=120)
+    plt.close()

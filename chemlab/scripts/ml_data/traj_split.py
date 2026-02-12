@@ -11,6 +11,8 @@ class TrajSplit(Script):
     """
     Split a molecular trajectory dataset into train/val/test
     and export xyz files for each split.
+
+    No longer used !
     """
 
     name = "traj_split"

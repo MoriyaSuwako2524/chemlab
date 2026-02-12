@@ -8,8 +8,6 @@ from chemlab.config import ExportNumpyConfig
 class ExportNumpy(Script):
     """
     Export TDDFT dataset into numpy arrays.
-
-    CLI will load this class automatically and call `run(cfg)`.
     """
     name = "export_numpy"
     config = ExportNumpyConfig  # link to config section in config.toml
