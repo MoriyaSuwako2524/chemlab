@@ -10,11 +10,7 @@ ELEMENT_DICT = {
     "Ru": 44, "Rh": 45, "Pd": 46, "Ag": 47, "Cd": 48, "In": 49, "Sn": 50, "Sb": 51, "Te": 52, "I": 53, "Xe": 54
 }
 SPIN_REF = {1: "singlet", 2: "doublet", 3: "triplet", 4: "quartlet", 5: "quintet", 6: "sextuplet"}
-def get_element_symbols(atomic_number):
-    try:
-        return [ELEMENT_DICT.keys()[i-1] for i in atomic_number]
-    except TypeError:
-        return ELEMENT_DICT.keys()[atomic_number]
+
 NUM2ELEMENT = {v: k for k, v in ELEMENT_DICT.items()}
 atom_charge_dict = ELEMENT_DICT.copy() #历史遗留问题这一块
 class qchem_file(object):  # standard qchem inp file class

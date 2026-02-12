@@ -17,7 +17,7 @@ class BuildSOAP(Script):
         npy_path = cfg.npy_path
         qm_type_file = cfg.qm_type
         qm_type = np.load(os.path.join(npy_path,qm_type_file))
-        elements = NUM2ELEMENT[qm_type]
+        elements = [NUM2ELEMENT[int(i-1)] for i in qm_type]
         out_path=cfg.out_path
         r_cut = cfg.r_cut
         n_max = cfg.n_max
