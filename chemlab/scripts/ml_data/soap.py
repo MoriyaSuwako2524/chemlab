@@ -14,7 +14,7 @@ class BuildSOAPConfig(ConfigBase):
 
 class BuildSOAP(Script):
     '''
-    基于soap，聚类选出结构（要输入给定的test/val)
+    基于给定的描述符，聚类选出结构（要输入给定的test/val)
     '''
     name = "build_soap"
     config = BuildSOAPConfig
@@ -33,34 +33,38 @@ class BuildSOAP(Script):
         random_seed = cfg.random_seed
         test_set = cfg.test_set
         test_set = np.load(os.path.join(npy_path,test_set))
+        method = cfg.method
         global_to_window,window_sizes = build_global_to_window_mapping(npy_path,windows)
-        soap = SOAP(
-            species=elements,
-            r_cut=r_cut,
-            n_max=n_max,
-            l_max=l_max,
-            sigma=sigma,
-            periodic=False,
-            average="outer"
-        )
+
+        if method == "soap":
+            descriptor = SOAP(
+                species=elements,
+                r_cut=r_cut,
+                n_max=n_max,
+                l_max=l_max,
+                sigma=sigma,
+                periodic=False,
+                average="outer"
+            )
+        
         all_selected_global = []
         results=[]
         for i in range(windows):
             coords = np.load(os.path.join(npy_path,f"qm_coord_w{i:02d}.npy"))
-            soap_features = []
+            features = []
             for j, coord in enumerate(coords):
-                soap_features.append(self.single_frame_soap(coord,qm_type,soap))
+                features.append(self.single_frame_soap(coord,qm_type,descriptor))
 
-            soap_features = np.array(soap_features)  # (n_structures, n_features)
+            features = np.array(features)  # (n_structures, n_features)
 
 
-            #np.save(f"{out_path}/soap_features_w{i:02d}.npy", soap_features)
-            n_structures = soap_features.shape[0]
-            n_features = soap_features.shape[1]
+            #np.save(f"{out_path}/soap_features_w{i:02d}.npy", features)
+            n_structures = features.shape[0]
+            n_features = features.shape[1]
             local_exclude = get_local_exclude_for_window(i, test_set, global_to_window)
             all_indices = np.arange(n_structures)
             available_indices = np.setdiff1d(all_indices, local_exclude)
-            available_soap = soap_features[available_indices]
+            available_soap = features[available_indices]
 
 
             kmeans = KMeans(n_clusters=n_select, random_state=random_seed, n_init=10)
@@ -90,16 +94,16 @@ class BuildSOAP(Script):
                                              replace=False)
             random_local = available_indices[random_in_available]
 
-            # 计算指标
-            cs, ds = compute_metrics(soap_features, selected_local)
-            cr, dr = compute_metrics(soap_features, random_local)
+
+            cs, ds = compute_metrics(features, selected_local)
+            cr, dr = compute_metrics(features, random_local)
             results.append({'cs': cs, 'cr': cr, 'ds': ds, 'dr': dr})
 
             print(f"W{i}: SOAP cov={cs:.3f} div={ds:.3f}, Random cov={cr:.3f} div={dr:.3f}")
 
             # 可视化前3个window
             if i < 3:
-                plot_comparison(soap_features, selected_local, random_local, i, out_path)
+                plot_comparison(features, selected_local, random_local, i, out_path)
 
         all_selected_global = np.array(all_selected_global)
         np.savez(f"{out_path}/soap_{windows*n_select}_split.npz", idx_train=all_selected_global, idx_val=test_set["idx_val"],idx_test=test_set["idx_test"])
@@ -138,7 +142,6 @@ def get_local_exclude_for_window(window_id, test_set, global_to_window):
 
 
 def compute_metrics(soap_features, selected_indices):
-    """计算coverage和diversity指标"""
     from sklearn.metrics import pairwise_distances
     selected = soap_features[selected_indices]
     coverage = pairwise_distances(soap_features, selected).min(axis=1).mean()
