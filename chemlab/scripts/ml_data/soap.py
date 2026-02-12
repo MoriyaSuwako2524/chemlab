@@ -82,7 +82,7 @@ class BuildSOAP(Script):
             all_selected_global.extend(selected_global)
 
         all_selected_global = np.array(all_selected_global)
-        np.savez(f"{out_path}/soap_{windows*n_select}_split.npz", idx_train=all_selected_global, idx_val=test_set["idx_val"],idx_test=test_set["idx_testt"])
+        np.savez(f"{out_path}/soap_{windows*n_select}_split.npz", idx_train=all_selected_global, idx_val=test_set["idx_val"],idx_test=test_set["idx_test"])
     @staticmethod
     def single_frame_soap(coord,qm_type,soap):
         atoms = Atoms(numbers=qm_type, positions=coord)
