@@ -61,7 +61,7 @@ class BuildSOAP(Script):
 
             kmeans = KMeans(n_clusters=n_select, random_state=random_seed, n_init=10)
             labels = kmeans.fit_predict(available_soap)
-            selected_indices = []
+            selected_in_available = []
             for cluster_id in range(n_select):
                 cluster_mask = (labels == cluster_id)
                 cluster_indices = np.where(cluster_mask)[0]
