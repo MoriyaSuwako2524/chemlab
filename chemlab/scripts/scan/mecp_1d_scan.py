@@ -117,6 +117,7 @@ class MECP1DScan(QchemBaseScript):
             test_mecp.state_1.spin = spin1
             test_mecp.state_2.spin = spin2
             test_mecp.stepsize = stepsize
+            test_mecp.max_stepsize = stepsize
             test_mecp.different_type = "soc"
             test_mecp.converge_limit = converge_limit
             test_mecp.read_init_structure()
