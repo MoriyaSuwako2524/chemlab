@@ -17,8 +17,8 @@ class OrderTest(Script):
         n_val = cfg.n_val
         p,window_sizes = build_global_to_window_mapping(npy_path, windows)
         total = sum(window_sizes)
-        all_test_global = np.array([], dtype=int)
-        all_val_global = np.array([], dtype=int)
+        all_test_global = []
+        all_val_global = []
 
         for i in range(windows):
             test_local, val_local = select_evenly_spaced_separate(
