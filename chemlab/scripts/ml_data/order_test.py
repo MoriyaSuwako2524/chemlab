@@ -2,7 +2,7 @@ import numpy as np
 from chemlab.scripts.base import Script
 from chemlab.config.config_loader import ConfigBase
 from chemlab.scripts.ml_data.soap import build_global_to_window_mapping
-
+import os
 class OrderTestConfig(ConfigBase):
     section_name = "order_test"
 class OrderTest(Script):
