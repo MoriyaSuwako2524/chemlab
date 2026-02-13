@@ -36,6 +36,9 @@ class BuildSOAP(Script):
         method = cfg.method
         global_to_window,window_sizes = build_global_to_window_mapping(npy_path,windows)
 
+
+
+
         if method == "soap":
             descriptor = SOAP(
                 species=elements,
@@ -55,7 +58,7 @@ class BuildSOAP(Script):
             for j, coord in enumerate(coords):
                 features.append(self.single_frame_soap(coord,qm_type,descriptor))
 
-            features = np.array(features)  # (n_structures, n_features)
+            features = np.array(features)  # (n_frames, n_features)
 
 
             #np.save(f"{out_path}/soap_features_w{i:02d}.npy", features)

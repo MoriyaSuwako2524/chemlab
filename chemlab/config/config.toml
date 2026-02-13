@@ -300,3 +300,12 @@ test_set = "1000_split.npz"
 n_select=25
 random_seed=42
 method="soap"
+
+
+[order_test]
+windows=40
+npy_path="./"
+out_path="./npys/"
+n_test=5000
+n_val=2000
+random_seed=42
