@@ -53,65 +53,75 @@ class BuildSOAP(Script):
         all_selected_global = []
         results=[]
         for i in range(windows):
-            coords = np.load(os.path.join(npy_path,f"qm_coord_w{i:02d}.npy"))
-            features = []
-            for j, coord in enumerate(coords):
-                features.append(self.single_frame_soap(coord,qm_type,descriptor))
+            coords = np.load(os.path.join(npy_path, f"qm_coord_w{i:02d}.npy"))
 
-            features = np.array(features)  # (n_frames, n_features)
-
-
-            #np.save(f"{out_path}/soap_features_w{i:02d}.npy", features)
-            n_structures = features.shape[0]
-            n_features = features.shape[1]
+            # remove given test/val
+            n_structures = coords.shape[0]
             local_exclude = get_local_exclude_for_window(i, test_set, global_to_window)
             all_indices = np.arange(n_structures)
             available_indices = np.setdiff1d(all_indices, local_exclude)
-            available_soap = features[available_indices]
 
+            if method == "order":
+                step = max(1, len(available_indices) // n_select)
+                selected_in_available = np.arange(0, len(available_indices), step)[:n_select]
+                selected_local = available_indices[selected_in_available]
 
-            kmeans = KMeans(n_clusters=n_select, random_state=random_seed, n_init=10)
-            labels = kmeans.fit_predict(available_soap)
-            selected_in_available = []
-            for cluster_id in range(n_select):
-                cluster_mask = (labels == cluster_id)
-                cluster_indices = np.where(cluster_mask)[0]
+            elif method == "random":
+                rng = np.random.default_rng(random_seed)
+                selected_in_available = rng.choice(len(available_indices),
+                                                   size=min(n_select, len(available_indices)),
+                                                   replace=False)
+                selected_local = available_indices[selected_in_available]
 
-                if len(cluster_indices) == 0:
-                    continue
+            elif method == "soap":
+                features = []
+                for j, coord in enumerate(coords):
+                    features.append(self.single_frame_soap(coord, qm_type, descriptor))
+                features = np.array(features)
 
-                cluster_structures = available_soap[cluster_mask]
-                center = kmeans.cluster_centers_[cluster_id]
-                distances = np.linalg.norm(cluster_structures - center, axis=1)
-                closest_idx = cluster_indices[np.argmin(distances)]
-                selected_in_available.append(closest_idx)
+                available_soap = features[available_indices]
+                kmeans = KMeans(n_clusters=n_select, random_state=random_seed, n_init=10)
+                labels = kmeans.fit_predict(available_soap)
+                selected_in_available = []
+                for cluster_id in range(n_select):
+                    cluster_mask = (labels == cluster_id)
+                    cluster_indices = np.where(cluster_mask)[0]
+                    if len(cluster_indices) == 0:
+                        continue
+                    cluster_structures = available_soap[cluster_mask]
+                    center = kmeans.cluster_centers_[cluster_id]
+                    distances = np.linalg.norm(cluster_structures - center, axis=1)
+                    closest_idx = cluster_indices[np.argmin(distances)]
+                    selected_in_available.append(closest_idx)
+                selected_in_available = np.array(selected_in_available)
+                selected_local = available_indices[selected_in_available]
+            else:
+                raise ValueError(f"Unknown method: {method}")
 
-            selected_in_available = np.array(selected_in_available)
-            selected_local = available_indices[selected_in_available]
             window_start_global = sum(window_sizes[:i])
             selected_global = selected_local + window_start_global
             all_selected_global.extend(selected_global)
-            rng = np.random.default_rng(random_seed)
-            random_in_available = rng.choice(len(available_indices),
-                                             size=len(selected_in_available),
-                                             replace=False)
-            random_local = available_indices[random_in_available]
 
-
-            cs, ds = compute_metrics(features, selected_local)
-            cr, dr = compute_metrics(features, random_local)
-            results.append({'cs': cs, 'cr': cr, 'ds': ds, 'dr': dr})
-
-            print(f"W{i}: SOAP cov={cs:.3f} div={ds:.3f}, Random cov={cr:.3f} div={dr:.3f}")
-
-            # 可视化前3个window
-            if i < 3:
-                plot_comparison(features, selected_local, random_local, i, out_path)
+            if method == "soap":
+                rng = np.random.default_rng(random_seed)
+                random_in_available = rng.choice(len(available_indices),
+                                                 size=len(selected_in_available),
+                                                 replace=False)
+                random_local = available_indices[random_in_available]
+                cs, ds = compute_metrics(features, selected_local)
+                cr, dr = compute_metrics(features, random_local)
+                results.append({'cs': cs, 'cr': cr, 'ds': ds, 'dr': dr})
+                print(f"W{i}: SOAP cov={cs:.3f} div={ds:.3f}, Random cov={cr:.3f} div={dr:.3f}")
+                if i < 3:
+                    plot_comparison(features, selected_local, random_local, i, out_path)
+            else:
+                print(
+                    f"W{i}: {method} selected {len(selected_local)} structures from {len(available_indices)} available")
 
         all_selected_global = np.array(all_selected_global)
         np.random.shuffle(all_selected_global)
         total = windows*n_select
-        np.savez(f"{out_path}/soap_{total}_split.npz", idx_train=all_selected_global, idx_val=test_set["idx_val"],idx_test=test_set["idx_test"])
+        np.savez(f"{out_path}/{method}_{total}_split.npz", idx_train=all_selected_global, idx_val=test_set["idx_val"],idx_test=test_set["idx_test"])
         plot_all_summary(results, out_path,total)
     @staticmethod
     def single_frame_soap(coord,qm_type,soap):
