@@ -110,8 +110,9 @@ class BuildSOAP(Script):
 
         all_selected_global = np.array(all_selected_global)
         np.random.shuffle(all_selected_global)
-        np.savez(f"{out_path}/soap_{windows*n_select}_split.npz", idx_train=all_selected_global, idx_val=test_set["idx_val"],idx_test=test_set["idx_test"])
-        plot_all_summary(results, out_path)
+        total = windows*n_select
+        np.savez(f"{out_path}/soap_{total}_split.npz", idx_train=all_selected_global, idx_val=test_set["idx_val"],idx_test=test_set["idx_test"])
+        plot_all_summary(results, out_path,total)
     @staticmethod
     def single_frame_soap(coord,qm_type,soap):
         atoms = Atoms(numbers=qm_type, positions=coord)
@@ -183,7 +184,7 @@ def plot_comparison(soap_features, soap_idx, rand_idx, window_id, out_path):
     plt.close()
 
 
-def plot_all_summary(results, out_path):
+def plot_all_summary(results, out_path,total):
     """绘制所有windows的总结"""
     import matplotlib.pyplot as plt
 
@@ -209,5 +210,5 @@ def plot_all_summary(results, out_path):
     ax2.legend()
 
     plt.tight_layout()
-    plt.savefig(f"{out_path}/summary.png", dpi=120)
+    plt.savefig(f"{out_path}/soap_{total}_summary.png", dpi=120)
     plt.close()
