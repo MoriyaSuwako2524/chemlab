@@ -109,6 +109,7 @@ class mecp(object):
         E2 = self.state_2.out.ene
         gradient_1 = self.state_1.out.force
         gradient_2 = self.state_2.out.force
+        print(gradient_1,gradient_2)
         # Difference vector between the two gradients
         delta_gradient = gradient_1 - gradient_2
         norm_dg = np.linalg.norm(delta_gradient)
@@ -226,7 +227,7 @@ class mecp(object):
         R_vec = self.state_1.inp.molecule.calc_array_from_atom_1_to_atom_2(atom_i, atom_j)
         Rij = np.linalg.norm(R_vec)
         delta = Rij - R0
-        grad = np.zeros(( self.state_1.inp.molecule.natom,3))  # shape (3, N)
+        grad = np.zeros(( self.state_1.inp.molecule.natom,3))
         
         if Rij > 1e-8:  # avoid divide-by-zero
             dR_dqi = R_vec / Rij
@@ -387,6 +388,8 @@ class mecp_soc(mecp):
 
         self.state_1.out.force = self.state_1.out.force
         self.state_2.out.force = -self.state_1.out.force + self.state_1.out.force_e1 + self.state_1.out.force_e2
+        self.state_1.out.force = self.state_1.out.force .T
+        self.state_2.out.force = self.state_2.out.force .T
 
         self.state_1.gradient_list.append(self.state_1.out.force)
         self.state_2.gradient_list.append(self.state_2.out.force)
