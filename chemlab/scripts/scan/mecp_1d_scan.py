@@ -37,8 +37,7 @@ def wait_for_qchem_outputs(out_files, check_interval=30):
         time.sleep(check_interval)
 
 
-def plot_mecp_scan_progress(dist_list, energy1_list, energy2_list):
-    clear_output(wait=True)
+def plot_mecp_scan_progress(dist_list, energy1_list, energy2_list,scan_dir):
     plt.figure(figsize=(6, 4))
     plt.plot(dist_list, energy1_list, marker='o', linestyle='-', color='blue')
     plt.plot(dist_list, energy2_list, marker='o', linestyle='-', color='red')
@@ -47,7 +46,6 @@ def plot_mecp_scan_progress(dist_list, energy1_list, energy2_list):
     plt.title("MECP Scan: Energy vs Restrain")
     plt.grid(True)
     plt.tight_layout()
-    display(plt.gcf())
     plt.savefig(f"{scan_dir}/mecp_scan_progress.png")
     plt.close()
 
@@ -102,7 +100,7 @@ class MECP1DScan(QchemBaseScript):
         dist_list = []
 
         for i, dist in enumerate(dist_range):
-            print(f"\n🔹 Step {i}: Restrain bond {atom1}-{atom2} to {dist:.3f} Å")
+            print(f"\n Step {i}: Restrain bond {atom1}-{atom2} to {dist:.3f} Å")
 
             inp = qchem_file()
             inp.molecule.check = True
@@ -174,10 +172,10 @@ class MECP1DScan(QchemBaseScript):
             energy1_list.append(E1)
             energy2_list.append(E2)
             dist_list.append(dist)
-            plot_mecp_scan_progress(dist_list, energy1_list, energy2_list)
+            plot_mecp_scan_progress(dist_list, energy1_list, energy2_list,scan_dir)
             np.save(f"{scan_dir}/E1.npy",energy1_list)
             np.save(f"{scan_dir}/E2.npy",energy2_list)
             np.save(f"{scan_dir}/dist.npy",dist_list)
         print(" MECP scan completed with restrain correction.")
-        return dist_list, energy_list
+        return dist_list
 

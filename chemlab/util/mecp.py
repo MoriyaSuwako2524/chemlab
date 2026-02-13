@@ -388,8 +388,6 @@ class mecp_soc(mecp):
         self.state_1.out.force = self.state_1.out.force
         self.state_2.out.force = -self.state_1.out.force + self.state_1.out.force_e1 + self.state_1.out.force_e2
 
-        self.state_1.out.force = self.state_1.out.force.T
-        self.state_2.out.force = self.state_2.out.force.T
         self.state_1.gradient_list.append(self.state_1.out.force)
         self.state_2.gradient_list.append(self.state_2.out.force)
 
