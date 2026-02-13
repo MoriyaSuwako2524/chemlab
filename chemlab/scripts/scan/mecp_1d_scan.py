@@ -14,7 +14,7 @@ module purge
 export QC=/scratch/moriya/software/soc
 export QCAUX=/scratch/zhengpei/q-chem/qcaux
 source $QC/bin/qchem.setup.sh
-export QCSCRATCH=/scratch/$USER
+export QCSCRATCH=/scratch/$USER/cache
 module load cmake3/3.24.3
 module load impi/2021.2.0
 module load intel/2021.2.0
