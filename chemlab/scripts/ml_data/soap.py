@@ -109,6 +109,7 @@ class BuildSOAP(Script):
                 plot_comparison(features, selected_local, random_local, i, out_path)
 
         all_selected_global = np.array(all_selected_global)
+        np.random.shuffle(all_selected_global)
         np.savez(f"{out_path}/soap_{windows*n_select}_split.npz", idx_train=all_selected_global, idx_val=test_set["idx_val"],idx_test=test_set["idx_test"])
         plot_all_summary(results, out_path)
     @staticmethod
