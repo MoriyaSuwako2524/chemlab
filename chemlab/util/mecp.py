@@ -342,7 +342,7 @@ class mecp_soc(mecp):
 
         # Structure displacement
         if self.last_structure is not None:
-            last_structure = self.last_structure.reshape((3, natom))
+            last_structure = self.last_structure.reshape((natom, 3))
             displacement = np.linalg.norm(current_structure - last_structure)
         else:
             displacement = np.inf
