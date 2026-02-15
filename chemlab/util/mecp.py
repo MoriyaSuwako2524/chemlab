@@ -133,10 +133,6 @@ class mecp(object):
 
         # Parallel gradient component (tangent to crossing surface)
         self.parallel_gradient = gradient_1 - projection_vector
-        if self.restrain:
-            for restrain in self.restrain_list:
-                grad = self.restrain_force(restrain[0], restrain[1], restrain[2], restrain[3])
-                self.parallel_gradient += grad
     def update_structure(self):
         #Update molecular structure using BFGS quasi-Newton step.
         # Get current structure and flatten
