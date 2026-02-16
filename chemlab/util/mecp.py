@@ -32,40 +32,20 @@ class mecp(object):
         self.restrain_list = []
         self.hessian_coefficient = 0.01
         self.step_size = 0.01
-        
-        # ========== Harvey MECP 相关参数 (来自 easymecp.py) ==========
+
         self.nstep = 0           # 当前步数
         self.ffile = 0           # 是否从ProgFile恢复 (0=否)
-        
-        # 收敛阈值 (与 easymecp.py 一致)
-        self.TDE = 5.0e-5        # 能量差阈值
-        self.TDXMax = 4.0e-3     # 最大位移阈值
-        self.TDXRMS = 2.5e-3     # RMS位移阈值
-        self.TGMax = 7.0e-4      # 最大梯度阈值
-        self.TGRMS = 5.0e-4      # RMS梯度阈值
-        
-        # Harvey有效梯度参数
-        self.facPP = 140.0       # 垂直梯度系数 (经验值)
-        self.facP = 1.0          # 平行梯度系数
-        self.STPMX = 0.1         # 单坐标最大步长 (Angstrom)
-        
 
-        self.X_1 = None          # 前前一步坐标
-        self.X_2 = None          # 前一步坐标
-        self.G_1 = None          # 前一步有效梯度
-        self.G_2 = None          # 当前有效梯度
-        self.HI_1 = None         # 前一步逆Hessian
-        self.HI_2 = None         # 当前逆Hessian
 
     @property
     def energy_tol(self):
-        return self.TDE
+        return self.converge_limit
     @property
     def grad_tol(self):
-        return self.TGMax
+        return self.converge_limit * 3
     @property
     def disp_tol(self):
-        return self.TDXMax
+        return self.converge_limit * 10
 
         
     def add_restrain(self,atom_i, atom_j, R0, K=1000.0):
