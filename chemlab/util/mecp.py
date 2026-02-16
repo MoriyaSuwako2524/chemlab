@@ -328,7 +328,7 @@ class mecp_soc(mecp):
         # Current energy
         current_energy = self.state_1.out.final_adiabatic_ene  # spin-adiabatic energy from output
         natom = self.state_1.inp.molecule.natom
-        current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float)
+        current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float).flatten()
 
         # Energy change
         if hasattr(self, "last_adiabatic_energy"):
