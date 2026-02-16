@@ -261,9 +261,8 @@ class mecp(object):
     
         # 计算结构位移
         natom = self.state_1.inp.molecule.natom
-        current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
+        current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float)
         if self.last_structure is not None:
-            last_structure = self.last_structure.reshape((3, natom))
             displacement = np.linalg.norm(current_structure - last_structure)
         else:
             displacement = np.nan
@@ -329,7 +328,7 @@ class mecp_soc(mecp):
         # Current energy
         current_energy = self.state_1.out.final_adiabatic_ene  # spin-adiabatic energy from output
         natom = self.state_1.inp.molecule.natom
-        current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float).T
+        current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float)
 
         # Energy change
         if hasattr(self, "last_adiabatic_energy"):
@@ -342,7 +341,7 @@ class mecp_soc(mecp):
 
         # Structure displacement
         if self.last_structure is not None:
-            last_structure = self.last_structure.reshape((natom, 3))
+            last_structure = self.last_structure
             displacement = np.linalg.norm(current_structure - last_structure)
         else:
             displacement = np.inf
@@ -386,6 +385,7 @@ class mecp_soc(mecp):
         self.state_2.out.force = -self.state_1.out.force + self.state_1.out.force_e1 + self.state_1.out.force_e2
         self.state_1.out.force = self.state_1.out.force .T
         self.state_2.out.force = self.state_2.out.force .T
+
 
         self.state_1.gradient_list.append(self.state_1.out.force)
         self.state_2.gradient_list.append(self.state_2.out.force)
