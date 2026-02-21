@@ -42,10 +42,10 @@ class mecp(object):
         return self.converge_limit
     @property
     def grad_tol(self):
-        return self.converge_limit * 3
+        return self.converge_limit * 10
     @property
     def disp_tol(self):
-        return self.converge_limit * 10
+        return self.converge_limit * 30
 
         
     def add_restrain(self,atom_i, atom_j, R0, K=1000.0):
