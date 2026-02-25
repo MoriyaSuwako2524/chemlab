@@ -124,6 +124,8 @@ class QMMMTrainSetDFT(QchemBaseScript):
         prefix = cfg.prefix
         ref = cfg.ref
         windows = cfg.windows
+        charge = cfg.charge
+        spin = cfg.spin
 
 
 
@@ -157,10 +159,9 @@ class QMMMTrainSetDFT(QchemBaseScript):
                 else:
                     tem_inp.external_charges.check = False
 
-                tem_inp.read_from_file(cfg.ref)
-
-                tem_inp.charge = qmmm.qm_molecule.charge
-                tem_inp.spin = qmmm.qm_molecule.spin
+                tem_inp.read_from_file(ref)
+                tem_inp.molecule.charge = qmmm.qm_molecule.charge
+                tem_inp.molecule.spin = qmmm.qm_molecule.spin
                 tem_inp.external_charges.mm_pos = qmmm.mm_molecule.coord
                 tem_inp.external_charges.mm_charge = qmmm.mm_molecule.charges
                 tem_inp.molecule.carti = qmmm.qm_molecule._carti
