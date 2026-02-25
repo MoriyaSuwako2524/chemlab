@@ -124,8 +124,6 @@ class QMMMTrainSetDFT(QchemBaseScript):
         prefix = cfg.prefix
         ref = cfg.ref
         windows = cfg.windows
-        charge = cfg.charge
-        spin = cfg.spin
 
 
 
