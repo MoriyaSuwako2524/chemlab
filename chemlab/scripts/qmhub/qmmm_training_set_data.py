@@ -141,8 +141,8 @@ class QMMMTrainSetData(QchemBaseScript):
                     qm_type = np.array([atom_charge_dict[sym] for sym in atom_symbols])
                     full_qm_type = qm_type
                 tem_qm_coord = tem_qmout.molecule.xyz
-                tem_energy = np.fromfile(tem_cache_path + "99.0", dtype="f8", count=2)[1]
-                tem_qm_grad = np.fromfile(tem_cache_path + "131.0", dtype="f8").reshape(-1, 3)
+                tem_energy = tem_qmout.ene
+                tem_qm_grad = tem_qmout.force
 
                 win_energy.append(tem_energy)
                 win_qm_grad.append(tem_qm_grad)
