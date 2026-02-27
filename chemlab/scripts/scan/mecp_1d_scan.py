@@ -147,11 +147,12 @@ class MECP1DScan(QchemBaseScript):
                 test_mecp.restrain_ene(atom1 - 1, atom2 - 1, dist, K=K)
                 test_mecp.restrain_force(atom1 - 1, atom2 - 1, dist, K=K)
                 print(f"restrain_force: {test_mecp.F_EI}")
-                test_mecp.parallel_gradient += test_mecp.F_EI
+
 
                 if test_mecp.check_converge():
                     print(f"✅ Converged at scan step {i}")
                     break
+                test_mecp.parallel_gradient += test_mecp.F_EI
                 test_mecp.update_structure()
                 energy1 = test_mecp.state_1.out.ene
                 energy2 = test_mecp.state_2.out.ene

@@ -318,7 +318,7 @@ class mecp_soc(mecp):
             delta_E = np.inf
 
         # Gradient norm
-        grad_norm = np.linalg.norm(self.parallel_gradient + self.orthogonal_gradient-self.F_EI)
+        grad_norm = np.linalg.norm(self.parallel_gradient + self.orthogonal_gradient)
 
         # Structure displacement
         if self.last_structure is not None:
