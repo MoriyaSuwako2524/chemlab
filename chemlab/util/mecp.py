@@ -100,12 +100,11 @@ class mecp(object):
             unit_delta_gradient = delta_gradient
         else:
             unit_delta_gradient = delta_gradient / norm_dg
-        delta_E = E1 - E2
-        if np.sign(delta_E) != np.sign(np.sum(gradient_1 * delta_gradient)):
-            delta_gradient = -delta_gradient
+
+
 
         # Orthogonal gradient component (perpendicular to crossing surface)
-        self.orthogonal_gradient = (E1 - E2) * unit_delta_gradient
+        self.orthogonal_gradient = (E1 - E2) * delta_gradient
         print(f"orthogonal_gradient:{self.orthogonal_gradient}")
         # Project gradient_1 onto unit direction
         projection_scalar = np.sum(gradient_1 * unit_delta_gradient)
@@ -113,7 +112,7 @@ class mecp(object):
 
         # Parallel gradient component (tangent to crossing surface)
         self.parallel_gradient = gradient_1 - projection_vector
-        print(f"orthogonal_gradient:{self.parallel_gradient}")
+        print(f"parallel_gradient:{self.parallel_gradient}")
     def update_structure(self):
         #Update molecular structure using BFGS quasi-Newton step.
         # Get current structure and flatten
@@ -138,6 +137,7 @@ class mecp(object):
                 term3 = dx @ dx.T / dxdg
                 self.inv_hess = term1 @ self.inv_hess @ term2 + term3
             else:
+                self.inv_hess = np.eye(len(g_k))
                 print(" BFGS update skipped: small dot product")
         else:
             self.inv_hess = np.eye(len(g_k))
