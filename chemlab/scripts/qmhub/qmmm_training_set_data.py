@@ -62,11 +62,11 @@ class QMMMTrainSetData(QchemBaseScript):
 
                 tem_energy = np.fromfile(tem_cache_path + "99.0", dtype="f8", count=2)[1]
                 tem_qm_grad = np.fromfile(tem_cache_path + "131.0", dtype="f8").reshape(-1, 3)
-                tem_mm_esp = np.loadtxt(tem_qmmm_path + f"{prefix}{frame}.out.esp", dtype=float, skiprows=3)
+                tem_mm_esp = np.loadtxt( f"{tem_qmmm_path}/{frame}/{prefix}{frame}.out.esp", dtype=float, skiprows=3)
                 try:
-                    tem_mm_esp_grad = -np.loadtxt(tem_qmmm_path + f"{prefix}{frame}.out.efld", max_rows=len(tem_mm_esp), dtype=float)
+                    tem_mm_esp_grad = -np.loadtxt(f"{tem_qmmm_path}/{frame}/{prefix}{frame}.out.efld", max_rows=len(tem_mm_esp), dtype=float)
                 except:
-                    print(tem_qmmm_path + f"{prefix}{frame}.out.efld error")
+                    print(f"{tem_qmmm_path}/{frame}/{prefix}{frame}.out.efld error")
                     continue
 
                 if len(win_mm_esp) == 0:
