@@ -6,7 +6,7 @@ import subprocess as sp
 from multiprocessing import Pool
 import numpy as np
 
-from chemlab.util.file_system import ELEMENT_DICT,qchem_out_force
+from chemlab.util.file_system import ELEMENT_DICT,qchem_out_force,qchem_file
 from chemlab.scripts.base import QchemBaseScript
 from chemlab.config.config_loader import ConfigBase
 
@@ -42,7 +42,7 @@ class QMMMTrainSetData(QchemBaseScript):
         full_mm_esp = []
         full_mm_esp_grad = []
         full_qm_coords = []
-        full_qm_type = None
+
 
         for i in range(windows):
             window = "{:02d}".format(i)
@@ -57,14 +57,17 @@ class QMMMTrainSetData(QchemBaseScript):
                 frame = "{:04d}".format(j)
                 tem_cache_path = f"{cache_path}/{window}/{frame}/"
                 tem_input = f"{tem_qmmm_path}/{frame}/{prefix}{frame}.out"
-                tem_qmout = qchem_out_force()
+                tem_qmout = qchem_file()
+                tem_qmout.molecule.check=True
                 if self.check_qchem_error(tem_input) == -1:
                     print("File not found:", tem_input)
                     continue
                 elif self.check_qchem_error(tem_input) == 1:
                     print("Qchem Job Fail:", tem_input)
                     continue
-                tem_qmout.read_file(tem_input)
+
+
+                tem_qmout.read_file(f"{tem_cache_path}/molecule")
 
 
                 tem_qm_coord = tem_qmout.molecule.xyz
