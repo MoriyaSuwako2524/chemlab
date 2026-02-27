@@ -358,12 +358,16 @@ class mecp_soc(mecp):
         self.state_1.out.final_soc_ene = tem_out.final_soc_ene
 
         self.state_1.out.ene = self.state_1.out.final_adiabatic_ene
-        self.state_2.out.ene = self.state_1.out.final_adiabatic_ene + 2* self.state_1.out.final_soc_ene
+        self.state_2.out.ene = self.state_1.out.final_adiabatic_ene +  self.state_1.out.final_soc_ene
         self.state_1.ene_list.append(self.state_1.out.final_adiabatic_ene)
         self.state_2.ene_list.append(self.state_1.out.final_adiabatic_ene + self.state_1.out.final_soc_ene)
-
+        prefactor1 = 0.5 * (1 - (tem_out._e1-tem_out._e2) / tem_out.final_soc_ene)
+        prefactor2 = 0.5 * (1 + (tem_out._e1 - tem_out._e2) / tem_out.final_soc_ene)
         self.state_1.out.force = self.state_1.out.force
-        self.state_2.out.force = -2 * self.state_1.out.force +3* ( self.state_1.out.force_e1 + self.state_1.out.force_e2)
+        self.state_2.out.force = - self.state_1.out.force + ( self.state_1.out.force_e1 + self.state_1.out.force_e2) + self.state_1.out.force_e1 * prefactor2/prefactor1 + self.state_1.out.force_e2 * prefactor1/prefactor2
+        # E_- = 1/2 (E_1+E_2 - E_soc) E_+ = 1/2(E_1 + E_2 + E_soc)
+        # F_- = 0.5 * (1 - (E1-E2) / E_soc) F_1 + 0.5 * (1 + (E1-E2) / E_soc) F_2 - c_3 F_soc E_
+        # F_+ = 0.5 * (1 + (E1-E2) / E_soc) F_1 + 0.5 * (1 - (E1-E2) / E_soc) F_2 + c_3 F_soc E_
         self.state_1.out.force = self.state_1.out.force .T
         self.state_2.out.force = self.state_2.out.force .T
 

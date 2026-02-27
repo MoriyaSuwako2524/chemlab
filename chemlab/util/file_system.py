@@ -786,7 +786,12 @@ class qchem_out_soc(qchem_out):
     @property
     def final_adiabatic_ene(self):
         return self.opt_ene_list[-1]
-
+    @property
+    def _e1(self):
+        return self.opt_e1_list[-1]
+    @property
+    def _e2(self):
+        return self.opt_e2_list[-1]
 class qchem_out_force(qchem_out):
     def __init__(self, filename=""):
         super().__init__(filename)
