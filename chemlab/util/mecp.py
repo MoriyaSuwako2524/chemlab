@@ -32,7 +32,7 @@ class mecp(object):
         self.restrain_list = []
         self.hessian_coefficient = 0.01
         self.step_size = 0.01
-
+        self.F_EI = 0
         self.nstep = 0           # 当前步数
         self.ffile = 0           # 是否从ProgFile恢复 (0=否)
 
@@ -317,7 +317,7 @@ class mecp_soc(mecp):
             delta_E = np.inf
 
         # Gradient norm
-        grad_norm = np.linalg.norm(self.parallel_gradient + self.orthogonal_gradient)
+        grad_norm = np.linalg.norm(self.parallel_gradient + self.orthogonal_gradient-self.F_EI)
 
         # Structure displacement
         if self.last_structure is not None:
