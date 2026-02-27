@@ -89,7 +89,7 @@ class mecp(object):
         E2 = self.state_2.out.ene
         gradient_1 = self.state_1.out.force
         gradient_2 = self.state_2.out.force
-        print(gradient_1,gradient_2)
+
         # Difference vector between the two gradients
         delta_gradient = gradient_1 - gradient_2
         norm_dg = np.linalg.norm(delta_gradient)
@@ -106,13 +106,14 @@ class mecp(object):
 
         # Orthogonal gradient component (perpendicular to crossing surface)
         self.orthogonal_gradient = (E1 - E2) * unit_delta_gradient
-
+        print(f"orthogonal_gradient:{self.orthogonal_gradient}")
         # Project gradient_1 onto unit direction
         projection_scalar = np.sum(gradient_1 * unit_delta_gradient)
         projection_vector = projection_scalar * unit_delta_gradient
 
         # Parallel gradient component (tangent to crossing surface)
         self.parallel_gradient = gradient_1 - projection_vector
+        print(f"orthogonal_gradient:{self.parallel_gradient}")
     def update_structure(self):
         #Update molecular structure using BFGS quasi-Newton step.
         # Get current structure and flatten
