@@ -139,7 +139,6 @@ class mecp(object):
                 self.inv_hess = term1 @ self.inv_hess @ term2 + term3
             else:
                 print(" BFGS update skipped: small dot product")
-                self.inv_hess = np.eye(len(g_k))
         else:
             self.inv_hess = np.eye(len(g_k))
             print("⚠️  BFGS update skipped: first step")
@@ -361,8 +360,6 @@ class mecp_soc(mecp):
         self.state_2.out.ene = self.state_1.out.final_adiabatic_ene +  self.state_1.out.final_soc_ene
         self.state_1.ene_list.append(self.state_1.out.final_adiabatic_ene)
         self.state_2.ene_list.append(self.state_1.out.final_adiabatic_ene + self.state_1.out.final_soc_ene)
-        prefactor1 = 0.5 * (1 - (tem_out._e1-tem_out._e2) / tem_out.final_soc_ene)
-        prefactor2 = 0.5 * (1 + (tem_out._e1 - tem_out._e2) / tem_out.final_soc_ene)
         self.state_1.out.force = self.state_1.out.force
         self.state_2.out.force = - self.state_1.out.force + ( self.state_1.out.force_e1 + self.state_1.out.force_e2)
         # E_- = 1/2 (E_1+E_2 - E_soc) E_+ = 1/2(E_1 + E_2 + E_soc)
