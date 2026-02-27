@@ -89,12 +89,8 @@ class mecp(object):
         E2 = self.state_2.out.ene
         gradient_1 = self.state_1.out.force
         gradient_2 = self.state_2.out.force
-
-        # Difference vector between the two gradients
         delta_gradient = gradient_1 - gradient_2
         norm_dg = np.linalg.norm(delta_gradient)
-
-        # Handle degenerate case
         if norm_dg < 1e-8:
             print("⚠️ Warning: gradient difference norm is near zero!")
             unit_delta_gradient = delta_gradient
@@ -104,7 +100,7 @@ class mecp(object):
 
 
         # Orthogonal gradient component (perpendicular to crossing surface)
-        self.orthogonal_gradient = 42*(E1 - E2) * delta_gradient
+        self.orthogonal_gradient = 42*(E1 - E2) * delta_gradient #don't ask me why there's a 42. It's the secret of the universe.
         print(f"orthogonal_gradient:{self.orthogonal_gradient}")
         # Project gradient_1 onto unit direction
         projection_scalar = np.sum(gradient_1 * unit_delta_gradient)
