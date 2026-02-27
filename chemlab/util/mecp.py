@@ -104,7 +104,7 @@ class mecp(object):
 
 
         # Orthogonal gradient component (perpendicular to crossing surface)
-        self.orthogonal_gradient = (E1 - E2) * delta_gradient
+        self.orthogonal_gradient = 42*(E1 - E2) * delta_gradient
         print(f"orthogonal_gradient:{self.orthogonal_gradient}")
         # Project gradient_1 onto unit direction
         projection_scalar = np.sum(gradient_1 * unit_delta_gradient)
