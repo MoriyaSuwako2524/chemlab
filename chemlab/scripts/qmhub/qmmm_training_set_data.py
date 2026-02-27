@@ -41,6 +41,9 @@ class QMMMTrainSetData(QchemBaseScript):
         full_qm_grad = []
         full_mm_esp = []
         full_mm_esp_grad = []
+        full_qm_coords = []
+        full_qm_type = None
+
         for i in range(windows):
             window = "{:02d}".format(i)
             tem_qmmm_path = f"{qmmmpath}/{window}/"
@@ -49,17 +52,22 @@ class QMMMTrainSetData(QchemBaseScript):
             win_qm_grad = []
             win_mm_esp = []
             win_mm_esp_grad = []
+            win_qm_coord = []
             for j in range(nframes):
                 frame = "{:04d}".format(j)
                 tem_cache_path = f"{cache_path}/{window}/{frame}/"
                 tem_input = f"{tem_qmmm_path}/{frame}/{prefix}{frame}.out"
+                tem_qmout = qchem_out_force()
                 if self.check_qchem_error(tem_input) == -1:
                     print("File not found:", tem_input)
                     continue
                 elif self.check_qchem_error(tem_input) == 1:
                     print("Qchem Job Fail:", tem_input)
                     continue
+                tem_qmout.read_file(tem_input)
 
+
+                tem_qm_coord = tem_qmout.molecule.xyz
                 tem_energy = np.fromfile(tem_cache_path + "99.0", dtype="f8", count=2)[1]
                 tem_qm_grad = np.fromfile(tem_cache_path + "131.0", dtype="f8").reshape(-1, 3)
                 tem_mm_esp = np.loadtxt( f"{tem_qmmm_path}/{frame}/{prefix}{frame}.out.esp", dtype=float, skiprows=3)
@@ -81,27 +89,36 @@ class QMMMTrainSetData(QchemBaseScript):
                 win_qm_grad.append(tem_qm_grad)
                 win_mm_esp.append(tem_mm_esp)
                 win_mm_esp_grad.append(tem_mm_esp_grad)
+                win_qm_coord.append(tem_qm_coord)
 
 
             win_energy = np.asarray(win_energy)
             win_qm_grad = np.asarray(win_qm_grad)
             win_mm_esp = np.asarray(win_mm_esp)
             win_mm_esp_grad = np.asarray(win_mm_esp_grad)
+            win_qm_coord = np.asarray(win_qm_coord)
 
             np.save(f"{outpath}/energy_w{window}.npy", win_energy)
             np.save(f"{outpath}/qm_grad_w{window}.npy", win_qm_grad)
             np.save(f"{outpath}/mm_esp_w{window}.npy", win_mm_esp)
             np.save(f"{outpath}/mm_esp_grad_w{window}.npy", win_mm_esp_grad)
-
+            np.save(f'{outpath}/qm_coord_w{window}.npy', win_qm_coord)
             full_energy.append(win_energy)
             full_qm_grad.append(win_qm_grad)
             full_mm_esp.append(win_mm_esp)
             full_mm_esp_grad.append(win_mm_esp_grad)
+            full_qm_coords.append(win_qm_coord)
 
-        np.save(f"{outpath}/full_energy.npy", np.asarray(full_energy))
-        np.save(f"{outpath}/full_qm_grad.npy", np.asarray(full_qm_grad))
+        full_energy = np.concatenate(full_energy, axis=0)
+        np.save(f"{outpath}/full_energy.npy", full_energy)
+        full_qm_grad = np.concatenate(full_qm_grad, axis=0)
+        np.save(f"{outpath}/full_qm_grad.npy", full_qm_grad)
+        full_mm_esp = np.concatenate(full_mm_esp, axis=0)
         np.save(f"{outpath}/full_mm_esp.npy", np.asarray(full_mm_esp))
+        full_mm_esp_grad = np.concatenate(full_mm_esp_grad, axis=0)
         np.save(f"{outpath}/full_mm_esp_grad.npy", np.asarray(full_mm_esp_grad))
+        full_qm_coords = np.concatenate(full_qm_coords, axis=0)
+        np.save(f"{outpath}/full_qm_coords.npy", full_qm_coords)
     def run_gas(self, cfg):
         qmmmpath = cfg.qmmmpath
         cache_path = cfg.cache_path
