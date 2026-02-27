@@ -169,8 +169,8 @@ class MECP1DScan(QchemBaseScript):
                 fout.write(test_mecp.state_1.inp.molecule.return_output_format())
                 fout.write(test_mecp.state_1.inp.remain_texts)
 
-            E1 = test_mecp.state_1.out.ene + test_mecp.EI
-            E2 = test_mecp.state_2.out.ene + test_mecp.EI
+            E1 = test_mecp.state_1.out.ene
+            E2 = test_mecp.state_2.out.ene
             energy1_list.append(E1)
             energy2_list.append(E2)
             dist_list.append(dist)
