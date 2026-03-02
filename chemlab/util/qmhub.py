@@ -33,6 +33,7 @@ class qmmm_molecule(molecule):
             lines = [line.strip() for line in f if line.strip()]
 
         header = lines[0].split()
+
         n_qm = int(header[0])
         n_mm = int(header[1])
         qm_charge = int(header[2])

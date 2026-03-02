@@ -32,7 +32,7 @@ class mecp(object):
         self.restrain_list = []
         self.hessian_coefficient = 0.01
         self.step_size = 0.01
-
+        self.F_EI = 0
         self.nstep = 0           # 当前步数
         self.ffile = 0           # 是否从ProgFile恢复 (0=否)
 
@@ -89,30 +89,26 @@ class mecp(object):
         E2 = self.state_2.out.ene
         gradient_1 = self.state_1.out.force
         gradient_2 = self.state_2.out.force
-        print(gradient_1,gradient_2)
-        # Difference vector between the two gradients
         delta_gradient = gradient_1 - gradient_2
         norm_dg = np.linalg.norm(delta_gradient)
-
-        # Handle degenerate case
         if norm_dg < 1e-8:
             print("⚠️ Warning: gradient difference norm is near zero!")
             unit_delta_gradient = delta_gradient
         else:
             unit_delta_gradient = delta_gradient / norm_dg
-        delta_E = E1 - E2
-        if np.sign(delta_E) != np.sign(np.sum(gradient_1 * delta_gradient)):
-            delta_gradient = -delta_gradient
+
+
 
         # Orthogonal gradient component (perpendicular to crossing surface)
-        self.orthogonal_gradient = (E1 - E2) * unit_delta_gradient
-
+        self.orthogonal_gradient = 42*(E1 - E2) * delta_gradient #don't ask me why there's a 42. It's the secret of the universe.
+        print(f"orthogonal_gradient:{self.orthogonal_gradient}")
         # Project gradient_1 onto unit direction
         projection_scalar = np.sum(gradient_1 * unit_delta_gradient)
         projection_vector = projection_scalar * unit_delta_gradient
 
         # Parallel gradient component (tangent to crossing surface)
         self.parallel_gradient = gradient_1 - projection_vector
+        print(f"parallel_gradient:{self.parallel_gradient}")
     def update_structure(self):
         #Update molecular structure using BFGS quasi-Newton step.
         # Get current structure and flatten
@@ -137,8 +133,8 @@ class mecp(object):
                 term3 = dx @ dx.T / dxdg
                 self.inv_hess = term1 @ self.inv_hess @ term2 + term3
             else:
-                print(" BFGS update skipped: small dot product")
                 self.inv_hess = np.eye(len(g_k))
+                print(" BFGS update skipped: small dot product")
         else:
             self.inv_hess = np.eye(len(g_k))
             print("⚠️  BFGS update skipped: first step")
@@ -357,12 +353,14 @@ class mecp_soc(mecp):
         self.state_1.out.final_soc_ene = tem_out.final_soc_ene
 
         self.state_1.out.ene = self.state_1.out.final_adiabatic_ene
-        self.state_2.out.ene = self.state_1.out.final_adiabatic_ene + self.state_1.out.final_soc_ene
+        self.state_2.out.ene = self.state_1.out.final_adiabatic_ene +  self.state_1.out.final_soc_ene
         self.state_1.ene_list.append(self.state_1.out.final_adiabatic_ene)
         self.state_2.ene_list.append(self.state_1.out.final_adiabatic_ene + self.state_1.out.final_soc_ene)
-
         self.state_1.out.force = self.state_1.out.force
-        self.state_2.out.force = -self.state_1.out.force +  2*( self.state_1.out.force_e1 + self.state_1.out.force_e2)
+        self.state_2.out.force = - self.state_1.out.force + ( self.state_1.out.force_e1 + self.state_1.out.force_e2)
+        # E_- = 1/2 (E_1+E_2 - E_soc) E_+ = 1/2(E_1 + E_2 + E_soc)
+        # F_- = 0.5 * (1 - (E1-E2) / E_soc) F_1 + 0.5 * (1 + (E1-E2) / E_soc) F_2 - c_3 F_soc E_
+        # F_+ = 0.5 * (1 + (E1-E2) / E_soc) F_1 + 0.5 * (1 - (E1-E2) / E_soc) F_2 + c_3 F_soc E_
         self.state_1.out.force = self.state_1.out.force .T
         self.state_2.out.force = self.state_2.out.force .T
 
