@@ -172,6 +172,7 @@ class qchem_inp_block:
         return self.return_output_format()
 
 
+
 class molecule(qchem_inp_block):
     def __init__(self):
         super().__init__()
