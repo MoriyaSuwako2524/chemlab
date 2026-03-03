@@ -36,42 +36,26 @@ class MLData:
             self.nframes = len(self.coords) if self.coords is not None else 0
             print(f"Loaded dataset with {self.nframes} frames, "
                   f"{self.coords.shape[1] if self.coords is not None else '?'} atoms")
+
     def split_dataset(self, n_train, n_val, n_test, seed=42):
         import numpy as np
-        assert n_train + n_val + n_test <= self.nframes
+        total = n_train + n_val + n_test
+        assert total <= self.nframes
+
+        indices = np.linspace(0, self.nframes - 1, total, dtype=np.int64)
 
         rng = np.random.default_rng(seed)
+        perm = rng.permutation(total)
+        idx_train = indices[perm[:n_train]]
+        idx_val = indices[perm[n_train:n_train + n_val]]
+        idx_test = indices[perm[n_train + n_val:]]
 
-        order = np.argsort(self.energies)
-
-
-        total = n_train + n_val + n_test
-
-        chunks = np.array_split(order, total)
-        sampled = np.array([ch[len(ch) // 2] for ch in chunks], dtype=np.int64)  # pick middle of each chunk
-
-        # 3) build randomized labels, *not* sequential slicing
-        # labels: 0=train, 1=val, 2=test
-        labels = np.array([0] * n_train + [1] * n_val + [2] * n_test, dtype=np.int64)
-        rng.shuffle(labels)
-
-        buckets = {0: [], 1: [], 2: []}
-        for idx, lab in zip(sampled, labels):
-            buckets[lab].append(int(idx))  # ensure python int / int64
-
-        # 4) shuffle inside each split (optional but recommended)
-        idx_train = rng.permutation(np.array(buckets[0], dtype=np.int64))
-        idx_val = rng.permutation(np.array(buckets[1], dtype=np.int64))
-        idx_test = rng.permutation(np.array(buckets[2], dtype=np.int64))
-
-        # 5) sanity checks (sizes & dtypes)
         assert len(idx_train) == n_train and len(idx_val) == n_val and len(idx_test) == n_test
-        assert idx_train.dtype.kind in "iu" and idx_val.dtype.kind in "iu" and idx_test.dtype.kind in "iu"
 
         return {
             "idx_train": idx_train,
             "idx_val": idx_val,
-            "idx_test": idx_test
+            "idx_test": idx_test,
         }
 
     def save_split(self, n_train, n_val, n_test, prefix="./", seed=42):
