@@ -157,7 +157,7 @@ class QMMMTrainSetDFT(QchemBaseScript):
                 else:
                     tem_inp.external_charges.check = False
 
-                tem_inp.read_from_file(ref)
+                tem_inp.read_file(ref)
                 tem_inp.molecule.charge = qmmm.qm_molecule.charge
                 tem_inp.molecule.spin = qmmm.qm_molecule.spin
                 tem_inp.external_charges.mm_pos = qmmm.mm_molecule.coord

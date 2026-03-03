@@ -56,8 +56,8 @@ class mecp(object):
         filename = self.ref_filename
         self.state_1.inp.molecule.check = True
         self.state_2.inp.molecule.check = True
-        self.state_1.inp.read_from_file(path+filename)
-        self.state_2.inp.read_from_file(path+filename)
+        self.state_1.inp.read_file(path + filename)
+        self.state_2.inp.read_file(path + filename)
         if self.prefix == "":
             self.prefix = filename[:-4]
         self.state_1.inp.molecule.multistate =   self.state_1.spin 
