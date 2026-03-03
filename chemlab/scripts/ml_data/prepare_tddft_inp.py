@@ -55,7 +55,7 @@ class PrepareTddftInp(Script):
 
         tem_traj = traj()
         tem_traj.read_xyz_traj(traj_file)
-        frames = tem_traj.frames
+        frames = np.asarray(tem_traj.frames)
 
         n_frames = len(frames)
         atom_types = frames[0,:,0]
