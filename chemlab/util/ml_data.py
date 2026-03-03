@@ -28,7 +28,7 @@ class MLData:
             self.grads = self.data.get(grad_key, None)
             self.qm_types = self.data.get(qm_types_key, None)
 
-            self.nframes = len(self.coords) if self.energies is not None else 0
+            self.nframes = len(self.coords) if self.coords is not None else 0
             print(f"Loaded dataset with {self.nframes} frames, "
                   f"{self.coords.shape[1] if self.coords is not None else '?'} atoms")
         elif type == "xyz":
