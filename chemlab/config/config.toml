@@ -297,7 +297,7 @@ npy_path="./"
 qm_type="full_qm_type.npy"
 out_path="./npys/"
 test_set = "1000_split.npz"
-n_select=25
+n_select=[25]
 random_seed=42
 method="soap"
 
