@@ -37,25 +37,16 @@ class MLData:
             print(f"Loaded dataset with {self.nframes} frames, "
                   f"{self.coords.shape[1] if self.coords is not None else '?'} atoms")
     def split_dataset(self, n_train, n_val, n_test, seed=42):
-        """
-        Energy-aware balanced split:
-        1) sort frames by energy
-        2) take 'total' indices evenly across the sorted list (no duplicates)
-        3) randomly assign labels [train/val/test] across those evenly spaced indices
-           so each split covers the whole energy range (no "shift")
-        """
         import numpy as np
         assert n_train + n_val + n_test <= self.nframes
 
         rng = np.random.default_rng(seed)
 
-        # 1) sort by energy
         order = np.argsort(self.energies)
 
-        # 2) evenly cover the whole energy range with UNIQUE picks
+
         total = n_train + n_val + n_test
-        # Use array_split: split sorted indices into 'total' chunks, pick 1 per chunk.
-        # This guarantees exactly 'total' unique indices spread across the whole range.
+
         chunks = np.array_split(order, total)
         sampled = np.array([ch[len(ch) // 2] for ch in chunks], dtype=np.int64)  # pick middle of each chunk
 
@@ -84,9 +75,8 @@ class MLData:
         }
 
     def save_split(self, n_train, n_val, n_test, prefix="./", seed=42):
+        print(f"Split:n_train:{n_train}, n_val:{n_val}, n_test:{n_test},Total_frames:{self.nframes}")
         split_dict = self.split_dataset(n_train, n_val, n_test, seed=seed)
-
-
         np.savez(prefix + "split.npz",
                  idx_train=split_dict["idx_train"],
                  idx_val=split_dict["idx_val"],
