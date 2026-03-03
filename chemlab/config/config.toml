@@ -196,8 +196,6 @@ result_saver_auto_close = true
 [prepare_tddft]
 
 
-mode = "auto"
-
 file = ""           # AIMD模式下的输出文件（逗号分隔多个）
 out = "./raw_data/" # 输出目录
 
