@@ -1,13 +1,3 @@
-"""
-prepare_tddft_inp.py
-
-从 XYZ 轨迹文件或 AIMD 输出文件生成 Q-Chem TDDFT 输入文件
-
-使用方法:
-    chemlab ml_data prepare_tddft_inp --file traj.xyz --ref ref.in --out ./output/ --dataset_size 2000
-    chemlab ml_data prepare_tddft_inp --file traj.out --ref ref.in --out ./output/ --dataset_size 2000
-"""
-
 import os
 from pathlib import Path
 import numpy as np
@@ -17,25 +7,20 @@ from chemlab.config.config_loader import ConfigBase
 from chemlab.util.modify_inp import single_spin_job, qchem_out_aimd_multi
 from chemlab.util.ml_data import MLData
 from chemlab.util.file_system import atom_charge_dict
-
+from chemlab.util.md import traj
 
 class PrepareTddftConfig(ConfigBase):
-    """
-    TDDFT 输入文件生成配置类
-    """
+
     section_name = "prepare_tddft"
 
 
 class PrepareTddftInp(Script):
-    """
-    从 XYZ 轨迹或 AIMD 输出生成 Q-Chem TDDFT 输入文件
-    """
 
     name = "prepare_tddft_inp"
     config = PrepareTddftConfig
 
     def run(self, cfg):
-        """主执行函数"""
+
 
         input_file = cfg.file
         ref_file = cfg.ref
@@ -43,19 +28,80 @@ class PrepareTddftInp(Script):
         charge = cfg.charge
         spin = cfg.spin
         dataset_size = cfg.dataset_size
-
+        mode = cfg.mode
+        if mode == "all":
+            dataset_size = 1145141919810
         if not input_file:
-            raise ValueError("必须指定输入文件 --file")
+            raise ValueError("Need File --file")
 
         os.makedirs(out_dir, exist_ok=True)
 
-        # 根据文件后缀自动判断模式
         if input_file.endswith(".xyz"):
             self._run_xyz_mode(input_file, ref_file, out_dir, charge, spin, dataset_size)
         elif input_file.endswith(".out"):
             self._run_aimd_mode(input_file, ref_file, out_dir, charge, spin, cfg)
+        elif input_file.endswith(".traj"):
+            self._run_traj_mode(input_file, ref_file, out_dir, charge, spin, dataset_size)
         else:
-            raise ValueError(f"不支持的文件类型: {input_file}. 支持 .xyz 或 .out")
+            raise ValueError(f"不支持的文件类型: {input_file}. 支持 .xyz 或 .out, vmd导出的xyz用.traj结尾")
+    def _run_traj_mode(self,traj_file, ref_file, out_dir, charge, spin, dataset_size):
+
+        print(f"[prepare_tddft_inp] XYZ 轨迹模式")
+        print(f"[prepare_tddft_inp] 输入文件: {traj_file}")
+        print(f"[prepare_tddft_inp] 参考文件: {ref_file}")
+        print(f"[prepare_tddft_inp] 电荷: {charge}, 自旋多重度: {spin}")
+        print(f"[prepare_tddft_inp] 输出目录: {out_dir}")
+
+
+        tem_traj = traj()
+        tem_traj.read_xyz_traj(traj_file)
+        frames = tem_traj.frames
+
+        n_frames = len(frames)
+        atom_types = frames[0,:,0]
+        frames = frames[:,:,1:]
+        print(f"[prepare_tddft_inp] 读取到 {n_frames} 帧")
+        # 选择 frame
+        if dataset_size > 0 and dataset_size < n_frames:
+            indices = np.random.choice(n_frames, size=dataset_size, replace=False)
+            indices = np.sort(indices)
+            print(f"[prepare_tddft_inp] 随机选择 {dataset_size} 帧")
+            selected_frames = [frames[i] for i in indices]
+        else:
+            indices = np.arange(n_frames)
+            selected_frames = frames
+            print(f"[prepare_tddft_inp] 使用全部 {n_frames} 帧")
+
+
+        tmp_prefix = os.path.join(out_dir, "tmp_")
+        self._export_xyz_to_numpy(
+            frames=selected_frames,
+            atom_types=atom_types,
+            prefix=tmp_prefix
+        )
+
+        dataset = MLData(prefix=tmp_prefix, files=["coord", "type"])
+        dataset.save_split(n_train=len(selected_frames), n_val=0, n_test=0, prefix=out_dir)
+        dataset.export_xyz_from_split(
+            split_file=os.path.join(out_dir, "split.npz"),
+            outdir=out_dir,
+            prefix_map=None
+        )
+
+        print(f"[prepare_tddft_inp] 生成输入文件, charge={charge}, spin={spin}")
+
+
+        for xyz_file_out in sorted(Path(out_dir).glob('*.xyz')):
+            job = single_spin_job()
+            job.charge = charge
+            job.spin = spin
+            job.ref_name = ref_file
+            job.xyz_name = str(xyz_file_out)
+            xyz_basename = os.path.basename(str(xyz_file_out))
+            out_prefix = out_dir.rstrip("/") + "/"
+            job.generate_outputs(new_file_name=xyz_basename, prefix=out_prefix)
+
+        print(f"[prepare_tddft_inp] 完成! 生成了 {len(selected_frames)} 个输入文件")
 
     def _run_xyz_mode(self, xyz_file, ref_file, out_dir, charge, spin, dataset_size):
         """XYZ 模式: 从多帧 xyz 轨迹文件生成 Q-Chem 输入"""
