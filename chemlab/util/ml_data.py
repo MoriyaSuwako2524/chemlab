@@ -1,14 +1,8 @@
 import numpy as np
 import os
+from chemlab.util.file_system import atom_charge_dict
 def load_npy_files(prefix, files):
-    """
-    Load multiple .npy files from prefix.
-    Args:
-        prefix (str): folder prefix (e.g. "./examples/")
-        files (list[str]): list of base filenames without .npy suffix
-    Returns:
-        dict: {name: np.ndarray}
-    """
+
     data = {}
     for f in files:
         path = prefix + f + ".npy"
@@ -156,9 +150,8 @@ class MLData:
     
         if not os.path.exists(outdir):
             os.makedirs(outdir)
-    
-        # 原子序号→元素符号
-        from .file_system import atom_charge_dict
+
+
         inv_dict = {v: k for k, v in atom_charge_dict.items()}
     
         for key, prefix in prefix_map.items():

@@ -59,7 +59,7 @@ class PrepareTddftInp(Script):
 
         n_frames = len(frames)
         atom_types = frames[0,:,0]
-        frames = frames[:,:,1:]
+        frames = frames[:,:,1:].astype(float)
         print(f"[prepare_tddft_inp] 读取到 {n_frames} 帧")
         # 选择 frame
         if dataset_size > 0 and dataset_size < n_frames:
