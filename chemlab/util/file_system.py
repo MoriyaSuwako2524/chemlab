@@ -1310,11 +1310,10 @@ class qchem_out_multi:
         self.filenames = filenames
         self.tasks = []
         for fn in filenames:
-
             try:
                 out = out_cls(fn)
-                if self.check_qchem_error(out) != 0:
-                    print(f"Error in qchem file:{out}")
+                if self.check_qchem_error(fn) != 0:
+                    print(f"Error in qchem file:{fn}")
                     continue
                 out.read_file(fn)
                 self.tasks.append(out)
