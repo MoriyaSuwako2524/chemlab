@@ -148,7 +148,7 @@ class FivePointFiniteDifference(QchemBaseScript):
         ref = qchem_file()
         ref.molecule.check = True
         print(cfg.path + cfg.ref)
-        ref.read_from_file(cfg.path + cfg.ref)
+        ref.read_file(cfg.path + cfg.ref)
         mol = ref.molecule
         method = self.method_class()
         jobs = method.generate_jobs(mol, cfg)
@@ -157,7 +157,7 @@ class FivePointFiniteDifference(QchemBaseScript):
         for j in jobs:
             inp = qchem_file()
             inp.molecule.check = True
-            inp.read_from_file(cfg.path + cfg.ref)
+            inp.read_file(cfg.path + cfg.ref)
             inp.molecule.replace_new_xyz(j.xyz_perturbed.T)
             inp.generate_inp(j.inp_file)
 

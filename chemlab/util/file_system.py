@@ -52,8 +52,8 @@ class qchem_file(object):  # standard qchem inp file class
         with open(new_file_name, "w") as f:
             f.write(self.output)
 
-    def read_from_file(self, filename="",
-                       out_text=""):  # read standard inp file, require filename that consist of path and suffix. use class.check to determine which part you want to modify
+    def read_file(self, filename="",
+                  out_text=""):  # read standard inp file, require filename that consist of path and suffix. use class.check to determine which part you want to modify
         if out_text != "":
             file = out_text.split("\n")
         else:
@@ -835,7 +835,7 @@ class qchem_out_force(qchem_out):
             try:
                 mol_structure = qchem_file()
                 mol_structure.molecule.check = True
-                mol_structure.read_from_file(self.filename)
+                mol_structure.read_file(self.filename)
                 self.molecule = mol_structure.molecule
                 self.molecule.check = True
             except Exception:
@@ -1264,7 +1264,7 @@ class multiple_qchem_jobs(object):
         for job in jobs:
             job_file = qchem_file()
             self.match_check(job_file)
-            job_file.read_from_file(out_text=job)
+            job_file.read_file(out_text=job)
             self.jobs.append(job_file)
 
     @property

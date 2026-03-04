@@ -74,7 +74,7 @@ class base_job(object):
     def ref(self):
         ref = multiple_qchem_jobs()
         ex_match_check(self.check_list, ref)
-        ref.read_from_file(self.ref_name)
+        ref.read_file(self.ref_name)
         return ref
 
     @property

@@ -57,8 +57,8 @@ class mecp(object):
         filename = self.ref_filename
         self.state_1.inp.molecule.check = True
         self.state_2.inp.molecule.check = True
-        self.state_1.inp.read_from_file(f"{path}/{filename}")
-        self.state_2.inp.read_from_file(f"{path}/{filename}")
+        self.state_1.inp.read_file(f"{path}/{filename}")
+        self.state_2.inp.read_file(f"{path}/{filename}")
         if self.prefix == "":
             self.prefix = filename[:-4]
         self.state_1.inp.molecule.multistate =   self.state_1.spin 
@@ -357,7 +357,7 @@ class mecp_soc(mecp):
         self.state_1.ene_list.append(self.state_1.out.final_adiabatic_ene)
         self.state_2.ene_list.append(self.state_1.out.final_adiabatic_ene + self.state_1.out.final_soc_ene)
         self.state_1.out.force = self.state_1.out.force
-        self.state_2.out.force = - self.state_1.out.force + ( self.state_1.out.force_e1 + self.state_1.out.force_e2)
+        self.state_2.out.force = - self.state_1.out.force +  self.state_1.out.force_e1 + self.state_1.out.force_e2
         # E_- = 1/2 (E_1+E_2 - E_soc) E_+ = 1/2(E_1 + E_2 + E_soc)
         # F_- = 0.5 * (1 - (E1-E2) / E_soc) F_1 + 0.5 * (1 + (E1-E2) / E_soc) F_2 - c_3 F_soc E_
         # F_+ = 0.5 * (1 + (E1-E2) / E_soc) F_1 + 0.5 * (1 - (E1-E2) / E_soc) F_2 + c_3 F_soc E_

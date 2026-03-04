@@ -72,7 +72,7 @@ def write_input_from_carti(path: str, ref_filename: str, base_carti,
     qf = qchem_file()
     qf.molecule.check = True
     qf.opt2.check = True
-    qf.read_from_file(os.path.join(path, ref_filename))
+    qf.read_file(os.path.join(path, ref_filename))
 
     if base_carti is not None:
         qf.molecule.carti = base_carti
@@ -182,7 +182,7 @@ class Scan1D(Script):
         ref_qf = qchem_file()
         ref_qf.molecule.check = True
         ref_qf.opt2.check = True
-        ref_qf.read_from_file(os.path.join(path, ref_filename))
+        ref_qf.read_file(os.path.join(path, ref_filename))
         ref_carti = ref_qf.molecule.carti
 
         # ===== 构建任务列表 =====

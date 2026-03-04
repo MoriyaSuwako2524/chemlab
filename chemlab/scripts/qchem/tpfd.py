@@ -194,7 +194,7 @@ class ThreePointFiniteDifference(QchemBaseScript):
     def run(self, cfg):
 
         ref = qchem_file()
-        ref.read_from_file(cfg.path + cfg.ref)
+        ref.read_file(cfg.path + cfg.ref)
         mol = ref.molecule
 
         method = self.method_class()
@@ -203,7 +203,7 @@ class ThreePointFiniteDifference(QchemBaseScript):
         os.makedirs(cfg.outpath, exist_ok=True)
         for j in jobs:
             inp = qchem_file()
-            inp.read_from_file(cfg.path + cfg.ref)
+            inp.read_file(cfg.path + cfg.ref)
             inp.molecule.replace_new_xyz(j.xyz_perturbed)
             inp.generate_inp(j.inp_file)
 
