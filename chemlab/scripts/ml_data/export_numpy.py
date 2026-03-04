@@ -165,24 +165,7 @@ class ExportNumpy(Script):
     # Helper: Export all excited states to single NPZ
     # -------------------------------------------------------
     def _export_all_states_npz(self, multi_readers, output_file, split_idx, qm_type, atom_symbols):
-        """
-        Export all excited states data to a single NPZ file.
 
-        This creates a comprehensive file containing:
-        - All excited states (not just state_idx)
-        - Ground state data
-        - ESP charges for all states
-        - Transition densities for all states
-        - Gradients (where available)
-
-        Args:
-            multi_readers: List of qchem_out_excite_multi objects
-            output_file: Output NPZ filename
-            split_idx: Dictionary of train/val/test indices
-            qm_type: Atom type array
-            atom_symbols: List of atom symbols
-        """
-        # Collect all tasks
         all_tasks = []
         for multi in multi_readers:
             all_tasks.extend(multi.tasks)

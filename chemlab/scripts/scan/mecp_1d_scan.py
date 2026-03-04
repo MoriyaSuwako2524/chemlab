@@ -5,7 +5,7 @@ import numpy as np
 import time
 import subprocess
 from subprocess import Popen
-from chemlab.util.mecp import mecp_soc
+from chemlab.util.mecp import mecp_soc, mecp
 from chemlab.util.file_system import qchem_file
 import matplotlib.pyplot as plt
 
@@ -88,17 +88,16 @@ class MECP1DScan(QchemBaseScript):
         prefix= cfg.prefix
         spin1=cfg.spin1
         spin2=cfg.spin2
+        method = cfg.method
         stepsize=cfg.max_stepsize
         converge_limit=cfg.converge_limit
         K=cfg.restrain_const
         ncore = cfg.ncore
         max_opt_steps=cfg.max_opt_steps
         os.makedirs(scan_dir, exist_ok=True)
-
         energy1_list = []
         energy2_list = []
         dist_list = []
-
         for i, dist in enumerate(dist_range):
             print(f"\n Step {i}: Restrain bond {atom1}-{atom2} to {dist:.3f} Å")
 
@@ -108,8 +107,13 @@ class MECP1DScan(QchemBaseScript):
             ref_filename = f"{prefix}_step{i}.inp"
             ref_path = os.path.join(scan_dir, ref_filename)
             inp.generate_inp(ref_path)
+            if method == "soc":
+                test_mecp = mecp_soc()
+                test_mecp.different_type = "soc"
+            elif method == "mecp":
+                test_mecp = mecp()
+                test_mecp.different_type = "analytical"
 
-            test_mecp = mecp_soc()
             test_mecp.ref_path = scan_dir
             test_mecp.ref_filename = ref_filename
             test_mecp.out_path = scan_dir
@@ -118,7 +122,6 @@ class MECP1DScan(QchemBaseScript):
             test_mecp.state_2.spin = spin2
             test_mecp.stepsize = stepsize
             test_mecp.max_stepsize = stepsize
-            test_mecp.different_type = "soc"
             test_mecp.converge_limit = converge_limit
             test_mecp.read_init_structure()
             test_mecp.generate_new_inp()

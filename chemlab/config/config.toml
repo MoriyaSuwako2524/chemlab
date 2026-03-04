@@ -284,6 +284,7 @@ converge_limit=1e-4
 restrain_const=100.0
 max_opt_steps=100
 ncore=32
+method="soc"
 
 [build_soap]
 r_cut=6.0
