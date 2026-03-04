@@ -1,6 +1,8 @@
 import sys
 import numpy as np
 from chemlab.util.unit import unit_type,complex_unit_type
+import os
+
 Hartree_to_kcal = 627.51
 ELEMENT_DICT = {
     "H": 1, "He": 2, "Li": 3, "Be": 4, "B": 5, "C": 6, "N": 7, "O": 8, "F": 9, "Ne": 10, "Na": 11, "Mg": 12,
@@ -1290,13 +1292,30 @@ class qchem_out_multi:
         if not isinstance(out_obj, qchem_out):
             raise TypeError("只能添加 qchem_out 或其子类对象")
         self.tasks.append(out_obj)
+    @staticmethod
+    def check_qchem_error(out_file):
+        if not os.path.exists(out_file):
+            return -1
 
+        with open(out_file) as f:
+            content = f.read()
+
+        if "Thank you very much for using Q-Chem" in content:
+            return 0
+        elif "Q-Chem fatal error" in content:
+            return 1
+        else:
+            return -10
     def read_files(self, filenames, out_cls):
         self.filenames = filenames
         self.tasks = []
         for fn in filenames:
+
             try:
                 out = out_cls(fn)
+                if self.check_qchem_error(out) != 0:
+                    print(f"Error in qchem file:{out}")
+                    continue
                 out.read_file(fn)
                 self.tasks.append(out)
             except:

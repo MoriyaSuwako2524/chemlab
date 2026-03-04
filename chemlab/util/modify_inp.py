@@ -202,10 +202,6 @@ class qchem_out_aimd_multi(qchem_out_multi):
         return coords, energies, grads, qm_types
 
 class qchem_out_excite_multi(qchem_out_multi):
-    """
-    Manage multiple Q-Chem excited-state output files,
-    and provide modular export utilities for specific attributes (energy, gradient, etc.)
-    """
 
     def __init__(self):
         super().__init__()
@@ -213,21 +209,12 @@ class qchem_out_excite_multi(qchem_out_multi):
         self._register_default_exporters()
 
     def read_files(self, filenames, path=""):
-        """
-        Read multiple Q-Chem excited-state output files.
 
-        Args:
-            filenames (list[str]): List of output filenames.
-            path (str): Optional path prefix for all files.
-        """
         from .file_system import qchem_out_excite
         import os
         fullpaths = [os.path.join(path, fn) if path else fn for fn in filenames]
         super().read_files(fullpaths, qchem_out_excite)
 
-    # =============================================================
-    #  Generic export function (core abstraction)
-    # =============================================================
     def export_attr(
         self,
         extractor,
@@ -235,21 +222,6 @@ class qchem_out_excite_multi(qchem_out_multi):
         dtype=float,
         state_idx=1,
     ):
-        """
-        Generic method to extract and export any attribute from each excited-state output.
-
-        Args:
-            attr_name (str): The attribute name, used for filename and identification.
-            extractor (Callable): A lambda function `extractor(st, task)` returning the value to export.
-            shape_func (Callable): Optional lambda `(natoms, nframes) -> shape` to allocate array shape.
-            dtype (type): Numpy dtype for the exported array (default: float).
-            prefix (str): File name prefix for output `.npy` files.
-            filename (str): Custom file name (if None, use prefix + attr_name + ".npy").
-            state_idx (int): Index of the excited state to extract (default: 1).
-
-        Returns:
-            np.ndarray: The extracted and exported data array.
-        """
 
         if not self.tasks:
             raise ValueError("No excited-state output files have been read.")
