@@ -93,6 +93,13 @@ class qchem_file(object):  # standard qchem inp file class
                     self.remain_texts += "\n" + file[i] + "\n"
 
                 continue
+            elif "$external_charges" in file[i]:
+                if self.external_charges.check == True:
+                    module_start = 4
+                else:
+                    module_start = -1
+                    self.remain_texts += "\n" + file[i] + "\n"
+                continue
             elif "$" in file[i]:
                 module_start = -1
                 self.remain_texts += "\n" + file[i] + "\n"
@@ -163,6 +170,15 @@ class qchem_file(object):  # standard qchem inp file class
                     self.opt2.r12.append(content[1:])
                 elif "r12mr34" == content[0]:
                     self.opt2.r12mr34.append(content[1:])
+            elif module_start == 4:
+                content = file[i].split(" ")
+                while "" in content:
+                    content.remove("")
+                if file[i] == "":
+                    continue
+                self.external_charges.mm_pos.append(content[:-1])
+                self.external_charges.mm_charge.append(content[-1])
+
 
 
 class qchem_inp_block:
@@ -436,6 +452,8 @@ class external_charges(qchem_inp_block):
     def return_output_format(self):
         mm_pos = self.mm_pos.copy()
         mm_charge = self.mm_charge.copy()
+        mm_pos = np.asarray(mm_pos)
+        mm_charge = np.asarray(mm_charge)
         out = "\n$external_charges\n"
         for i in range(len(mm_pos)):
             out +="".join(["%21.16f" % mm_pos[i, 0],

@@ -42,7 +42,8 @@ class QMMMTrainSetData(QchemBaseScript):
         full_mm_esp = []
         full_mm_esp_grad = []
         full_qm_coords = []
-
+        full_mm_coords = []
+        full_mm_charge = []
 
         for i in range(windows):
             window = "{:02d}".format(i)
@@ -53,12 +54,15 @@ class QMMMTrainSetData(QchemBaseScript):
             win_mm_esp = []
             win_mm_esp_grad = []
             win_qm_coord = []
+            win_mm_coord = []
+            win_mm_charge = []
             for j in range(nframes):
                 frame = "{:04d}".format(j)
                 tem_cache_path = f"{cache_path}/{window}/{frame}/"
                 tem_input = f"{tem_qmmm_path}/{frame}/{prefix}{frame}.out"
                 tem_qmout = qchem_file()
                 tem_qmout.molecule.check=True
+                tem_qmout.external_charges.check = True
                 if self.check_qchem_error(tem_input) == -1:
                     print("File not found:", tem_input)
                     continue
@@ -66,11 +70,13 @@ class QMMMTrainSetData(QchemBaseScript):
                     print("Qchem Job Fail:", tem_input)
                     continue
 
-
-                tem_qmout.read_file(f"{tem_cache_path}/molecule")
+                tem_qmmm_input = f"{tem_qmmm_path}/{frame}/{prefix}{frame}.inp"
+                tem_qmout.read_file(tem_qmmm_input)
 
 
                 tem_qm_coord = tem_qmout.molecule.xyz
+                tem_mm_coord = tem_qmout.external_charges.mm_pos
+                tem_mm_charge = tem_qmout.external_charges.mm_charge
                 tem_energy = np.fromfile(tem_cache_path + "99.0", dtype="f8", count=2)[1]
                 tem_qm_grad = np.fromfile(tem_cache_path + "131.0", dtype="f8").reshape(-1, 3)
                 tem_mm_esp = np.loadtxt( f"{tem_qmmm_path}/{frame}/{prefix}{frame}.out.esp", dtype=float, skiprows=3)
@@ -93,6 +99,8 @@ class QMMMTrainSetData(QchemBaseScript):
                 win_mm_esp.append(tem_mm_esp)
                 win_mm_esp_grad.append(tem_mm_esp_grad)
                 win_qm_coord.append(tem_qm_coord)
+                win_mm_coord.append(tem_mm_coord)
+                win_mm_charge.append(tem_mm_charge)
 
 
             win_energy = np.asarray(win_energy)
@@ -100,28 +108,38 @@ class QMMMTrainSetData(QchemBaseScript):
             win_mm_esp = np.asarray(win_mm_esp)
             win_mm_esp_grad = np.asarray(win_mm_esp_grad)
             win_qm_coord = np.asarray(win_qm_coord)
+            win_mm_charge = np.asarray(win_mm_charge)
+            win_mm_coord = np.asarray(win_mm_coord)
 
             np.save(f"{outpath}/energy_w{window}.npy", win_energy)
             np.save(f"{outpath}/qm_grad_w{window}.npy", win_qm_grad)
             np.save(f"{outpath}/mm_esp_w{window}.npy", win_mm_esp)
             np.save(f"{outpath}/mm_esp_grad_w{window}.npy", win_mm_esp_grad)
             np.save(f'{outpath}/qm_coord_w{window}.npy', win_qm_coord)
+            np.save(f"{outpath}/mm_coord_w{window}.npy", win_mm_coord)
+            np.save(f'{outpath}/win_mm_charge_w{window}.npy', win_mm_charge)
             full_energy.append(win_energy)
             full_qm_grad.append(win_qm_grad)
             full_mm_esp.append(win_mm_esp)
             full_mm_esp_grad.append(win_mm_esp_grad)
             full_qm_coords.append(win_qm_coord)
+            full_mm_charge.append(win_mm_charge)
+            full_mm_coords.append(win_mm_coord)
 
         full_energy = np.concatenate(full_energy, axis=0)
         np.save(f"{outpath}/full_energy.npy", full_energy)
         full_qm_grad = np.concatenate(full_qm_grad, axis=0)
         np.save(f"{outpath}/full_qm_grad.npy", full_qm_grad)
         full_mm_esp = np.concatenate(full_mm_esp, axis=0)
-        np.save(f"{outpath}/full_mm_esp.npy", np.asarray(full_mm_esp))
+        np.save(f"{outpath}/full_mm_esp.npy", np.asarray(full_mm_esp)[:,:,-1])
         full_mm_esp_grad = np.concatenate(full_mm_esp_grad, axis=0)
         np.save(f"{outpath}/full_mm_esp_grad.npy", np.asarray(full_mm_esp_grad))
         full_qm_coords = np.concatenate(full_qm_coords, axis=0)
         np.save(f"{outpath}/full_qm_coords.npy", full_qm_coords)
+        full_mm_charge = np.concatenate(full_mm_charge, axis=0)
+        np.save(f"{outpath}/full_mm_charge.npy", full_mm_charge)
+        full_mm_coords = np.concatenate(full_mm_coords, axis=0)
+        np.save(f"{outpath}/full_mm_coords.npy", full_mm_coords)
     def run_gas(self, cfg):
         qmmmpath = cfg.qmmmpath
         cache_path = cfg.cache_path
