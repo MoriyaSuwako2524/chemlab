@@ -103,7 +103,7 @@ class MECP1DScan(QchemBaseScript):
 
             inp = qchem_file()
             inp.molecule.check = True
-            inp.read_from_file(ref_template if i == 0 else os.path.join(scan_dir, f"{prefix}_step{i - 1}_final.inp"))
+            inp.read_file(ref_template if i == 0 else os.path.join(scan_dir, f"{prefix}_step{i - 1}_final.inp"))
             ref_filename = f"{prefix}_step{i}.inp"
             ref_path = os.path.join(scan_dir, ref_filename)
             inp.generate_inp(ref_path)
