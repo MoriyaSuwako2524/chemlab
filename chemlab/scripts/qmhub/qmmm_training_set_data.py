@@ -118,28 +118,26 @@ class QMMMTrainSetData(QchemBaseScript):
             np.save(f'{outpath}/qm_coord_w{window}.npy', win_qm_coord)
             np.save(f"{outpath}/mm_coord_w{window}.npy", win_mm_coord)
             np.save(f'{outpath}/win_mm_charge_w{window}.npy', win_mm_charge)
-            full_energy.append(win_energy)
-            full_qm_grad.append(win_qm_grad)
-            full_mm_esp.append(win_mm_esp)
-            full_mm_esp_grad.append(win_mm_esp_grad)
-            full_qm_coords.append(win_qm_coord)
-            full_mm_charge.append(win_mm_charge)
-            full_mm_coords.append(win_mm_coord)
 
-        full_energy = np.concatenate(full_energy, axis=0)
-        np.save(f"{outpath}/full_energy.npy", full_energy)
-        full_qm_grad = np.concatenate(full_qm_grad, axis=0)
-        np.save(f"{outpath}/full_qm_grad.npy", full_qm_grad)
-        full_mm_esp = np.concatenate(full_mm_esp, axis=0)
-        np.save(f"{outpath}/full_mm_esp.npy", np.asarray(full_mm_esp)[:,:,-1])
-        full_mm_esp_grad = np.concatenate(full_mm_esp_grad, axis=0)
-        np.save(f"{outpath}/full_mm_esp_grad.npy", np.asarray(full_mm_esp_grad))
-        full_qm_coords = np.concatenate(full_qm_coords, axis=0)
-        np.save(f"{outpath}/full_qm_coords.npy", full_qm_coords)
-        full_mm_charge = np.concatenate(full_mm_charge, axis=0)
-        np.save(f"{outpath}/full_mm_charge.npy", full_mm_charge)
-        full_mm_coords = np.concatenate(full_mm_coords, axis=0)
-        np.save(f"{outpath}/full_mm_coords.npy", full_mm_coords)
+        for name in ["energy", "qm_grad", "mm_esp", "mm_esp_grad",
+                     "qm_coord", "mm_coord", "win_mm_charge"]:
+            parts = []
+            for i in range(windows):
+                window = "{:02d}".format(i)
+                fpath = f"{outpath}/{name}_w{window}.npy"
+                if os.path.exists(fpath):
+                    parts.append(np.load(fpath))
+            if parts:
+                merged = np.concatenate(parts, axis=0)
+                if name == "mm_esp":
+                    merged = merged[:, :, -1]
+                out_name = name.replace("win_mm_charge", "mm_charge")
+                np.save(f"{outpath}/full_{out_name}.npy", merged)
+                del merged
+            del parts
+
+
+
     def run_gas(self, cfg):
         qmmmpath = cfg.qmmmpath
         cache_path = cfg.cache_path
