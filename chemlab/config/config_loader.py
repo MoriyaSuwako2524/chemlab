@@ -55,6 +55,8 @@ class ConfigBase:
                     text = val.strip()
                     if "," in text and not text.startswith("["):
                         text = "[" + text + "]"
+                    elif not text.startswith("["):
+                        text = "['" + text + "']"
                     setattr(self, key, ast.literal_eval(text))
                 else:
                     setattr(self, key, list(val))
