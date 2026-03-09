@@ -295,44 +295,27 @@ class mecp_soc(mecp):
         out.write(self.state_1.inp.molecule.return_output_format()+self.state_1.inp.remain_texts)
 
     def check_converge(self):
-        """
-        Check convergence for SOC MECP optimization based on:
-        - Energy change in spin-adiabatic energy (E_adiab)
-        - Gradient norm (total gradient)
-        - Structure displacement
-        """
-        # Current energy
-        current_energy = self.state_1.out.final_adiabatic_ene  # spin-adiabatic energy from output
-        natom = self.state_1.inp.molecule.natom
-        current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float).flatten()
 
-        # Energy change
+        current_energy = self.state_1.out.final_adiabatic_ene  # spin-adiabatic energy from output
+        current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float).flatten()
         if hasattr(self, "last_adiabatic_energy"):
             delta_E = abs(current_energy - self.last_adiabatic_energy)
         else:
             delta_E = np.inf
-
-        # Gradient norm
         grad_norm = np.linalg.norm(self.parallel_gradient + self.orthogonal_gradient)
-
-        # Structure displacement
         if self.last_structure is not None:
             last_structure = self.last_structure
             displacement = np.linalg.norm(current_structure - last_structure)
         else:
             displacement = np.inf
-
-        # Update memory for next step
         self.last_adiabatic_energy = current_energy
 
-        # Convergence logic
         converged_flags = [
             delta_E < self.energy_tol,
             grad_norm < self.grad_tol,
             displacement < self.disp_tol,
         ]
         is_converged = sum(converged_flags) >= 2
-
         print(f"[SOC] Energy change: {delta_E:.5e}, Converged? {delta_E < self.energy_tol};")
         print(f"[SOC] Gradient norm: {grad_norm:.5e}, Converged? {grad_norm < self.grad_tol};")
         print(f"[SOC] Displacement: {displacement:.5e}, Converged? {displacement < self.disp_tol}.\n")
@@ -356,13 +339,19 @@ class mecp_soc(mecp):
         self.state_2.out.ene = self.state_1.out.final_adiabatic_ene +  self.state_1.out.final_soc_ene
         self.state_1.ene_list.append(self.state_1.out.final_adiabatic_ene)
         self.state_2.ene_list.append(self.state_1.out.final_adiabatic_ene + self.state_1.out.final_soc_ene)
+        prefactor_1 = 0.5 * (1 - (self.state_1_e1-self.state_1_e2)/self.state_1.out.final_soc_ene)
+        prefactor_2 = 0.5 * (1 + (self.state_1_e1 - self.state_1_e2) / self.state_1.out.final_soc_ene)
+
+        self.state_1.out.force = self.state_1.out.force.T
+        self.state_2.out.force = self.state_2.out.force.T
+        F_1 = self.state_1.out.force_e1/prefactor_1
+        F_2 = self.state_1.out.force_e2/prefactor_2
         self.state_1.out.force = self.state_1.out.force
-        self.state_2.out.force = - self.state_1.out.force +  self.state_1.out.force_e1 + self.state_1.out.force_e2
+        self.state_2.out.force = - self.state_1.out.force +  F_1 + F_2
         # E_- = 1/2 (E_1+E_2 - E_soc) E_+ = 1/2(E_1 + E_2 + E_soc)
         # F_- = 0.5 * (1 - (E1-E2) / E_soc) F_1 + 0.5 * (1 + (E1-E2) / E_soc) F_2 - c_3 F_soc E_
         # F_+ = 0.5 * (1 + (E1-E2) / E_soc) F_1 + 0.5 * (1 - (E1-E2) / E_soc) F_2 + c_3 F_soc E_
-        self.state_1.out.force = self.state_1.out.force .T
-        self.state_2.out.force = self.state_2.out.force .T
+
 
 
         self.state_1.gradient_list.append(self.state_1.out.force)
