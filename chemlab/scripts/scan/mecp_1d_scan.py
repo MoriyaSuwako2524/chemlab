@@ -98,6 +98,7 @@ class MECP1DScan(QchemBaseScript):
         energy1_list = []
         energy2_list = []
         dist_list = []
+        soc_ene_list = []
         for i, dist in enumerate(dist_range):
             print(f"\n Step {i}: Restrain bond {atom1}-{atom2} to {dist:.3f} Å")
 
@@ -162,6 +163,7 @@ class MECP1DScan(QchemBaseScript):
                 energy1 = test_mecp.state_1.out.ene
                 energy2 = test_mecp.state_2.out.ene
                 gap = abs(energy1 - energy2)
+
                 plot_opt_step_progress(
                     test_mecp.state_1.ene_list,
                     test_mecp.state_2.ene_list,
@@ -179,11 +181,16 @@ class MECP1DScan(QchemBaseScript):
             E2 = test_mecp.state_2.out.ene
             energy1_list.append(E1)
             energy2_list.append(E2)
+            if method == "soc":
+                soc = test_mecp.state_1.out.final_vsoc_ene
+                soc_ene_list.append(soc)
+                np.save(f"{scan_dir}/gap.npy", soc_ene_list)
             dist_list.append(dist)
             plot_mecp_scan_progress(dist_list, energy1_list, energy2_list,scan_dir)
             np.save(f"{scan_dir}/E1.npy",energy1_list)
             np.save(f"{scan_dir}/E2.npy",energy2_list)
             np.save(f"{scan_dir}/dist.npy",dist_list)
+
         print(" MECP scan completed with restrain correction.")
         return dist_list
 
