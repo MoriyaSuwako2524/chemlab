@@ -154,7 +154,7 @@ class MECP1DScan(QchemBaseScript):
                 print(f"restrain_force: {test_mecp.F_EI}")
 
                 test_mecp.parallel_gradient += test_mecp.F_EI
-                if test_mecp.check_converge():
+                if test_mecp.check_convergence():
                     print(f"✅ Converged at scan step {i}")
                     break
 

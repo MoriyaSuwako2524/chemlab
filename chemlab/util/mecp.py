@@ -294,7 +294,7 @@ class mecp_soc(mecp):
         out = open(job,"w")
         out.write(self.state_1.inp.molecule.return_output_format()+self.state_1.inp.remain_texts)
 
-    def check_converge(self):
+    def check_convergence(self):
         """
         Check convergence for SOC MECP optimization based on:
         - Energy change in spin-adiabatic energy (E_adiab)
