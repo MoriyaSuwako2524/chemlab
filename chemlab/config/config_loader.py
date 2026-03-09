@@ -57,7 +57,12 @@ class ConfigBase:
                         text = "[" + text + "]"
                     elif not text.startswith("["):
                         text = "['" + text + "']"
-                    setattr(self, key, ast.literal_eval(text))
+                    try:
+                        setattr(self, key, ast.literal_eval(text))
+                    except (ValueError, SyntaxError):
+                        inner = text.strip("[]")
+                        items = [item.strip().strip("'\"") for item in inner.split(",") if item.strip()]
+                        setattr(self, key, items)
                 else:
                     setattr(self, key, list(val))
                 continue
