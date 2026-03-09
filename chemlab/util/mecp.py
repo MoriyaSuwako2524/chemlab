@@ -294,8 +294,14 @@ class mecp_soc(mecp):
         out = open(job,"w")
         out.write(self.state_1.inp.molecule.return_output_format()+self.state_1.inp.remain_texts)
 
-    def check_converge(self):
-
+    def check_convergence(self):
+        """
+        Check convergence for SOC MECP optimization based on:
+        - Energy change in spin-adiabatic energy (E_adiab)
+        - Gradient norm (total gradient)
+        - Structure displacement
+        """
+        # Current energy
         current_energy = self.state_1.out.final_adiabatic_ene  # spin-adiabatic energy from output
         current_structure = self.state_1.inp.molecule.return_xyz_list().astype(float).flatten()
         if hasattr(self, "last_adiabatic_energy"):

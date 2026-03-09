@@ -110,9 +110,11 @@ class MECP1DScan(QchemBaseScript):
             if method == "soc":
                 test_mecp = mecp_soc()
                 test_mecp.different_type = "soc"
+                scan_list = [test_mecp.state_1]
             elif method == "mecp":
                 test_mecp = mecp()
                 test_mecp.different_type = "analytical"
+                scan_list = [test_mecp.state_1, test_mecp.state_2]
 
             test_mecp.ref_path = scan_dir
             test_mecp.ref_filename = ref_filename
@@ -133,7 +135,7 @@ class MECP1DScan(QchemBaseScript):
 
                 processes = []
                 out_files = []
-                for state in [test_mecp.state_1]:
+                for state in scan_list:
                     inpfile = os.path.join(test_mecp.out_path, state.job_name)
                     outfile = inpfile.replace(".inp", ".out")
                     out_files.append(outfile)
@@ -152,7 +154,7 @@ class MECP1DScan(QchemBaseScript):
                 print(f"restrain_force: {test_mecp.F_EI}")
 
                 test_mecp.parallel_gradient += test_mecp.F_EI
-                if test_mecp.check_converge():
+                if test_mecp.check_convergence():
                     print(f"✅ Converged at scan step {i}")
                     break
 
