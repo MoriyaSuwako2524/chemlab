@@ -345,8 +345,8 @@ class mecp_soc(mecp):
         self.state_2.out.ene = self.state_1.out.final_adiabatic_ene +  self.state_1.out.final_soc_ene
         self.state_1.ene_list.append(self.state_1.out.final_adiabatic_ene)
         self.state_2.ene_list.append(self.state_1.out.final_adiabatic_ene + self.state_1.out.final_soc_ene)
-        prefactor_1 = 0.5 * (1 - (self.state_1_e1-self.state_1_e2)/self.state_1.out.final_soc_ene)
-        prefactor_2 = 0.5 * (1 + (self.state_1_e1 - self.state_1_e2) / self.state_1.out.final_soc_ene)
+        prefactor_1 = 0.5 * (1 - (self.state_1._e1-self.state_1._e2)/self.state_1.out.final_soc_ene)
+        prefactor_2 = 0.5 * (1 + (self.state_1._e1 - self.state_1._e2) / self.state_1.out.final_soc_ene)
 
         self.state_1.out.force = self.state_1.out.force.T
         self.state_2.out.force = self.state_2.out.force.T
