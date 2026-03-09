@@ -352,8 +352,7 @@ class mecp_soc(mecp):
         prefactor_1 = 0.5 * (1 - (self.state_1.out._e1 - self.state_1.out._e2)/self.state_1.out.final_soc_ene)
         prefactor_2 = 0.5 * (1 + (self.state_1.out._e1 - self.state_1.out._e2) / self.state_1.out.final_soc_ene)
 
-        self.state_1.out.force = self.state_1.out.force.T
-        self.state_2.out.force = self.state_2.out.force.T
+
         F_1 = self.state_1.out.force_e1/prefactor_1
         F_2 = self.state_1.out.force_e2/prefactor_2
         self.state_1.out.force = self.state_1.out.force
@@ -362,7 +361,8 @@ class mecp_soc(mecp):
         # F_- = 0.5 * (1 - (E1-E2) / E_soc) F_1 + 0.5 * (1 + (E1-E2) / E_soc) F_2 - c_3 F_soc E_
         # F_+ = 0.5 * (1 + (E1-E2) / E_soc) F_1 + 0.5 * (1 - (E1-E2) / E_soc) F_2 + c_3 F_soc E_
 
-
+        self.state_1.out.force = self.state_1.out.force.T
+        self.state_2.out.force = self.state_2.out.force.T
 
         self.state_1.gradient_list.append(self.state_1.out.force)
         self.state_2.gradient_list.append(self.state_2.out.force)
