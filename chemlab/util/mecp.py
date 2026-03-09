@@ -342,7 +342,7 @@ class mecp_soc(mecp):
         self.state_1.out.final_adiabatic_ene = tem_out.final_adiabatic_ene
         self.state_1.out.final_soc_ene = tem_out.final_soc_ene
         self.state_1.out._e1 = tem_out._e1
-        self.state_1.out._e1 = tem_out._e2
+        self.state_1.out._e2 = tem_out._e2
         self.state_1.out.final_vsoc_ene = tem_out.final_vsoc_ene
         self.state_1.out.ene = self.state_1.out.final_adiabatic_ene
         self.state_2.out.ene = self.state_1.out.final_adiabatic_ene +  self.state_1.out.final_soc_ene
