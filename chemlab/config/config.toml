@@ -260,6 +260,7 @@ windows = 42
 cache_path = "/scratch/moriya/cache/"
 nframes = 500
 method = "qmmm"
+fields = ["energy", "qm_grad", "qm_coord","mm_coord","mm_charge","mm_esp","mm_esp_grad"]
 
 [qmmm_job_manager]
 qmmmpath = "./"
