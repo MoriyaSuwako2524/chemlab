@@ -331,6 +331,7 @@ class mecp_soc(mecp):
         path = self.out_path
         self.state_1.out = qchem_out_force()
         self.state_2.out = qchem_out_force()
+
         self.state_1.job_name = "{}{}_job{}.out".format(self.prefix, self.state_1._spin, self.job_num)
         print(f"Reading output file: {os.path.join(path,self.state_1.job_name)}")
         self.state_1.out.read_file(os.path.join(path,self.state_1.job_name), self_check=False, different_type=self.different_type)
@@ -340,7 +341,9 @@ class mecp_soc(mecp):
         tem_out.read_file(os.path.join(path,self.state_1.job_name))
         self.state_1.out.final_adiabatic_ene = tem_out.final_adiabatic_ene
         self.state_1.out.final_soc_ene = tem_out.final_soc_ene
-
+        self.state_1.out._e1 = tem_out._e1
+        self.state_1.out._e1 = tem_out._e2
+        self.state_1.out.final_vsoc_ene = tem_out.final_vsoc_ene
         self.state_1.out.ene = self.state_1.out.final_adiabatic_ene
         self.state_2.out.ene = self.state_1.out.final_adiabatic_ene +  self.state_1.out.final_soc_ene
         self.state_1.ene_list.append(self.state_1.out.final_adiabatic_ene)
