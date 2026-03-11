@@ -1,12 +1,8 @@
-import sys
-import os
-import shutil
-import uuid
-import subprocess as sp
-from multiprocessing import Pool
-import numpy as np
 
-from chemlab.util.file_system import ELEMENT_DICT,qchem_out_force,qchem_file
+import os
+import numpy as np
+import copy
+from chemlab.util.file_system import qchem_out_force,qchem_file
 from chemlab.scripts.base import QchemBaseScript
 from chemlab.config.config_loader import ConfigBase
 
@@ -26,19 +22,23 @@ FIELD_REGISTRY = {
     "mm_coord": {
         "save_name": "mm_coord",
         "loader": lambda ctx: ctx["qmout"].external_charges.mm_pos,
+        "mm_dim": True,
     },
     "mm_charge": {
         "save_name": "mm_charge",
         "loader": lambda ctx: ctx["qmout"].external_charges.mm_charge,
+        "mm_dim": True,
     },
     "mm_esp": {
         "save_name": "mm_esp",
         "loader": lambda ctx: np.loadtxt(ctx["esp_file"], dtype=float, skiprows=3),
         "merge_post": lambda arr: arr[:, :, -1],
+        "mm_dim": True,
     },
     "mm_esp_grad": {
         "save_name": "mm_esp_grad",
         "loader": lambda ctx: -np.loadtxt(ctx["efld_file"], max_rows=ctx["n_mm"], dtype=float),
+        "mm_dim": True,
     },
 }
 
@@ -50,6 +50,12 @@ class QMMMTrainSetData(QchemBaseScript):
     name = "example_script"
     config = QMMMTrainSetDataConfig
 
+    @staticmethod
+    def _filter_mm_by_cutoff(qm_coord,mm_coord, cutoff: float):
+        diff = mm_coord[:, None, :] - qm_coord[None, :, :]
+        min_dist = np.sqrt((diff ** 2).sum(axis=-1)).min(axis=-1)
+        mask = min_dist < cutoff
+        return mask
     def run(self, cfg):
         if cfg.method == "gas":
             self.run_gas(cfg)
@@ -59,6 +65,8 @@ class QMMMTrainSetData(QchemBaseScript):
             return 0
         else:
             return KeyError(f"Method {cfg.method} Not Supported")
+
+
     def run_qmmm(self,cfg):
         qmmmpath = cfg.qmmmpath
         cache_path = cfg.cache_path
@@ -66,6 +74,7 @@ class QMMMTrainSetData(QchemBaseScript):
         prefix = cfg.prefix
         windows = cfg.windows
         nframes = cfg.nframes
+        cutoff = cfg.cutoff
         os.makedirs(outpath, exist_ok=True)
         fields = getattr(cfg, "fields", list(FIELD_REGISTRY.keys()))
         active = {k: FIELD_REGISTRY[k] for k in fields}
@@ -78,7 +87,6 @@ class QMMMTrainSetData(QchemBaseScript):
 
             for j in range(nframes):
                 frame = "{:04d}".format(j)
-                # --- 文件检查（同原来） ---
                 tem_input = f"{tem_qmmm_path}/{frame}/{prefix}{frame}.out"
                 err = self.check_qchem_error(tem_input)
                 if err == -1:
@@ -114,7 +122,10 @@ class QMMMTrainSetData(QchemBaseScript):
                         break
                 if skip:
                     continue
-
+                if cutoff > 0:
+                    _, mask = self._filter_mm_by_cutoff(frame_data.get("qm_coord"),frame_data.get("mm_coord"), cutoff)
+                else:
+                    mask = None
                 # MM ESP 尺寸一致性检查（仅在选了相关字段时）
                 if "mm_esp" in frame_data or "mm_esp_grad" in frame_data:
                     n_esp = frame_data.get("mm_esp", frame_data.get("mm_esp_grad"))

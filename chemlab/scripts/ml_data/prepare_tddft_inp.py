@@ -177,7 +177,10 @@ class PrepareTddftInp(Script):
     def _run_aimd_mode(self, out_file, ref_file, out_dir, charge, spin, cfg):
         """AIMD 模式: 从 Q-Chem AIMD 输出文件提取结构并生成输入"""
 
+
         dataset_size = cfg.dataset_size
+        if cfg.mode == "all":
+            dataset_size = 1145141919810
         energy_unit = cfg.energy_unit
         distance_unit = cfg.distance_unit
         force_unit = cfg.force_unit
@@ -188,16 +191,31 @@ class PrepareTddftInp(Script):
 
         multi = qchem_out_aimd_multi()
         multi.read_files([out_file])
+        n_frames = multi._nframes
+        frames = multi.traj
+        if dataset_size > 0 and dataset_size < n_frames:
+            indices = np.random.choice(n_frames, size=dataset_size, replace=False)
+            indices = np.sort(indices)
+            print(f"[prepare_tddft_inp] 随机选择 {dataset_size} 帧")
+            selected_frames = [frames[i] for i in indices]
+        else:
+            indices = np.arange(n_frames)
+            selected_frames = frames
+            print(f"[prepare_tddft_inp] 使用全部 {n_frames} 帧")
 
         tmp_prefix = os.path.join(out_dir, "tmp_")
-        multi.export_numpy(
-            prefix=tmp_prefix,
-            energy_unit=energy_unit,
-            distance_unit=distance_unit,
-            force_unit=force_unit
-        )
 
+        atom_symbols = [atm[0] for atm in traj[0].carti]
+        qm_types = np.array([atom_charge_dict[sym] for sym in atom_symbols])
+
+
+        self._export_xyz_to_numpy(
+            frames=selected_frames,
+            atom_types=qm_types,
+            prefix=tmp_prefix
+        )
         dataset = MLData(prefix=tmp_prefix, files=["coord", "energy", "grad", "type"])
+
         dataset.save_split(n_train=dataset_size, n_val=0, n_test=0, prefix=out_dir)
         dataset.export_xyz_from_split(
             split_file=os.path.join(out_dir, "split.npz"),

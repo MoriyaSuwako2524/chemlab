@@ -119,14 +119,18 @@ class qchem_out_aimd_multi(qchem_out_multi):
         super().read_files(filenames, qchem_out_aimd)
 
     @property
+    def _nframes(self):
+        self.merge_trajectories()
+        return len(self.traj)
+    @property
     def total_steps(self):
         return sum(task.aimd_steps for task in self.tasks)
 
     def merge_trajectories(self):
-        traj = []
+        self.traj = []
         for task in self.tasks:
-            traj.extend(task.aimd_geoms)
-        return traj
+            self.traj.extend(task.aimd_geoms)
+        return self.traj
 
     def get_all_energies(self):
         return [g.energy for g in self.merge_trajectories() if hasattr(g, "energy")]
