@@ -29,6 +29,7 @@ class PrepareTddftInp(Script):
         spin = cfg.spin
         dataset_size = cfg.dataset_size
         mode = cfg.mode
+        start = cfg.start
         if mode == "all":
             dataset_size = 1145141919810
         if not input_file:
@@ -82,7 +83,7 @@ class PrepareTddftInp(Script):
 
         dataset = MLData(prefix=tmp_prefix, files=["coord", "type"])
         dataset.export_xyz_in_order(
-            prefix="train_",
+            prefix="train",
             outdir=out_dir,
         )
 
@@ -137,7 +138,7 @@ class PrepareTddftInp(Script):
         # 使用 MLData 加载并导出
         dataset = MLData(prefix=tmp_prefix, files=["coord", "type"])
         dataset.export_xyz_in_order(
-            prefix="train_",
+            prefix="train",
             outdir=out_dir,
         )
 
@@ -195,7 +196,7 @@ class PrepareTddftInp(Script):
 
         dataset = MLData(prefix=tmp_prefix, files=["coord", "energy", "grad", "type"])
         dataset.export_xyz_in_order(
-            prefix="train_",
+            prefix="train",
             outdir=out_dir,
         )
 

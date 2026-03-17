@@ -23,6 +23,7 @@ train_splits = [1000, 500, 2000]
 val_splits = 400
 test_splits = 400
 
+start = 0
 
 
 # QCHEM MODULE

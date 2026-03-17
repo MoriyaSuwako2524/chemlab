@@ -52,7 +52,7 @@ class MLData:
             "idx_test": idx_test,
         }
 
-    def export_xyz_in_order(self,prefix="train_",outdir="./raw_data/"):
+    def export_xyz_in_order(self,prefix="train",outdir="./raw_data/"):
         import os
         if not os.path.exists(outdir):
             os.makedirs(outdir)
