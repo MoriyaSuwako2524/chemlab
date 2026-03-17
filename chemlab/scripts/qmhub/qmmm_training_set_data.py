@@ -5,19 +5,24 @@ import copy
 from chemlab.util.file_system import qchem_out_force,qchem_file
 from chemlab.scripts.base import QchemBaseScript
 from chemlab.config.config_loader import ConfigBase
+from scipy.spatial import cKDTree
+
 
 FIELD_REGISTRY = {
     "energy": {
         "save_name": "energy",
         "loader": lambda ctx: np.fromfile(ctx["cache_path"] + "99.0", dtype="f8", count=2)[1],
+        "mm_dim": False,
     },
     "qm_grad": {
         "save_name": "qm_grad",
         "loader": lambda ctx: np.fromfile(ctx["cache_path"] + "131.0", dtype="f8").reshape(-1, 3),
+        "mm_dim": False,
     },
     "qm_coord": {
         "save_name": "qm_coord",
         "loader": lambda ctx: ctx["qmout"].molecule.xyz,
+        "mm_dim": False,
     },
     "mm_coord": {
         "save_name": "mm_coord",
@@ -50,12 +55,7 @@ class QMMMTrainSetData(QchemBaseScript):
     name = "example_script"
     config = QMMMTrainSetDataConfig
 
-    @staticmethod
-    def _filter_mm_by_cutoff(qm_coord,mm_coord, cutoff: float):
-        diff = mm_coord[:, None, :] - qm_coord[None, :, :]
-        min_dist = np.sqrt((diff ** 2).sum(axis=-1)).min(axis=-1)
-        mask = min_dist < cutoff
-        return mask
+
     def run(self, cfg):
         if cfg.method == "gas":
             self.run_gas(cfg)
@@ -80,6 +80,19 @@ class QMMMTrainSetData(QchemBaseScript):
         active = {k: FIELD_REGISTRY[k] for k in fields}
         os.makedirs(outpath, exist_ok=True)
 
+        tem_qmout = qchem_file()
+        tem_qmout.molecule.check = True
+        tem_qmout.external_charges.check = True
+        tem_qmout.read_file(f"{qmmmpath}/{00}//{0000}/{prefix}{0000}.inp")
+        tem_qm_coord = tem_qmout.molecule.xyz
+        tem_mm_coord = tem_qmout.external_charges.mm_pos
+        tree = cKDTree(tem_mm_coord)
+        qm_tree = cKDTree(tem_qm_coord)
+
+        idx_set = tree.query_ball_tree(qm_tree, r=cutoff)
+        idx_list = sorted(set(i for i, hits in enumerate(idx_set) if hits))
+        mm_idxs = np.array(idx_list)
+
         for i in range(windows):
             window = "{:02d}".format(i)
             tem_qmmm_path = f"{qmmmpath}/{window}/"
@@ -101,7 +114,7 @@ class QMMMTrainSetData(QchemBaseScript):
                 tem_qmout.external_charges.check = True
                 tem_qmout.read_file(f"{tem_qmmm_path}/{frame}/{prefix}{frame}.inp")
 
-                # 构造 context 供 loader 使用
+
                 ctx = {
                     "cache_path": f"{cache_path}/{window}/{frame}/",
                     "qmout": tem_qmout,
@@ -116,17 +129,16 @@ class QMMMTrainSetData(QchemBaseScript):
                 for k, spec in active.items():
                     try:
                         frame_data[k] = spec["loader"](ctx)
+                        if spec["mm_dim"]:
+                            frame_data[k] = np.array(frame_data[k])[mm_idxs]
                     except Exception as e:
                         print(f"Error loading {k} for {tem_input}: {e}")
                         skip = True
                         break
                 if skip:
                     continue
-                if cutoff > 0:
-                    _, mask = self._filter_mm_by_cutoff(frame_data.get("qm_coord"),frame_data.get("mm_coord"), cutoff)
-                else:
-                    mask = None
-                # MM ESP 尺寸一致性检查（仅在选了相关字段时）
+
+
                 if "mm_esp" in frame_data or "mm_esp_grad" in frame_data:
                     n_esp = frame_data.get("mm_esp", frame_data.get("mm_esp_grad"))
                     if len(win_data.get("mm_esp", win_data.get("mm_esp_grad", []))) == 0:
@@ -136,9 +148,10 @@ class QMMMTrainSetData(QchemBaseScript):
                         continue
 
                 for k in active:
+
                     win_data[k].append(frame_data[k])
 
-            # 保存每个 window
+
             for k, spec in active.items():
                 arr = np.asarray(win_data[k])
                 np.save(f"{outpath}/{spec['save_name']}_w{window}.npy", arr)

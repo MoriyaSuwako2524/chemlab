@@ -59,7 +59,6 @@ class ExportNumpy(Script):
         # For all-states export
         all_multi_readers = []
 
-        # ======== Process each subset ========
         for grp, files in groups.items():
             if not files:
                 continue
@@ -86,7 +85,7 @@ class ExportNumpy(Script):
                 "transition_density": multi.export_transition_density(prefix=grp, unit="e", state_idx=state_idx),
             }
 
-            # append arrays
+
             all_coords.append(results["coords"])
             all_gs_energy.append(results["gs_energy"])
             all_ex_energy.append(results["ex_energy"])
@@ -142,7 +141,6 @@ class ExportNumpy(Script):
 
         print("Export completed (single-state .npy files).")
 
-        # ===== Export all states to single NPZ =====
         tddft_npz_path = f"{out_path}{prefix}tddft.npz"
         self._export_all_states_npz(
             all_multi_readers,
@@ -152,7 +150,6 @@ class ExportNumpy(Script):
             atom_symbols,
         )
 
-        # ===== multiple splits =====
         self._save_splits(
             coords.shape[0],
             cfg.train_splits,
@@ -161,9 +158,6 @@ class ExportNumpy(Script):
             prefix=out_path
         )
 
-    # -------------------------------------------------------
-    # Helper: Export all excited states to single NPZ
-    # -------------------------------------------------------
     def _export_all_states_npz(self, multi_readers, output_file, split_idx, qm_type, atom_symbols):
 
         all_tasks = []
