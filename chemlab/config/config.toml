@@ -257,6 +257,7 @@ method = "qmmm"
 
 [qmmm_training_set_data]
 qmmmpath = "./"
+cutoff=10
 outpath = "./raw_data/"
 prefix = "qmmm_"
 windows = 42
