@@ -138,7 +138,7 @@ class ExportNumpy(Script):
         np.save(full_prefix + "transition_density.npy", transition_density)
         np.save(full_prefix + "aligned_td.npy", aligned_transition_density)
         np.save(full_prefix + "qm_type.npy", qm_type)
-        np.savez(full_prefix + "split.npz", **split_idx)
+        np.savez(full_prefix + "split_uma.npz", **split_idx)
 
         print("Export completed (single-state .npy files).")
 

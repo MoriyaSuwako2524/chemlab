@@ -52,14 +52,34 @@ class MLData:
             "idx_test": idx_test,
         }
 
+    def export_xyz_in_order(self,prefix="train_",outdir="./raw_data/"):
+        import os
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+        inv_dict = {v: k for k, v in atom_charge_dict.items()}
+        nframes = self.nframes
+        for i in range(nframes):
+            coords = self.coords[i]
+            types = self.qm_types
+            natoms = len(types)
+            fname = f"{prefix}_{i:04d}.xyz"
+            path = os.path.join(outdir, fname)
+            with open(path, "w") as f:
+                f.write(f"{natoms}\n")
+                f.write(f"{prefix} frame {i}\n")
+                for sym, (x, y, z) in zip(types, coords):
+                    if isinstance(sym, (int, np.integer)):
+                        sym = inv_dict.get(int(sym), str(sym))
+                    f.write(f"{sym} {x:.8f} {y:.8f} {z:.8f}\n")
+        print(f"XYZ files exported to {outdir}")
     def save_split(self, n_train, n_val, n_test, prefix="./", seed=42):
         print(f"Split:n_train:{n_train}, n_val:{n_val}, n_test:{n_test},Total_frames:{self.nframes}")
         split_dict = self.split_dataset(n_train, n_val, n_test, seed=seed)
-        np.savez(prefix + "split.npz",
+        np.savez(prefix + "split_uma.npz",
                  idx_train=split_dict["idx_train"],
                  idx_val=split_dict["idx_val"],
                  idx_test=split_dict["idx_test"])
-        print(f"Saved split to {prefix}split.npz "
+        print(f"Saved split to {prefix}split_uma.npz "
               f"(idx_train={len(split_dict['idx_train'])}, "
               f"idx_val={len(split_dict['idx_val'])}, "
               f"idx_test={len(split_dict['idx_test'])})")
@@ -150,10 +170,7 @@ class MLData:
     
         if not os.path.exists(outdir):
             os.makedirs(outdir)
-
-
         inv_dict = {v: k for k, v in atom_charge_dict.items()}
-    
         for key, prefix in prefix_map.items():
             if key not in split:
                 continue

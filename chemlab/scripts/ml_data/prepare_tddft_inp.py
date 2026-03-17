@@ -81,11 +81,9 @@ class PrepareTddftInp(Script):
         )
 
         dataset = MLData(prefix=tmp_prefix, files=["coord", "type"])
-        dataset.save_split(n_train=len(selected_frames), n_val=0, n_test=0, prefix=out_dir)
-        dataset.export_xyz_from_split(
-            split_file=os.path.join(out_dir, "split.npz"),
+        dataset.export_xyz_in_order(
+            prefix="train_",
             outdir=out_dir,
-            prefix_map=None
         )
 
         print(f"[prepare_tddft_inp] 生成输入文件, charge={charge}, spin={spin}")
@@ -138,11 +136,9 @@ class PrepareTddftInp(Script):
 
         # 使用 MLData 加载并导出
         dataset = MLData(prefix=tmp_prefix, files=["coord", "type"])
-        dataset.save_split(n_train=len(selected_frames), n_val=0, n_test=0, prefix=out_dir)
-        dataset.export_xyz_from_split(
-            split_file=os.path.join(out_dir, "split.npz"),
+        dataset.export_xyz_in_order(
+            prefix="train_",
             outdir=out_dir,
-            prefix_map=None
         )
 
         print(f"[prepare_tddft_inp] 生成输入文件, charge={charge}, spin={spin}")
@@ -198,16 +194,9 @@ class PrepareTddftInp(Script):
         )
 
         dataset = MLData(prefix=tmp_prefix, files=["coord", "energy", "grad", "type"])
-        coord = np.load(f"{tmp_prefix}coord.npy")
-        if cfg.mode == "all":
-            dataset.save_split(n_train=len(coord), n_val=0, n_test=0, prefix=out_dir)
-
-        else:
-            dataset.save_split(n_train=dataset_size, n_val=0, n_test=0, prefix=out_dir)
-        dataset.export_xyz_from_split(
-            split_file=os.path.join(out_dir, "split.npz"),
+        dataset.export_xyz_in_order(
+            prefix="train_",
             outdir=out_dir,
-            prefix_map=None
         )
 
         print(f"[prepare_tddft_inp] 生成输入文件, charge={charge}, spin={spin}")

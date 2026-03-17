@@ -87,11 +87,11 @@ class MLData:
         split_dict = self.split_dataset(n_train, n_val, n_test, seed=seed)
 
 
-        np.savez(prefix + "split.npz",
+        np.savez(prefix + "split_uma.npz",
                  idx_train=split_dict["idx_train"],
                  idx_val=split_dict["idx_val"],
                  idx_test=split_dict["idx_test"])
-        print(f"Saved split to {prefix}split.npz "
+        print(f"Saved split to {prefix}split_uma.npz "
               f"(idx_train={len(split_dict['idx_train'])}, "
               f"idx_val={len(split_dict['idx_val'])}, "
               f"idx_test={len(split_dict['idx_test'])})")

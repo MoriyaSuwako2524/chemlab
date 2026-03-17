@@ -57,7 +57,7 @@ def main():
     np.save(prefix + "grad.npy", grad)
     np.save(prefix + "transmom.npy", transmom)
     np.save(prefix + "qm_type.npy", qm_type)
-    np.savez(prefix + "split.npz", **split_idx)
+    np.savez(prefix + "split_uma.npz", **split_idx)
 
     print("? Done")
     print("   coords:", coords.shape)

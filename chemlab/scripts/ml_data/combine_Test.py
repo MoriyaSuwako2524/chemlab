@@ -14,7 +14,7 @@ class MergeTestData(Script):
     Merge test data from multiple exported numpy datasets.
 
     This script:
-    1. Reads multiple datasets (each with split.npz)
+    1. Reads multiple datasets (each with split_uma.npz)
     2. Extracts the test portion from each dataset
     3. Merges all test data into a single dataset
     4. Merges tddft.npz files using the same split
@@ -234,8 +234,8 @@ class MergeTestData(Script):
             'idx_val': np.array([], dtype=int),
             'idx_test': np.arange(n_total)
         }
-        np.savez(f"{full_prefix}split.npz", **split_dict)
-        print(f"  Saved: {full_prefix}split.npz")
+        np.savez(f"{full_prefix}split_uma.npz", **split_dict)
+        print(f"  Saved: {full_prefix}split_uma.npz")
 
         # ===== Merge TDDFT data =====
         if merge_tddft and any(merged_tddft.values()):

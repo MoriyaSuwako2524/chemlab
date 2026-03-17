@@ -131,7 +131,7 @@ def main():
     np.save(prefix + "transition_density.npy", transition_dentsity)
     np.save(prefix + "aligned_td.npy", aligned_transition_density)
     np.save(prefix + "qm_type.npy", qm_type)
-    np.savez(prefix + "split.npz", **split_idx)
+    np.savez(prefix + "split_uma.npz", **split_idx)
 
     print("\n? Export Completed Successfully")
     print("   coords:", coords.shape)
