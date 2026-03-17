@@ -83,7 +83,7 @@ class QMMMTrainSetData(QchemBaseScript):
         tem_qmout = qchem_file()
         tem_qmout.molecule.check = True
         tem_qmout.external_charges.check = True
-        tem_qmout.read_file(f"{qmmmpath}/{00}//{0000}/{prefix}{0000}.inp")
+        tem_qmout.read_file(f"{qmmmpath}/00//0000/{prefix}0000.inp")
         tem_qm_coord = tem_qmout.molecule.xyz
         tem_mm_coord = tem_qmout.external_charges.mm_pos
         tree = cKDTree(tem_mm_coord)
