@@ -188,6 +188,7 @@ class QMMMTrainSetData(QchemBaseScript):
         full_qm_grad = []
         full_qm_coords = []
         full_qm_type = None
+        tem_qmout = qchem_out_force()
         for i in range(windows):
             window = "{:02d}".format(i)
             tem_qmmm_path = f"{qmmmpath}/{window}/"
@@ -200,7 +201,6 @@ class QMMMTrainSetData(QchemBaseScript):
                 frame = "{:04d}".format(j)
                 tem_cache_path = f"{cache_path}/{window}/{frame}/"
                 tem_input = f"{tem_qmmm_path}/{frame}/{prefix}{frame}.out"
-                tem_qmout = qchem_out_force()
                 if self.check_qchem_error(tem_input) == -1:
                     print("File not found:", tem_input)
                     continue

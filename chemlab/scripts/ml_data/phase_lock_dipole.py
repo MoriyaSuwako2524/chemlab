@@ -78,9 +78,7 @@ class PhaseLockDipole(Script):
         print(f"  - {prefix}bright_is_S2.npy   shape={bright_is_S2.shape}")
         print("[phase_lock_dipole] Done.")
 
-    # -------------------------------------------------------
-    # Helper: phase locking
-    # -------------------------------------------------------
+
     @staticmethod
     def _phase_lock(mu_vec, q_atom, R_centered):
         """
@@ -126,3 +124,4 @@ class PhaseLockDipole(Script):
 
         print(f"    Flipped {n_flipped}/{len(mu_pred)} frames for phase consistency")
         return out_mu, out_q
+
