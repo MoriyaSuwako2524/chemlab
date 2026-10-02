@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+import warnings
 import numpy as np
 from chemlab.util.modify_inp import qchem_out_excite_multi
 from chemlab.scripts.base import Script
@@ -55,6 +57,9 @@ class ExportNumpy(Script):
         all_dipolemom = []
         all_transition_density = []
         qm_type = None
+        source_files = []
+        reference_symbols = None
+        reference_states = None
 
         # For all-states export
         all_multi_readers = []
@@ -67,6 +72,19 @@ class ExportNumpy(Script):
 
             multi = qchem_out_excite_multi()
             multi.read_files(files, path=path)
+
+            if not multi.tasks:
+                continue
+            for task in multi.tasks:
+                symbols = [atom[0] for atom in task.molecule.carti]
+                states = [state.state_idx for state in task.states]
+                if not symbols or len(states) < 2 or state_idx not in states:
+                    raise ValueError(f"Missing geometry or requested excited state: {task.filename}")
+                if reference_symbols is None:
+                    reference_symbols, reference_states = symbols, states
+                if symbols != reference_symbols or states != reference_states:
+                    raise ValueError(f"Inconsistent atoms or state indices: {task.filename}")
+                source_files.append(str(Path(task.filename).resolve()))
 
 
             # Keep reference for all-states export
@@ -103,10 +121,13 @@ class ExportNumpy(Script):
                 qm_type = np.array([atom_charge_dict[sym] for sym in atom_symbols])
 
             # record indices
-            split_idx[f"idx_{grp}"] = np.arange(idx_offset, idx_offset + len(files))
-            idx_offset += len(files)
+            count = len(multi.tasks)
+            split_idx[f"idx_{grp}"] = np.arange(idx_offset, idx_offset + count)
+            idx_offset += count
 
         # ======== Merge datasets ========
+        if not all_coords:
+            raise ValueError("No valid TDDFT outputs found (expected train/val/test/frame*.out)")
         coords = np.concatenate(all_coords)
         gs_energy = np.concatenate(all_gs_energy)
         ex_energy = np.concatenate(all_ex_energy)
@@ -125,7 +146,8 @@ class ExportNumpy(Script):
         )
 
         # ======== Save outputs ========
-        full_prefix = f"{out_path}{prefix}"
+        Path(out_path).mkdir(parents=True, exist_ok=True)
+        full_prefix = str(Path(out_path) / prefix)
         np.save(full_prefix + "coord.npy", coords)
         np.save(full_prefix + "gs_energy.npy", gs_energy)
         np.save(full_prefix + "ex_energy.npy", ex_energy)
@@ -137,11 +159,12 @@ class ExportNumpy(Script):
         np.save(full_prefix + "transition_density.npy", transition_density)
         np.save(full_prefix + "aligned_td.npy", aligned_transition_density)
         np.save(full_prefix + "qm_type.npy", qm_type)
+        np.save(full_prefix + "source_files.npy", np.asarray(source_files, dtype=str))
         np.savez(full_prefix + "split_uma.npz", **split_idx)
 
         print("Export completed (single-state .npy files).")
 
-        tddft_npz_path = f"{out_path}{prefix}tddft.npz"
+        tddft_npz_path = full_prefix + "tddft.npz"
         self._export_all_states_npz(
             all_multi_readers,
             tddft_npz_path,
@@ -180,16 +203,16 @@ class ExportNumpy(Script):
 
         # Ground state
         gs_energies = np.zeros(nframes)  # Hartree
-        gs_dipoles = np.zeros((nframes, 3))  # Debye
-        gs_esp_charges = np.zeros((nframes, natoms))
+        gs_dipoles = np.full((nframes, 3), np.nan)  # Debye
+        gs_esp_charges = np.full((nframes, natoms), np.nan)
 
         # Excited states - all states
-        ex_energies = np.zeros((nframes, n_excited))  # eV
-        total_energies = np.zeros((nframes, n_excited))  # Hartree
-        osc_strengths = np.zeros((nframes, n_excited))
-        trans_moms = np.zeros((nframes, n_excited, 3))
-        esp_charges_ex = np.zeros((nframes, n_excited, natoms))
-        esp_trans_density = np.zeros((nframes, n_excited, natoms))
+        ex_energies = np.full((nframes, n_excited), np.nan)  # eV
+        total_energies = np.full((nframes, n_excited), np.nan)  # Hartree
+        osc_strengths = np.full((nframes, n_excited), np.nan)
+        trans_moms = np.full((nframes, n_excited, 3), np.nan)
+        esp_charges_ex = np.full((nframes, n_excited, natoms), np.nan)
+        esp_trans_density = np.full((nframes, n_excited, natoms), np.nan)
         gradients = np.full((nframes, n_excited, natoms, 3), np.nan)  # Hartree/Bohr
 
         # ======== Extract data ========
@@ -199,9 +222,9 @@ class ExportNumpy(Script):
 
             # Ground state (index 0)
             gs = task.states[0]
-            gs_energies[i] = gs.total_energy if gs.total_energy else np.nan
+            gs_energies[i] = gs.total_energy if gs.total_energy is not None else np.nan
 
-            if gs.dipole_mom:
+            if gs.dipole_mom is not None:
                 gs_dipoles[i] = gs.dipole_mom
 
             if gs.esp_charges is not None:
@@ -212,11 +235,11 @@ class ExportNumpy(Script):
                 if j >= n_excited:
                     break
 
-                ex_energies[i, j] = st.excitation_energy if st.excitation_energy else np.nan
-                total_energies[i, j] = st.total_energy if st.total_energy else np.nan
-                osc_strengths[i, j] = st.osc_strength if st.osc_strength else 0.0
+                ex_energies[i, j] = st.excitation_energy if st.excitation_energy is not None else np.nan
+                total_energies[i, j] = st.total_energy if st.total_energy is not None else np.nan
+                osc_strengths[i, j] = st.osc_strength if st.osc_strength is not None else np.nan
 
-                if st.trans_mom:
+                if st.trans_mom is not None:
                     trans_moms[i, j] = st.trans_mom
 
                 if st.esp_charges is not None:
@@ -253,7 +276,15 @@ class ExportNumpy(Script):
             'n_frames': nframes,
             'n_atoms': natoms,
             'n_excited': n_excited,
-            'state_indices': np.arange(1, n_excited + 1),
+            'state_indices': np.array([st.state_idx for st in all_tasks[0].states[1:]]),
+            'source_files': np.array([str(Path(t.filename).resolve()) for t in all_tasks]),
+            'schema_version': 2,
+            'coordinate_unit': 'angstrom',
+            'excitation_energy_unit': 'eV',
+            'total_energy_unit': 'hartree',
+            'gs_dipole_unit': 'Debye',
+            'transition_dipole_unit': 'e*bohr',
+            'gradient_unit': 'hartree/bohr',
         }
 
         # Add split indices
@@ -277,15 +308,18 @@ class ExportNumpy(Script):
     # -------------------------------------------------------
     def _align_data(self, transmom, transition_density, mode):
 
-        ref_mom = transmom[0]
-        ref_td = transition_density[0]
-
         if mode == "dipole":
-            base_vec = ref_mom
+            vectors = np.asarray(transmom)
         elif mode == "transition_density":
-            base_vec = ref_td
+            vectors = np.asarray(transition_density)
         else:
             return np.array(transmom), np.array(transition_density)
+
+        valid = np.isfinite(vectors).all(axis=1) & (np.linalg.norm(vectors, axis=1) > 0)
+        if not valid.any():
+            warnings.warn("No finite nonzero reference vector; phase alignment skipped", UserWarning)
+            return np.array(transmom), np.array(transition_density)
+        base_vec = vectors[np.flatnonzero(valid)[0]]
 
         base_norm = np.linalg.norm(base_vec)
         if base_norm == 0:
@@ -321,6 +355,14 @@ class ExportNumpy(Script):
 
         rng = np.random.default_rng(seed)
         all_indices = np.arange(n_total)
+
+        if not train_sizes:
+            return
+        if n_val < 0 or n_test < 0 or any(int(n) < 0 for n in train_sizes):
+            raise ValueError("Split sizes must be nonnegative")
+        if n_test + n_val > n_total:
+            warnings.warn("Requested validation/test sets exceed valid frames; additional splits skipped", UserWarning)
+            return
 
         # fixed test set
         idx_test = rng.choice(all_indices, size=n_test, replace=False)

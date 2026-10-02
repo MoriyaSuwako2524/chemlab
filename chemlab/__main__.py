@@ -4,6 +4,7 @@ import argparse
 import pkgutil
 import importlib
 import inspect
+import sys
 import chemlab.cli
 from chemlab.cli.base import CLICommand
 
@@ -24,15 +25,17 @@ def discover_cli_commands():
     return commands
 
 
-def main():
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
     parser = argparse.ArgumentParser(prog="chemlab")
     subparsers = parser.add_subparsers(dest="command")
 
     # ===== auto discover CLICommand groups =====
     for cmd in discover_cli_commands():
-        cmd.register(subparsers)
+        selected = argv[1] if len(argv) > 1 and argv[0] == cmd.name else None
+        cmd.register(subparsers, selected_script=selected)
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     # ===== run script =====
     if hasattr(args, "func"):

@@ -1,5 +1,11 @@
 # chemlab
 
+One-command resumable prepare/submit/watch/export: [TDDFT pipeline](docs/tddft_pipeline.md).
+
+See [TDDFT workflow and regression tests](docs/tddft_workflow.md) for trajectory preparation,
+SLURM batches, corrected data units and migration of older exports.
+Run tests with `python -m pip install -e '.[test]'` followed by `python -m pytest -q`.
+
 :I This readme is written by Claude
 
 [中文介绍](./README_zh.md)

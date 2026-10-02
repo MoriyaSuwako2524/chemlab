@@ -1,5 +1,10 @@
 # chemlab
 
+One-command resumable prepare/submit/watch/export: [TDDFT pipeline](docs/tddft_pipeline.md).
+
+TDDFT 轨迹准备、批处理、数据单位和测试说明见 [TDDFT 工作流](docs/tddft_workflow.md)。
+运行回归测试：`python -m pip install -e '.[test]'`，然后 `python -m pytest -q`。
+
 :I 我懒得写document，交给claude了
 
 ## 功能特性
