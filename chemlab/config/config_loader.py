@@ -1,6 +1,9 @@
 # chemlab/config/config_loader.py
 
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.9/3.10
+    import tomli as tomllib
 from pathlib import Path
 
 
@@ -67,6 +70,16 @@ class ConfigBase:
                     setattr(self, key, list(val))
                 continue
 
+            # bool must precede int: bool is an int subclass.
+            if isinstance(current, bool):
+                if isinstance(val, str):
+                    if val.lower() not in ("1", "true", "yes", "0", "false", "no"):
+                        raise ValueError(f"Invalid boolean for {key}: {val}")
+                    setattr(self, key, val.lower() in ("1", "true", "yes"))
+                else:
+                    setattr(self, key, bool(val))
+                continue
+
             # int
             if isinstance(current, int):
                 setattr(self, key, int(val))
@@ -75,14 +88,6 @@ class ConfigBase:
             # float
             if isinstance(current, float):
                 setattr(self, key, float(val))
-                continue
-
-            # bool
-            if isinstance(current, bool):
-                if isinstance(val, str):
-                    setattr(self, key, val.lower() in ["1", "true", "yes"])
-                else:
-                    setattr(self, key, bool(val))
                 continue
 
             # string

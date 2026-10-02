@@ -1,6 +1,8 @@
 import pkgutil
 import importlib
 import inspect
+import ast
+from pathlib import Path
 from types import ModuleType
 
 import chemlab.scripts
@@ -12,18 +14,32 @@ class CLICommand:
 
     name = None   # e.g. "ml_data"
 
-    def add_arguments(self, parser, subparsers):
-
-        for script_cls in discover_scripts():
-
-            group, command = script_to_cli(script_cls)
-
-            # Only register scripts under this CLI group
-            if group != self.name:
+    def add_arguments(self, parser, subparsers, selected_script=None):
+        # Discover names without importing every optional scientific backend.
+        package_name = f"chemlab.scripts.{self.name}"
+        if importlib.util.find_spec(package_name) is None:
+            return
+        package = importlib.import_module(package_name)
+        for _, command, is_package in pkgutil.iter_modules(package.__path__):
+            if is_package or command.startswith("_"):
                 continue
-
-            # Create parser for the script
-            p = subparsers.add_parser(command, help=script_cls.__doc__)
+            spec = importlib.util.find_spec(f"{package.__name__}.{command}")
+            tree = ast.parse(Path(spec.origin).read_text(encoding="utf-8"))
+            if not any(isinstance(node, ast.ClassDef) and any(
+                isinstance(item, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "name"
+                                                     for t in item.targets)
+                for item in node.body) for node in tree.body):
+                continue
+            p = subparsers.add_parser(command)
+            if command != selected_script:
+                continue
+            module = importlib.import_module(f"{package.__name__}.{command}")
+            classes = [obj for _, obj in inspect.getmembers(module, inspect.isclass)
+                       if issubclass(obj, Script) and obj is not Script
+                       and obj.__module__ == module.__name__ and obj.name]
+            if len(classes) != 1:
+                raise ValueError(f"Expected one Script implementation in {module.__name__}")
+            script_cls = classes[0]
 
             # Add config parameters if the script uses a config class
             cfg_class = getattr(script_cls, "config", None)
@@ -50,11 +66,11 @@ class CLICommand:
 
         return script.run(cfg)
 
-    def register(self, top_subparsers):
+    def register(self, top_subparsers, selected_script=None):
         """Register this CLI group under top-level CLI."""
         parser = top_subparsers.add_parser(self.name)
         subparsers = parser.add_subparsers(dest=f"{self.name}_cmd")
-        self.add_arguments(parser, subparsers)
+        self.add_arguments(parser, subparsers, selected_script=selected_script)
 
 
 

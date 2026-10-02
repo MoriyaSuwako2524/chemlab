@@ -261,7 +261,8 @@ class qchem_out_excite_multi(qchem_out_multi):
             state_idx=state_idx,
         )
         energies = ENERGY(energies, "hartree").convert_to(energy_unit)
-        np.save(f"{prefix}_energies.npy", energies)
+        if np_save:
+            np.save(f"{prefix}_energies.npy", energies)
         return energies
 
     def export_ex_energy(self, prefix="ex", energy_unit="ev", state_idx=1,np_save=False):
@@ -273,7 +274,8 @@ class qchem_out_excite_multi(qchem_out_multi):
             extractor=lambda st, task: st.excitation_energy,
             state_idx=state_idx,
         )
-        ex_energies = ENERGY(ex_energies, "hartree").convert_to(energy_unit)
+        # qchem_out_excite reads the excitation energy printed in eV.
+        ex_energies = ENERGY(ex_energies, "ev").convert_to(energy_unit)
         if np_save:
             np.save(f"{prefix}{state_idx}_energies.npy", ex_energies)
         return ex_energies
@@ -306,6 +308,12 @@ class qchem_out_excite_multi(qchem_out_multi):
             shape_func=lambda natoms, nframes: (nframes, 3),
             state_idx=state_idx,
         )
+        # Q-Chem permanent dipoles are printed in Debye (unlike transition dipoles).
+        if isinstance(unit, str) and unit.lower() == "debye":
+            if np_save:
+                np.save(f"{prefix}_dipolemom.npy", dipolemom)
+            return dipolemom
+        dipolemom = dipolemom * 0.393430307
         if unit == "au":
             unit = ["e","bohr"]
         dipolemom = DIPOLE(dipolemom, charge_unit="e", distance_unit="bohr").convert_to(
@@ -331,7 +339,7 @@ class qchem_out_excite_multi(qchem_out_multi):
         from .unit import FORCE
         gradients = self.export_attr(
             extractor=lambda st, task: np.array(st.gradient, dtype=float)
-            if st.gradient is not None else np.zeros((len(task.molecule.carti), 3)),
+            if st.gradient is not None else None,
             shape_func=lambda natoms, nframes: (nframes, natoms, 3),
             state_idx=state_idx,
         )
@@ -350,7 +358,7 @@ class qchem_out_excite_multi(qchem_out_multi):
         from .unit import GRADIENT
         gradients = self.export_attr(
             extractor=lambda st, task: np.array(st.gradient, dtype=float)
-            if st.gradient is not None else np.zeros((len(task.molecule.carti), 3)),
+            if st.gradient is not None else None,
             shape_func=lambda natoms, nframes: (nframes, natoms, 3),
             state_idx=state_idx,
         )
@@ -420,8 +428,6 @@ class qchem_out_excite_multi(qchem_out_multi):
             print(f"[Export] {name}")
             results[name] = func(prefix=prefix, **kwargs)
         return results
-
-
 
 
 

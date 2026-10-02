@@ -128,13 +128,13 @@ class qchem_file(object):  # standard qchem inp file class
 
             elif module_start == 2:
                 text = file[i]
-                content = file[i].split(" ")
-                while "" in content:
-                    content.remove("")
-                if file[i] == "":
+                content = text.split("!", 1)[0].split("#", 1)[0].replace("=", " ").split()
+                if not content:
                     continue
+                if len(content) < 2:
+                    raise ValueError(f"Invalid $rem entry: {text}")
                 self.rem.texts += text + "\n"
-                setattr(self.rem, content[0].lower(), content[2])
+                setattr(self.rem, content[0].lower(), content[1])
 
             elif module_start == 3:
 
@@ -1318,10 +1318,10 @@ class qchem_out_multi:
         with open(out_file) as f:
             content = f.read()
 
-        if "Thank you very much for using Q-Chem" in content:
-            return 0
-        elif "Q-Chem fatal error" in content:
+        if "Q-Chem fatal error" in content:
             return 1
+        elif "Thank you very much for using Q-Chem" in content:
+            return 0
         else:
             return -10
     def read_files(self, filenames, out_cls):
@@ -1335,8 +1335,8 @@ class qchem_out_multi:
                     continue
                 out.read_file(fn)
                 self.tasks.append(out)
-            except:
-                print(f"Skipping {fn}")
+            except Exception as exc:
+                print(f"Skipping {fn}: {exc}")
                 continue
 
     @property
